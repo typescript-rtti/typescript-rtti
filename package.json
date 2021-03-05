@@ -4,6 +4,30 @@
   "description": "Emits Typescript metadata for use at runtime",
   "main": "dist/index.js",
   "module": "dist.esm/index.js",
+  "types": "dist/index.d.ts",
+  "homepage": "https://github.com/rezonant/typescript-rtti",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rezonant/typescript-rtti.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rezonant/typescript-rtti/issues"
+  },
+  "keywords": [
+    "rtti",
+    "metadata",
+    "decorators",
+    "typescript",
+    "runtime",
+    "reflection",
+    "reflect"
+  ],
   "scripts": {
     "clean": "rimraf dist dist.esm",
     "build": "npm run clean && npm run build:cjs && npm run build:esm",
