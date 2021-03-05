@@ -33,7 +33,8 @@
     "build": "npm run clean && npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc",
     "build:esm": "tsc -p ./tsconfig.esm.json",
-    "test": "rimraf dist && npm run build:cjs && node dist/test"
+    "test": "rimraf dist && npm run build:cjs && node dist/test",
+    "prepublishOnly": "npm test"
   },
   "author": "William Lahti",
   "license": "MIT",
