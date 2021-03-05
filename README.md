@@ -71,7 +71,7 @@ console.log(bClass.getMethod('baz').returnType) // A
 
 - Emits metadata for all syntactic elements (classes, methods, properties, functions) parsed by Typescript
 - Concise and terse metadata format saves space
-- Metadata format supports forward referencing
+- Metadata format supports forward referencing via type resolvers
 - Supports visibility (public, private), abstract, readonly, optional and more
 - Comprehensive and well tested implementation
 - Supports all targets (ES5 through ES2020)
