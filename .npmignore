@@ -2,3 +2,5 @@ src/test.ts
 src/**/*.test.ts
 dist/test.js
 dist/**/*.test.js
+dist.esm/test.js
+dist.esm/**/*.test.js
