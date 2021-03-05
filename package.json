@@ -1,0 +1,24 @@
+{
+  "name": "typescript-rtti",
+  "version": "3.0.0-beta.84",
+  "description": "Adds the ability to emit rich type metadata to Typescript",
+  "main": "dist/index.js",
+  "module": "dist.esm/index.js",
+  "scripts": {
+    "clean": "rimraf dist dist.esm",
+    "build": "npm run clean && npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc",
+    "build:esm": "tsc -p ./tsconfig.esm.json",
+    "test": "rimraf dist && npm run build:cjs && node dist/test"
+  },
+  "author": "William Lahti",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^4.2.15",
+    "chai": "^4.3.0",
+    "razmin": "^1.0.4",
+    "reflect-metadata": "^0.1.13",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.2.2"
+  }
+}
