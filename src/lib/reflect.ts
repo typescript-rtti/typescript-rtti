@@ -9,6 +9,8 @@ function Flag(value : string) {
 
 export class ReflectedFlags {
     constructor(flags : string) {
+        if (!flags)
+            flags = '';
         Object.keys(this.flagToProperty)
             .forEach(flag => this[this.flagToProperty[flag]] = flags.includes(flag));
     }
@@ -199,7 +201,7 @@ export class ReflectedMethod extends ReflectedMember {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
-        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class.prototype, this.name);
+        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class.prototype, this.name) || [];
     }
 
     private _parameters : ReflectedMethodParameter[];
@@ -224,10 +226,11 @@ export class ReflectedMethod extends ReflectedMember {
     }
 
     get returnType(): Function {
-        if (this._returnType)
+        if (this._returnType !== undefined)
             return this._returnType;
 
-        return this._returnType = Reflect.getMetadata('rt:t', this.class.prototype, this.name)();
+        let typeResolver = Reflect.getMetadata('rt:t', this.class.prototype, this.name);
+        return this._returnType = typeResolver ? typeResolver() : null;
     }
 
     get isAsync() {
@@ -243,10 +246,11 @@ export class ReflectedProperty extends ReflectedMember {
     private _type : Function;
 
     get type(): Function {
-        if (this._type)
+        if (this._type !== undefined)
             return this._type;
 
-        return this._type = Reflect.getMetadata('rt:t', this.class.prototype, this.name)();
+        let typeResolver = Reflect.getMetadata('rt:t', this.class.prototype, this.name);
+        return this._type = typeResolver ? typeResolver() : null;
     }
 
     get isReadonly() {
@@ -296,14 +300,14 @@ export class ReflectedClass<ClassT = Function> {
         if (this._ownPropertyNames)
             return this._ownPropertyNames;
         
-        return this._ownPropertyNames = Reflect.getMetadata('rt:P', this.class);
+        return this._ownPropertyNames = Reflect.getMetadata('rt:P', this.class) || [];
     }
 
     get ownMethodNames(): string[] {
         if (this._ownMethodNames)
             return this._ownMethodNames;
         
-        return this._ownMethodNames = Reflect.getMetadata('rt:m', this.class);
+        return this._ownMethodNames = Reflect.getMetadata('rt:m', this.class) || [];
     }
 
     private _methodNames : string[];
@@ -377,7 +381,7 @@ export class ReflectedClass<ClassT = Function> {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
-        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class.prototype);
+        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class.prototype) || [];
     }
 
     private _parameters : ReflectedConstructorParameter[];
