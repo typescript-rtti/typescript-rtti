@@ -1,7 +1,7 @@
 {
   "name": "typescript-rtti",
   "version": "3.0.0-beta.84",
-  "description": "Adds the ability to emit rich type metadata to Typescript",
+  "description": "Emits Typescript metadata for use at runtime",
   "main": "dist/index.js",
   "module": "dist.esm/index.js",
   "scripts": {
