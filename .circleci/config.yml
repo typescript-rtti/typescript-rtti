@@ -42,13 +42,6 @@ jobs:
     steps:
       - run_tests:
           version: "12"
-  node-10:
-    docker:
-      - image: circleci/node:10
-    working_directory: ~/repo
-    steps:
-      - run_tests:
-          version: "10"
 
 workflows:
   version: 2
@@ -57,4 +50,3 @@ workflows:
       - node-15
       - node-14
       - node-12
-      - node-10
