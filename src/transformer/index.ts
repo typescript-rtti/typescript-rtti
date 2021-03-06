@@ -7,20 +7,20 @@
  *    elements processed during a compilation, regardless of whether a decorator is originally present on the element.
  *    NOTE: You may not want this, because design:* has a number of flaws. If you disable emitDecoratorMetadata this
  *    transformer will still output the rt:* metadata items instead.
- * 2. Emits an "rt:f" metadata on each syntactic element which describes compile-time semantics of an element,
- *    including element type, public, private, protected, abstract, readonly
+ * 2. Emits "rt:*" metadata on each syntactic element which describes compile-time semantics of an element,
+ *    which encodes element type, public, private, protected, abstract, readonly, async, optional, lists of 
+ *    method names and property names for classes, and lists of parameter names, types, and modifiers for methods 
+ *    and classes (ie constructors).
  * 
- * The meaning of "rt:f" is as follows:
- * - The value is a string which is a set of "flags" that describe the element. A flag is set if its corresponding
- *   character is present in the string.
- *       $: public (properties, methods)
- *       @: protected (properties, methods)
- *       #: private (properties, methods)
- *       R: readonly (properties)
- *       A: abstract (classes, methods)
- *       P: element is a property
- *       C: element is a class
- *       M: element is a method
+ * - The "rt:f" metadata item holds a string of flags, where each character indicates the positive presence of a flag.
+ *   For the list of available flags, see src/common/flags.ts
+ * - The "rt:t" metadata item represents the "type" of an item. This is the type of a property, the return type of a method,
+ *   or Function in the case of a class (similar to "design:type" for a class).
+ * - The "rt:p" metadata item represents parameters of a method or a class (ie constructor). It is an array of objects which 
+ *   each have n (name : string), t (type : Function), and optionally f (flags : string) options. The meaning of flags is 
+ *   as above.
+ * - The "rt:P" metadata item represents an array of property names
+ * - The "rt:m" metadata item represents an array of method names
  * 
  */
 
