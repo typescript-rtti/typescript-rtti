@@ -1,6 +1,6 @@
 {
   "name": "typescript-rtti",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Emits Typescript metadata for use at runtime",
   "main": "dist/index.js",
   "module": "dist.esm/index.js",
