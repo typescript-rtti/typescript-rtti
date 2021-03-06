@@ -53,6 +53,26 @@ describe('ReflectedClass', it => {
         refClass = new ReflectedClass(A);
         expect(refClass.visibility).to.equal('protected');
     });
+    it('can reflect upon inherited methods', () => {
+        class A {}
+        class B extends A {}
+        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
+        Reflect.defineMetadata('rt:m', ['foo', 'bar'], A);
+
+        let refClass = new ReflectedClass(B);
+        expect(refClass.getMethod('foo').returnType).to.equal(Number);
+    });
+    it('can reflect upon inherited properties', () => {
+        class A {}
+        class B extends A {}
+        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
+        Reflect.defineMetadata('rt:P', ['foo', 'bar'], A);
+
+        let refClass = new ReflectedClass(B);
+        expect(refClass.getProperty('foo').type).to.equal(Number);
+    });
 });
 
 describe('ReflectedMethod', it => {
