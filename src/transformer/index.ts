@@ -24,7 +24,7 @@
  * 
  */
 
-import { F_ABSTRACT, F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isReadOnly } from './flags';
+import { F_ABSTRACT, F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isExported, isReadOnly } from './flags';
 import { forwardRef } from './forward-ref';
 import { metadataDecorator } from './metadata-decorator';
 import { rtHelper } from './rt-helper';
@@ -189,7 +189,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     decs.push(...extractParamsMetadata(constructor));
                 }
 
-                decs.push(metadataDecorator('rt:f', `${F_CLASS}${getVisibility(klass.modifiers)}${isAbstract(klass.modifiers)}`));
+                decs.push(metadataDecorator('rt:f', `${F_CLASS}${getVisibility(klass.modifiers)}${isAbstract(klass.modifiers)}${isExported(klass.modifiers)}`));
 
                 return decs;
             }

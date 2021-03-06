@@ -5,6 +5,7 @@ import ts from 'typescript';
 import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
 import { esRequire } from '../../test-esrequire.js';
+import { F_ABSTRACT, F_CLASS, F_EXPORTED } from '../common';
 
 interface RunInvocation {
     code : string;
@@ -462,16 +463,42 @@ describe('RTTI: ', () => {
 
     describe('Class', it => {
         describe('rt:f', it => {
-            it('emits', async () => {
+            it('identify classes', async () => {
                 let exports = await runSimple({
                     code: `
                         export class A { }
-                        export class B { }
                     `
                 });
         
-                let flags = Reflect.getMetadata('rt:f', exports.B);
-                expect(flags).to.equal('C$');
+                let aFlags = Reflect.getMetadata('rt:f', exports.A);
+                expect(aFlags).to.contain(F_CLASS);
+            });
+            it('identifies exported classes', async () => {
+                let exports = await runSimple({
+                    code: `
+                        class A { }
+                        export class B { }
+                        export const A2 = A;
+                    `
+                });
+        
+                let aFlags = Reflect.getMetadata('rt:f', exports.A2);
+                let bFlags = Reflect.getMetadata('rt:f', exports.B);
+                expect(aFlags).not.to.contain(F_EXPORTED);
+                expect(bFlags).to.contain(F_EXPORTED);
+            });
+            it('identifies abstract classes', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export abstract class B { }
+                    `
+                });
+        
+                let aFlags = Reflect.getMetadata('rt:f', exports.A);
+                let bFlags = Reflect.getMetadata('rt:f', exports.B);
+                expect(aFlags).not.to.contain(F_ABSTRACT);
+                expect(bFlags).to.contain(F_ABSTRACT);
             });
         });
         describe('rt:p', () => {

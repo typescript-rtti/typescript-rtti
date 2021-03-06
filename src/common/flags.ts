@@ -8,3 +8,4 @@ export const F_METHOD       = 'M';
 export const F_CLASS        = 'C';
 export const F_OPTIONAL     = '?';
 export const F_ASYNC        = 'a';
+export const F_EXPORTED     = 'e';
