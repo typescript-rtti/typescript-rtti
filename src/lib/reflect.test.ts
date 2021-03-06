@@ -111,7 +111,12 @@ describe('ReflectedMethod', it => {
         Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
         expect(new ReflectedClass(B).getMethod('foo').parameters[0].name).to.equal('a');
         expect(new ReflectedClass(B).getMethod('foo').getParameter('a').name).to.equal('a');
-        expect(new ReflectedClass(B).getMethod('foo').parameters[0].type).to.equal(Boolean);
+        expect(new ReflectedClass(B).getMethod('foo').parameters[0].type).to.equal(String);
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('a').type).to.equal(String);
+
+        expect(new ReflectedClass(B).getMethod('foo').parameters[1].name).to.equal('b');
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('b').name).to.equal('b');
+        expect(new ReflectedClass(B).getMethod('foo').parameters[1].type).to.equal(Boolean);
         expect(new ReflectedClass(B).getMethod('foo').getParameter('b').type).to.equal(Boolean);
     })
     it('reflects parameter optionality', () => {
