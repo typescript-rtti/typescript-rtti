@@ -104,6 +104,40 @@ describe('ReflectedMethod', it => {
         expect(new ReflectedClass(B).getMethod('foo').returnType).to.equal(Number)
         expect(new ReflectedClass(B).getMethod('bar').returnType).to.be.null;
     })
+    it('reflects parameters', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:p', [{n:'a', t: String}, {n:'b', t: Boolean}], B.prototype, 'foo');
+        Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
+        expect(new ReflectedClass(B).getMethod('foo').parameters[0].name).to.equal('a');
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('a').name).to.equal('a');
+        expect(new ReflectedClass(B).getMethod('foo').parameters[0].type).to.equal(Boolean);
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('b').type).to.equal(Boolean);
+    })
+    it('reflects parameter optionality', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:p', [{n:'a', t: () => String}, {n:'b', t: () => Boolean, f: `${flags.F_OPTIONAL}`}], B.prototype, 'foo');
+        Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
+
+        expect(new ReflectedClass(B).getMethod('foo').parameters[0].name).to.equal('a');
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('a').name).to.equal('a');
+        expect(new ReflectedClass(B).getMethod('foo').parameters[0].type).to.equal(String);
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('a').type).to.equal(String);
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('a').flags.isOptional).to.be.false;
+        expect(new ReflectedClass(B).getMethod('foo').parameters[0].flags.isOptional).to.be.false;
+        expect(new ReflectedClass(B).getMethod('foo').parameters[0].isOptional).to.be.false;
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('a').isOptional).to.be.false;
+        
+        expect(new ReflectedClass(B).getMethod('foo').parameters[1].name).to.equal('b');
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('b').name).to.equal('b');
+        expect(new ReflectedClass(B).getMethod('foo').parameters[1].type).to.equal(Boolean);
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('b').type).to.equal(Boolean);
+        expect(new ReflectedClass(B).getMethod('foo').parameters[1].flags.isOptional).to.be.true;
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('b').flags.isOptional).to.be.true;
+        expect(new ReflectedClass(B).getMethod('foo').parameters[1].isOptional).to.be.true;
+        expect(new ReflectedClass(B).getMethod('foo').getParameter('b').isOptional).to.be.true;
+    })
 });
 
 describe('ReflectedProperty', it => {

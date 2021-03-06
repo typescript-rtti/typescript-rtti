@@ -74,6 +74,10 @@ export class ReflectedParameter {
 
         return this._flags = new ReflectedFlags(this.rawMetadata.f)
     }
+
+    get isOptional() {
+        return this.flags.isOptional;
+    }
 }
 
 /**
@@ -221,7 +225,7 @@ export class ReflectedMethod extends ReflectedMember {
         if (this._parameters)
             return this._parameters;
         
-        return this._parameters = this._rawParameterMetadata.map(x => new ReflectedMethodParameter(this, x));
+        return this._parameters = this.rawParameterMetadata.map(x => new ReflectedMethodParameter(this, x));
     }
 
     getParameter(name : string) {
