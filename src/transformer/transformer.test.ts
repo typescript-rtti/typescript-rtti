@@ -612,5 +612,25 @@ describe('RTTI: ', it => {
                 expect(type()).to.equal(Number);
             })
         });
+        it('can emit a class imported as default', () => {
+            class A {}
+            let exports = runSimple({
+                code: `
+                    import A from "fs";
+                     
+                    export class B {
+                        constructor(hello : A) { }
+                    }
+                `,
+                modules: {
+                    fs: A
+                }
+            });
+
+            let params = Reflect.getMetadata('rt:p', exports.B);
+
+            expect(params.length).to.equal(1);
+            expect(params[0].t()).to.equal(A);
+        });
     });
 });

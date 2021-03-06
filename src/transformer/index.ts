@@ -37,6 +37,7 @@ interface TypeImport {
     refName : string;
     modulePath : string;
     isNamespace : boolean;
+    isDefault : boolean;
     referenced? : boolean;
     name : string;
     localName : string;
@@ -99,7 +100,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createVoidZero();
                 
                 if (ts.isTypeReferenceNode(typeNode)) {
-                    let expr : ts.PropertyAccessExpression | ts.Identifier;
+                    let expr : ts.PropertyAccessExpression | ts.Identifier ;
 
 
                     if (context.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
@@ -114,7 +115,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                         if (impo) {
                             impo.referenced = true;
-                            if (!impo.isNamespace) {
+                            if (impo.isDefault) {
+                                return ts.factory.createCallExpression(
+                                    ts.factory.createIdentifier('require'),
+                                    [], [ ts.factory.createStringLiteral(impo.modulePath) ]
+                                );
+                            } else if (!impo.isNamespace) {
                                 expr = propertyPrepend(
                                     ts.factory.createCallExpression(
                                         ts.factory.createIdentifier('require'),
@@ -347,9 +353,19 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if (node.importClause) {
                         let bindings = node.importClause.namedBindings;
 
-                        // if (!bindings)
-                        //     throw new Error(`${node.getFullText()}`);
-                        if (bindings) {
+                        if (!bindings) {
+                            let name = node.importClause.name.text;
+
+                            importMap.set(name, {
+                                name,
+                                localName: name,
+                                refName: name,
+                                modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
+                                isNamespace: false,
+                                isDefault: true,
+                                importDeclaration: node
+                            })
+                        } else if (bindings) {
                             if (ts.isNamedImports(bindings)) {
                                 for (let binding of bindings.elements) {
                                     importMap.set(binding.name.text, {
@@ -358,6 +374,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                         refName: binding.name.text,
                                         modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
                                         isNamespace: false,
+                                        isDefault: false,
                                         importDeclaration: node
                                     });
                                 }
@@ -368,6 +385,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                     modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
                                     refName: bindings.name.text,
                                     isNamespace: true,
+                                    isDefault: false,
                                     importDeclaration: node
                                 })
                                 bindings.name
@@ -439,33 +457,49 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         continue;
 
                     // for commonjs we only add extra imports for namespace imports 
-                    // (ie import * as x from 'y'). regular bound imports are handled
+                    // (ie import * as x from 'y') and default imports. regular bound imports are handled
                     // with a direct require anyway.
 
-                    if (isCommonJS && !impo.isNamespace)
+                    if (isCommonJS && !impo.isNamespace && !impo.isDefault)
                         continue;
                        
-                    let ownedImpo = ts.factory.createImportDeclaration(
-                        undefined, 
-                        undefined, 
-                        ts.factory.createImportClause(
-                            false, undefined, 
+                    let ownedImpo : ts.ImportDeclaration;
+                    
+                    if (impo.isDefault) {
+                        ownedImpo = ts.factory.createImportDeclaration(
+                            undefined,
+                            undefined,
+                            ts.factory.createImportClause(
+                                false, ts.factory.createIdentifier(impo.localName),
+                                undefined
+                            ),
+                            ts.factory.createStringLiteral(
+                                (<ts.StringLiteral>impo.importDeclaration.moduleSpecifier).text
+                            )
+                        );
+                    } else {
+                        ownedImpo = ts.factory.createImportDeclaration(
+                            undefined, 
+                            undefined, 
+                            ts.factory.createImportClause(
+                                false, undefined, 
 
-                            impo.isNamespace 
-                                ? ts.factory.createNamespaceImport(ts.factory.createIdentifier(impo.localName))
-                                : ts.factory.createNamedImports(
-                                    [
-                                        ts.factory.createImportSpecifier(
-                                            ts.factory.createIdentifier(impo.refName),
-                                            ts.factory.createIdentifier(impo.localName)
-                                        )
-                                    ]
-                                )
-                        ),
-                        ts.factory.createStringLiteral(
-                            (<ts.StringLiteral>impo.importDeclaration.moduleSpecifier).text
-                        )
-                    );
+                                impo.isNamespace 
+                                    ? ts.factory.createNamespaceImport(ts.factory.createIdentifier(impo.localName))
+                                    : ts.factory.createNamedImports(
+                                        [
+                                            ts.factory.createImportSpecifier(
+                                                ts.factory.createIdentifier(impo.refName),
+                                                ts.factory.createIdentifier(impo.localName)
+                                            )
+                                        ]
+                                    )
+                            ),
+                            ts.factory.createStringLiteral(
+                                (<ts.StringLiteral>impo.importDeclaration.moduleSpecifier).text
+                            )
+                        );
+                    }
 
                     let impoIndex = statements.indexOf(impo.importDeclaration);
                     if (impoIndex >= 0) {
