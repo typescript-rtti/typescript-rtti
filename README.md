@@ -1,5 +1,6 @@
 # typescript-rtti
 [![Version](https://img.shields.io/npm/v/typescript-rtti.svg)](https://www.npmjs.com/package/typescript-rtti)
+[![CircleCI](https://circleci.com/gh/rezonant/typescript-rtti/tree/main.svg?style=shield)](https://circleci.com/gh/rezonant/typescript-rtti/tree/main)
 
 > **NOTE**
 > This software is _alpha quality_. There is no guarantee it will successfully compile your code just yet.
