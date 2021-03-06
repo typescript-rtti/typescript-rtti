@@ -4,3 +4,5 @@ dist/test.js
 dist/**/*.test.js
 dist.esm/test.js
 dist.esm/**/*.test.js
+test-esrequire.js
+test-module-resolver.mjs
