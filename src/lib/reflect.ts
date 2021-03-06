@@ -2,6 +2,10 @@ import * as Flags from '../common/flags';
 
 function Flag(value : string) {
     return (target, propertyKey) => {
+        if (!target.flagToProperty)
+            target.flagToProperty = {};
+        if (!target.propertyToFlag)
+            target.propertyToFlag = {};
         target.flagToProperty[value] = propertyKey;
         target.propertyToFlag[propertyKey] = value;
     };
@@ -262,6 +266,7 @@ export class ReflectedClass<ClassT = Function> {
     constructor(
         klass : Constructor<ClassT>
     ) {
+        this._class = klass;
     }
 
     _class : Constructor<ClassT>;
@@ -381,7 +386,7 @@ export class ReflectedClass<ClassT = Function> {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
-        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class.prototype) || [];
+        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class) || [];
     }
 
     private _parameters : ReflectedConstructorParameter[];
@@ -398,7 +403,7 @@ export class ReflectedClass<ClassT = Function> {
         if (this._parameters)
             return this._parameters;
         
-        return this._parameters = this._rawParameterMetadata.map(x => new ReflectedConstructorParameter(<any>this, x));
+        return this._parameters = this.rawParameterMetadata.map(x => new ReflectedConstructorParameter(<any>this, x));
     }
 
     getParameter(name : string) {
