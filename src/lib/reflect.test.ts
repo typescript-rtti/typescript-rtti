@@ -147,4 +147,16 @@ describe('ReflectedProperty', it => {
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(new ReflectedClass(A).getProperty('foo').isReadonly).to.be.true
     })
+    it('reflects type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:t', () => Number, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => String, B.prototype, 'bar');
+        Reflect.defineMetadata('rt:P', ['foo', 'bar'], B);
+        expect(new ReflectedClass(B).getProperty('foo').type).to.equal(Number);
+        expect(new ReflectedClass(B).getProperty('bar').type).to.equal(String);
+        class A {}
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_READONLY}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:P', ['foo'], A);
+        expect(new ReflectedClass(A).getProperty('foo').isReadonly).to.be.true
+    })
 });
