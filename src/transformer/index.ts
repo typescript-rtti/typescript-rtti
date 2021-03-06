@@ -167,7 +167,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 /// ??
 
                 if (extended) {
-                    throw new Error(`Failed to serializeTypeRef for kind ${ts.SyntaxKind[typeNode.kind]}!`);
+                    console.warn(`Failed to serializeTypeRef for kind ${ts.SyntaxKind[typeNode.kind]}! Emitting Object`);
+                    return ts.factory.createIdentifier('Object');
                 } else {
                     return ts.factory.createIdentifier('Object');
                 }
