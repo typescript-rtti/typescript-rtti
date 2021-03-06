@@ -94,3 +94,76 @@ transformer can handle it instead. Note that there are limitations with this met
 team decides to further advance runtime metadata, it is likely to be changed.
 
 Enabling `emitDecoratorMetadata` causes `typescript-rtti` to emit both the `design:*` style of metadata as well as its own `rt:*` format. Disabling it causes only `rt:*` metadata to be emitted.
+
+# Format
+
+The metadata emitted has a terse but intuitive structure. 
+
+## Class Sample
+
+```typescript
+
+//input 
+
+export class B {
+    constructor(
+        readonly a : A
+    ) {
+    }
+}
+
+// output
+
+const __RtΦ = (k, v) => Reflect.metadata(k, v);
+//...
+B = __decorate([
+    __RtΦ("rt:P", ["a"]),
+    __RtΦ("rt:p", [{ n: "a", t: () => A, f: "R" }]),
+    __RtΦ("rt:f", "C$")
+], B);
+```
+
+## Method Sample
+
+```typescript
+
+//input 
+
+export class A {
+    takeShape(shape? : Shape): Shape {
+        return null;
+    }
+
+    haveAnArray(myArray : string[]) {
+        return 123;
+    }
+
+    naturalTypes(blank, aString : string, aNumber : number, aBool : boolean, aFunc : Function) {
+        return 'hello';
+    }
+}
+
+// output
+
+//...
+__decorate([
+    __RtΦ("rt:p", [{ n: "shape", t: () => ShapeΦ, f: "?" }]),
+    __RtΦ("rt:f", "M$"),
+    __RtΦ("rt:t", () => ShapeΦ)
+], A.prototype, "takeShape", null);
+__decorate([
+    __RtΦ("rt:p", [{ n: "myArray", t: () => [String] }]),
+    __RtΦ("rt:f", "M$"),
+    __RtΦ("rt:t", () => Number)
+], A.prototype, "haveAnArray", null);
+__decorate([
+    __RtΦ("rt:p", [{ n: "blank", t: () => void 0 }, { n: "aString", t: () => String }, { n: "aNumber", t: () => Number }, { n: "aBool", t: () => Boolean }, { n: "aFunc", t: () => Function }]),
+    __RtΦ("rt:f", "M$"),
+    __RtΦ("rt:t", () => String)
+], A.prototype, "naturalTypes", null);
+A = __decorate([
+    __RtΦ("rt:m", ["takeShape", "haveAnArray", "naturalTypes"]),
+    __RtΦ("rt:f", "C$")
+], A);
+```
+
