@@ -15,7 +15,6 @@ commands:
           - v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
           - v1-dependencies-<< parameters.version >>-
       - run: npm install
-      - run: ./node_modules/.bin/lerna bootstrap --concurrency=2
       - save_cache:
           paths:
             - node_modules
