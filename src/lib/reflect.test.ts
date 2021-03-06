@@ -107,7 +107,7 @@ describe('ReflectedMethod', it => {
     it('reflects parameters', () => {
         class B {}
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
-        Reflect.defineMetadata('rt:p', [{n:'a', t: String}, {n:'b', t: Boolean}], B.prototype, 'foo');
+        Reflect.defineMetadata('rt:p', [{n:'a', t: () => String}, {n:'b', t: () => Boolean}], B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
         expect(new ReflectedClass(B).getMethod('foo').parameters[0].name).to.equal('a');
         expect(new ReflectedClass(B).getMethod('foo').getParameter('a').name).to.equal('a');
