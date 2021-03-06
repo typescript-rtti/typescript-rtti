@@ -77,20 +77,20 @@ console.log(bClass.getMethod('baz').returnType) // A
 - Emits metadata for all syntactic elements (classes, methods, properties, functions) parsed by Typescript
 - Concise and terse metadata format saves space
 - Metadata format supports forward referencing via type resolvers
-- Supports reflecting on intrinsic inferred return types (ie Number, String, etc) in addition to directly specified types
+- Supports reflecting on intrinsic inferred return types (ie Number, String, etc) in addition to directly specified 
+  types
 - Supports visibility (public, private), abstract, readonly, optional and more
 - Comprehensive and well tested implementation
 - Supports all targets (ES5 through ES2020)
 - Supports both ES modules and CommonJS
 - Works in the browser, Node.js and other runtimes (Deno?)
-- Provides compatibility with existing `design:*` metadata as emitted by Typescript itself (only emitted when emitDecoratorMetadata is turned on)
+- Provides compatibility with existing `design:*` metadata as emitted by Typescript itself (only emitted when 
+  emitDecoratorMetadata is turned on)
 
 # Regarding `design:*`
 
 When you use this transformer, it will disable Typescript's own emitting of the `design:*` metadata so that this 
-transformer can handle it instead. Note that there are limitations with this metadata format and if/when the Typescript
-team decides to further advance runtime metadata, it is likely to be changed. 
+transformer can handle it instead. Note that there are limitations with this metadata format ([it has problems with forward references](https://github.com/microsoft/TypeScript/issues/27519) for one) and if/when the Typescript
+team decides to further advance runtime metadata, it is likely to be changed.
 
-For one thing, [it has problems with forward references](https://github.com/microsoft/TypeScript/issues/27519). The 
-metadata format that `typescript-rtti` uses relies on the "type resolver" pattern to avoid problems with forward 
-declarations.
+Enabling `emitDecoratorMetadata` causes `typescript-rtti` to emit both the `design:*` style of metadata as well as its own `rt:*` format. Disabling it causes only `rt:*` metadata to be emitted.
