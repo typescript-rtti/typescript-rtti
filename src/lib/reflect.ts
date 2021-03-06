@@ -58,6 +58,8 @@ export class ReflectedParameter {
     ) {
     }
 
+    private _flags : ReflectedFlags;
+
     get name() {
         return this.rawMetadata.n;
     }
@@ -65,8 +67,6 @@ export class ReflectedParameter {
     get type() {
         return this.rawMetadata.t();
     }
-
-    private _flags : ReflectedFlags;
 
     get flags() {
         if (this._flags)
@@ -200,6 +200,7 @@ export class ReflectedMember {
 export class ReflectedMethod extends ReflectedMember {
     private _returnType : Function;
     private _rawParameterMetadata : RawParameterMetadata[];
+    private _parameters : ReflectedMethodParameter[];
 
     get rawParameterMetadata(): RawParameterMetadata[] {
         if (this._rawParameterMetadata)
@@ -207,8 +208,6 @@ export class ReflectedMethod extends ReflectedMember {
         
         return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class.prototype, this.name) || [];
     }
-
-    private _parameters : ReflectedMethodParameter[];
 
     get parameterNames() {
         return this.rawParameterMetadata.map(x => x.n);
@@ -269,8 +268,18 @@ export class ReflectedClass<ClassT = Function> {
         this._class = klass;
     }
 
-    _class : Constructor<ClassT>;
-    _isAbstract : boolean;
+    private _class : Constructor<ClassT>;
+    private _ownMethods : ReflectedMethod[];
+    private _methods : ReflectedMethod[];
+    private _ownPropertyNames : string[];
+    private _ownMethodNames : string[];
+    private _methodNames : string[];
+    private _super : ReflectedClass;
+    private _rawParameterMetadata : RawParameterMetadata[];
+    private _parameters : ReflectedConstructorParameter[];
+    private _ownProperties : ReflectedProperty[];
+    private _properties : ReflectedProperty[];
+    private _flags : ReflectedFlags;
 
     get prototype() {
         return this._class.prototype;
@@ -279,12 +288,6 @@ export class ReflectedClass<ClassT = Function> {
     get class() {
         return this._class;
     }
-
-    get isAbstract() {
-        return this._isAbstract;
-    }
-
-    private _super : ReflectedClass;
 
     get super() : ReflectedClass {
         if (this._super !== undefined)
@@ -296,10 +299,6 @@ export class ReflectedClass<ClassT = Function> {
         else
             return this._super = new ReflectedClass(parentClass);
     }
-
-    private _methods : ReflectedMethod[];
-    private _ownPropertyNames : string[];
-    private _ownMethodNames : string[];
 
     get ownPropertyNames(): string[] {
         if (this._ownPropertyNames)
@@ -315,7 +314,35 @@ export class ReflectedClass<ClassT = Function> {
         return this._ownMethodNames = Reflect.getMetadata('rt:m', this.class) || [];
     }
 
-    private _methodNames : string[];
+    get flags(): Readonly<ReflectedFlags> {
+        if (this._flags)
+            return this._flags;
+        
+        return this._flags = new ReflectedFlags(Reflect.getMetadata('rt:f', this.class));
+    }
+
+    get isAbstract() {
+        return this.flags.isAbstract;
+    }
+
+    get isPrivate() {
+        return this.flags.isPrivate;
+    }
+
+    get isPublic() {
+        return this.flags.isPublic;
+    }
+
+    get isProtected() {
+        return this.flags.isProtected;
+    }
+
+    get visibility(): Visibility {
+        return this.isPublic ? 'public' 
+             : this.isProtected ? 'protected' 
+             : this.isPrivate ? 'private' 
+             : 'public';
+    }
 
     get methodNames(): string[] {
         if (this._methodNames)
@@ -341,8 +368,6 @@ export class ReflectedClass<ClassT = Function> {
         }
     }
 
-    private _ownMethods : ReflectedMethod[];
-
     get ownMethods(): ReflectedMethod[] {
         if (this._ownMethods)
             return this._ownMethods;
@@ -359,9 +384,6 @@ export class ReflectedClass<ClassT = Function> {
         else
             return this._methods = this.ownMethods;
     }
-
-    private _ownProperties : ReflectedProperty[];
-    private _properties : ReflectedProperty[];
 
     get ownProperties(): ReflectedProperty[] {
         if (this._ownProperties)
@@ -380,16 +402,12 @@ export class ReflectedClass<ClassT = Function> {
             return this._properties = this.ownProperties;
     }
 
-    private _rawParameterMetadata : RawParameterMetadata[];
-
     get rawParameterMetadata(): RawParameterMetadata[] {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
         return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class) || [];
     }
-
-    private _parameters : ReflectedConstructorParameter[];
 
     get parameterNames() {
         return this.rawParameterMetadata.map(x => x.n);
