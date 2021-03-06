@@ -346,27 +346,32 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 if (ts.isImportDeclaration(node)) {
                     if (node.importClause) {
                         let bindings = node.importClause.namedBindings;
-                        if (ts.isNamedImports(bindings)) {
-                            for (let binding of bindings.elements) {
-                                importMap.set(binding.name.text, {
-                                    name: binding.name.text,
-                                    localName: `${binding.propertyName?.text ?? binding.name.text}Φ`,
-                                    refName: binding.name.text,
+
+                        // if (!bindings)
+                        //     throw new Error(`${node.getFullText()}`);
+                        if (bindings) {
+                            if (ts.isNamedImports(bindings)) {
+                                for (let binding of bindings.elements) {
+                                    importMap.set(binding.name.text, {
+                                        name: binding.name.text,
+                                        localName: `${binding.propertyName?.text ?? binding.name.text}Φ`,
+                                        refName: binding.name.text,
+                                        modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
+                                        isNamespace: false,
+                                        importDeclaration: node
+                                    });
+                                }
+                            } else if (ts.isNamespaceImport(bindings)) {
+                                importMap.set(bindings.name.text, {
+                                    name: bindings.name.text,
+                                    localName: `${bindings.name.text}Φ`,
                                     modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
-                                    isNamespace: false,
+                                    refName: bindings.name.text,
+                                    isNamespace: true,
                                     importDeclaration: node
-                                });
+                                })
+                                bindings.name
                             }
-                        } else if (ts.isNamespaceImport(bindings)) {
-                            importMap.set(bindings.name.text, {
-                                name: bindings.name.text,
-                                localName: `${bindings.name.text}Φ`,
-                                modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
-                                refName: bindings.name.text,
-                                isNamespace: true,
-                                importDeclaration: node
-                            })
-                            bindings.name
                         }
                     }
                 }

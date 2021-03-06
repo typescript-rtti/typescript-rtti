@@ -122,6 +122,38 @@ function runSimple(invocation : RunInvocation) {
 }
 
 describe('RTTI: ', it => {
+    describe('General', it => {
+        it('doesn\'t explode on bare imports', () => {
+            runSimple({
+                code: `
+                    import "fs";
+                    
+                    export class A { }
+                    export class B {
+                        constructor(hello : A) { }
+                    }
+                `,
+                modules: {
+                    fs: {}
+                }
+            });
+        });
+        it('doesn\'t explode on default imports', () => {
+            runSimple({
+                code: `
+                    import fs from "fs";
+                    
+                    export class A { }
+                    export class B {
+                        constructor(hello : A) { }
+                    }
+                `,
+                modules: {
+                    fs: {}
+                }
+            });
+        });
+    })
     describe('emitDecoratorMetadata=true: ', it => {
         describe('design:type', it => {
             it('emits for method', () => {
