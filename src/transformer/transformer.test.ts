@@ -6,7 +6,7 @@ import * as path from 'path';
 import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
 import { esRequire } from '../../test-esrequire.js';
-import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_INTERSECTION, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
+import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
 import * as fs from 'fs';
 
 interface RunInvocation {
@@ -812,7 +812,7 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(Boolean);
             })
-            it.only('emits for conditional types', async () => {
+            it('emits for conditional types', async () => {
                 let exports = await runSimple({
                     code: `
                         export class C {
@@ -823,6 +823,32 @@ describe('RTTI: ', () => {
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(Object);
+            })
+            it('emits for type predicate types', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            isBlue(): this is D { return false; }
+                        }
+
+                        export class D extends C { }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'isBlue');
+                expect(type()).to.equal(Boolean);
+            })
+            it('emits for this type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            isBlue(): this { return this; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'isBlue');
+                expect(type()).to.eql({ TΦ: T_THIS });
             })
             it('emits for returned String', async () => {
                 let exports = await runSimple({

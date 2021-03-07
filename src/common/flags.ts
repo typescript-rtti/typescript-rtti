@@ -16,3 +16,4 @@ export const T_ANY          = '~';
 export const T_UNKNOWN      = 'U';
 export const T_TUPLE        = 'T';
 export const T_ARRAY        = '[';
+export const T_THIS         = 't';
