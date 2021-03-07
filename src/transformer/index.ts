@@ -255,6 +255,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createIdentifier('Function');
                 else if (typeNode.kind === ts.SyntaxKind.UnknownKeyword)
                     return ts.factory.createIdentifier('Object');
+                else if (typeNode.kind === ts.SyntaxKind.UnionType)
+                    return ts.factory.createIdentifier('Object');
+                else if (typeNode.kind === ts.SyntaxKind.IntersectionType)
+                    return ts.factory.createIdentifier('Object');
                 else if (ts.isArrayTypeNode(typeNode)) {
                     if (extended)
                         return ts.factory.createArrayLiteralExpression([serializeTypeRef(typeNode.elementType, true)]);
@@ -265,7 +269,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 /// ??
 
                 if (extended) {
-                    console.warn(`RTTI: Warning: serializeTypeRef: ${ts.SyntaxKind[typeNode.kind]} is unsupported, emitting Object`);
+                    console.warn(`RTTI: Warning: ${ts.SyntaxKind[typeNode.kind]} is unsupported, emitting Object`);
                     return ts.factory.createIdentifier('Object');
                 } else {
                     return ts.factory.createIdentifier('Object');
