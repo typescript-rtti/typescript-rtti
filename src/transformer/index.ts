@@ -253,6 +253,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createIdentifier('Object');
                 else if (typeNode.kind === ts.SyntaxKind.FunctionType)
                     return ts.factory.createIdentifier('Function');
+                else if (typeNode.kind === ts.SyntaxKind.UnknownKeyword)
+                    return ts.factory.createIdentifier('Object');
                 else if (ts.isArrayTypeNode(typeNode)) {
                     if (extended)
                         return ts.factory.createArrayLiteralExpression([serializeTypeRef(typeNode.elementType, true)]);
