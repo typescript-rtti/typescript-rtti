@@ -79,6 +79,7 @@ console.log(bClass.getMethod('baz').returnType) // A
 - Metadata format supports forward referencing via type resolvers
 - Supports reflecting on intrinsic inferred return types (ie Number, String, etc) in addition to directly specified 
   types
+- Supports introspection of union and intersection types
 - Supports visibility (public, private), abstract, readonly, optional and more
 - Comprehensive and well tested implementation
 - Supports all targets (ES5 through ES2020)
@@ -95,7 +96,7 @@ team decides to further advance runtime metadata, it is likely to be changed.
 
 Enabling `emitDecoratorMetadata` causes `typescript-rtti` to emit both the `design:*` style of metadata as well as its own `rt:*` format. Disabling it causes only `rt:*` metadata to be emitted.
 
-# Types without a value (Interfaces, Union/Intersection, Transformations, etc)
+# Types without a value (Interfaces, Transformations, etc)
 
 This package will output a runtime type of `Object` for any type which is not a class, a constructor, or intrinsic 
 (primitive). There is currently no support for representing interfaces, transformation types, unions, intersections, or other 

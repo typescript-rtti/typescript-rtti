@@ -1,3 +1,8 @@
+# v0.0.13
+
+**Features**
+- support union and intersection types. In place of a Function type you get `{ kind: 'union', types: [...] }` or `{ kind: 'intersection', types: [...] }`.
+
 # v0.0.11
 
 **Fixes**

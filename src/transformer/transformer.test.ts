@@ -836,7 +836,23 @@ describe('RTTI: ', () => {
                 });
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.equal(Object);
+                expect(type()).to.eql({ kind: 'union', types: [ String, Number ] });
+            })
+            it('emits for intersection return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : string & number { 
+                                return 123; 
+                            }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ kind: 'intersection', types: [ String, Number ] });
             })
         });
     });

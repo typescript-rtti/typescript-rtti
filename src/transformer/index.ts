@@ -174,26 +174,17 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             return ts.factory.createIdentifier(typeNode.typeName.text);
                         }
                     }
-                    //console.log(`KIND: ${TypeReferenceSerializationKind[kind]}`);
-                    if (kind !== TypeReferenceSerializationKind.Unknown && kind !== TypeReferenceSerializationKind.TypeWithConstructSignatureAndValue) {
+
+                    if (kind !== TypeReferenceSerializationKind.Unknown && kind !== TypeReferenceSerializationKind.TypeWithConstructSignatureAndValue)
                         return ts.factory.createIdentifier('Object');
-                    }
 
                     let type = program.getTypeChecker().getTypeFromTypeNode(typeNode);                
 
-                    // if (type.isClassOrInterface() && !type.isClass()) {
-                    //     // this is an interface
-                    //     return ts.factory.createIdentifier('Object');
-                    // }
-
-                    if (type.isIntersection() || type.isUnion()) {
+                    if (type.isIntersection() || type.isUnion())
                         return ts.factory.createIdentifier('Object');
-                    }
 
-                    if (type.isTypeParameter()) {
-                        // this is a type parameter
+                    if (type.isTypeParameter())
                         return ts.factory.createIdentifier('Object');
-                    }
 
                     if (context.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
                         let origName = getRootNameOfEntityName(typeNode.typeName);
@@ -255,25 +246,37 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createIdentifier('Function');
                 else if (typeNode.kind === ts.SyntaxKind.UnknownKeyword)
                     return ts.factory.createIdentifier('Object');
-                else if (typeNode.kind === ts.SyntaxKind.UnionType)
-                    return ts.factory.createIdentifier('Object');
-                else if (typeNode.kind === ts.SyntaxKind.IntersectionType)
-                    return ts.factory.createIdentifier('Object');
                 else if (ts.isArrayTypeNode(typeNode)) {
                     if (extended)
                         return ts.factory.createArrayLiteralExpression([serializeTypeRef(typeNode.elementType, true)]);
                     else
                         return ts.factory.createIdentifier('Array');
                 }
+                
+                if (ts.isUnionTypeNode(typeNode)) {
+                    if (!extended)
+                        return ts.factory.createIdentifier('Object');
+
+                    return serialize({
+                        kind: 'union',
+                        types: typeNode.types.map(x => literalNode(serializeTypeRef(x, extended)))
+                    });
+                } else if (ts.isIntersectionTypeNode(typeNode)) {
+                    if (!extended)
+                        return ts.factory.createIdentifier('Object');
+                    
+                    return serialize({
+                        kind: 'intersection',
+                        types: typeNode.types.map(x => literalNode(serializeTypeRef(x, extended)))
+                    });
+                }
 
                 /// ??
 
-                if (extended) {
-                    console.warn(`RTTI: Warning: ${ts.SyntaxKind[typeNode.kind]} is unsupported, emitting Object`);
-                    return ts.factory.createIdentifier('Object');
-                } else {
-                    return ts.factory.createIdentifier('Object');
-                }
+                if (extended)
+                    console.warn(`RTTI: ${sourceFile.fileName}: Warning: ${ts.SyntaxKind[typeNode.kind]} is unsupported, emitting Object`);
+
+                return ts.factory.createIdentifier('Object');
             }
 
             //////////////////////////////////////////////////////////
