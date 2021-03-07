@@ -812,6 +812,18 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(Boolean);
             })
+            it.only('emits for conditional types', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method<T>(t : T): T extends Boolean ? boolean : string { return false; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Object);
+            })
             it('emits for returned String', async () => {
                 let exports = await runSimple({
                     code: `

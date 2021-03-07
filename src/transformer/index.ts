@@ -289,6 +289,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     });
                 }
 
+                if (ts.isConditionalTypeNode(typeNode)) {
+                    return ts.factory.createIdentifier('Object');
+                }
+
                 /// ??
 
                 if (extended)
