@@ -12,6 +12,201 @@ function Flag(value : string) {
     };
 }
 
+export type RtTypeRef = RtType | Function;
+
+export interface RtType {
+    TΦ : string;
+}
+
+export interface RtUnionType {
+    TΦ : typeof Flags.T_UNION;
+    t : RtTypeRef[];
+}
+
+export interface RtIntersectionType {
+    TΦ : typeof Flags.T_INTERSECTION;
+    t : RtTypeRef[];
+}
+
+export interface RtArrayType {
+    TΦ : typeof Flags.T_ARRAY;
+    e : RtTypeRef;
+}
+
+export interface RtTupleElement {
+    n : string;
+    t : RtTypeRef;
+}
+
+export interface RtTupleType {
+    TΦ : typeof Flags.T_TUPLE;
+    e : RtTupleElement[];
+}
+
+export interface RtUnknown {
+    TΦ : typeof Flags.T_UNKNOWN;
+}
+
+export interface RtAny {
+    TΦ : typeof Flags.T_ANY;
+}
+
+export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any' 
+    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown';
+
+export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
+    [Flags.T_UNKNOWN]: 'unknown',
+    [Flags.T_ANY]: 'any',
+    [Flags.T_UNION]: 'union',
+    [Flags.T_INTERSECTION]: 'intersection',
+    [Flags.T_TUPLE]: 'tuple',
+    [Flags.T_ARRAY]: 'array'
+};
+
+function TypeRefKind(kind : ReflectedTypeRefKind) {
+    
+}
+
+export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
+    protected constructor(
+        private _ref : T
+    ) {
+    }
+
+    /** @internal */
+    static Kind(kind : ReflectedTypeRefKind) {
+        return (target) => {
+            ReflectedTypeRef.kinds[kind] = target;
+        }
+    }
+
+    private static kinds : Record<ReflectedTypeRefKind, Constructor<ReflectedTypeRef>> = <any>{};
+
+    get kind() : ReflectedTypeRefKind {
+        let ref : RtTypeRef = this._ref;
+        return ('TΦ' in ref) ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
+    }
+
+    get ref(): Readonly<T> {
+        return this._ref;
+    }
+
+    isClass<T = Function>(klass? : Constructor<T>): this is ReflectedClassRef<T> {
+        return this.kind === 'class' && (!klass || <any>this.ref === klass);
+    }
+
+    isUnion(elementDiscriminator? : (elementType : ReflectedTypeRef) => boolean): this is ReflectedUnionRef {
+        return elementDiscriminator
+            ? this.isUnion() && this.types.every(e => elementDiscriminator(e))
+            : this.kind === 'union';
+    }
+
+    isIntersection(elementDiscriminator? : (elementType : ReflectedTypeRef) => boolean): this is ReflectedUnionRef {
+        return elementDiscriminator
+            ? this.isIntersection() && this.types.every(e => elementDiscriminator(e))
+            : this.kind === 'intersection';
+    }
+
+    isArray(elementDiscriminator? : (elementType : ReflectedTypeRef) => boolean): this is ReflectedArrayRef {
+        return elementDiscriminator 
+            ? this.isArray() && elementDiscriminator(this.elementType)
+            : this.kind === 'array'
+        ;
+    }
+
+    isTuple(elementDiscriminators? : ((elementType : ReflectedTupleElement) => boolean)[]): this is ReflectedTupleRef {
+        return elementDiscriminators
+            ? this.isTuple() && this.elements.every((e, i) => elementDiscriminators[i](e))
+            : this.kind === 'tuple';
+    }
+
+    isUnknown() {
+        return this.kind === 'unknown';
+    }
+
+    isAny() {
+        return this.kind === 'any';
+    }
+
+    static createFromRtRef(ref : RtTypeRef) {
+        if (!ref)
+            ref = { TΦ: Flags.T_UNKNOWN };
+        
+        let kind = 'TΦ' in ref ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
+        return new (ReflectedTypeRef.kinds[kind] || ReflectedTypeRef)(ref);
+    }
+}
+
+@ReflectedTypeRef.Kind('class')
+export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class>> {
+    get kind() { return 'class' as const; }
+    get class() : Constructor<Class> { return <any>this.ref; }
+}
+
+@ReflectedTypeRef.Kind('union')
+export class ReflectedUnionRef extends ReflectedTypeRef<RtUnionType> {
+    get kind() { return 'union' as const; }
+    
+    private _types : ReflectedTypeRef[];
+    get types(): ReflectedTypeRef[] {
+        if (this._types)
+            return this._types;
+        return this._types = (this.ref.t || []).map(t => ReflectedTypeRef.createFromRtRef(t));
+    }
+}
+
+@ReflectedTypeRef.Kind('intersection')
+export class ReflectedIntersectionRef extends ReflectedTypeRef<RtIntersectionType> {
+    get kind() { return 'intersection' as const; }
+    
+    private _types : ReflectedTypeRef[];
+    get types() {
+        if (this._types)
+            return this._types;
+        return this._types = (this.ref.t || []).map(t => ReflectedTypeRef.createFromRtRef(t));
+    }
+}
+
+@ReflectedTypeRef.Kind('array')
+export class ReflectedArrayRef extends ReflectedTypeRef<RtArrayType> {
+    get kind() { return 'array' as const; }
+    
+    private _elementType : ReflectedTypeRef;
+    get elementType(): ReflectedTypeRef {
+        if (this._elementType)
+            return this._elementType;
+        return this._elementType = ReflectedTypeRef.createFromRtRef(this.ref.e);
+    }
+}
+
+@ReflectedTypeRef.Kind('tuple')
+export class ReflectedTupleRef extends ReflectedTypeRef<RtTupleType> {
+    get kind() { return 'tuple' as const; }
+    
+    private _types : ReflectedTupleElement[];
+    get elements(): ReflectedTupleElement[] {
+        if (this._types)
+            return this._types;
+        return this._types = (this.ref.e || []).map(e => new ReflectedTupleElement(e));
+    }
+}
+
+export class ReflectedTupleElement {
+    constructor(readonly ref : Readonly<RtTupleElement>) {
+    }
+
+    get name() : string {
+        return this.ref.n;
+    }
+
+    private _type : ReflectedTypeRef;
+    get type() : ReflectedTypeRef {
+        if (this._type)
+            return this._type;
+        return this._type = ReflectedTypeRef.createFromRtRef(this.ref.t);
+    }
+}
+
 export class ReflectedFlags {
     constructor(flags : string) {
         if (!flags)
@@ -66,8 +261,12 @@ export class ReflectedParameter {
         return this.rawMetadata.n;
     }
 
-    get type() {
-        return this.rawMetadata.t();
+    private _type : ReflectedTypeRef;
+
+    get type(): ReflectedTypeRef {
+        if (this._type)
+            return this._type;
+        return this._type = ReflectedTypeRef.createFromRtRef(this.rawMetadata.t());
     }
 
     get flags() {
@@ -209,7 +408,7 @@ export class ReflectedMember {
  * Reflection data for a class method
  */
 export class ReflectedMethod extends ReflectedMember {
-    private _returnType : Function;
+    private _returnType : ReflectedTypeRef;
     private _rawParameterMetadata : RawParameterMetadata[];
     private _parameters : ReflectedMethodParameter[];
 
@@ -239,7 +438,7 @@ export class ReflectedMethod extends ReflectedMember {
         return this.parameters.find(x => x.name === name);
     }
 
-    get returnType(): Function {
+    get returnType(): ReflectedTypeRef {
         if (this._returnType !== undefined)
             return this._returnType;
 
@@ -249,7 +448,7 @@ export class ReflectedMethod extends ReflectedMember {
             typeResolver = () => (designReturnType || null);
         }
 
-        return this._returnType = typeResolver ? typeResolver() : null;
+        return this._returnType = ReflectedTypeRef.createFromRtRef(typeResolver ? typeResolver() : null);
     }
 
     get isAsync() {
@@ -262,9 +461,9 @@ export interface Constructor<T> extends Function {
 }
 
 export class ReflectedProperty extends ReflectedMember {
-    private _type : Function;
+    private _type : ReflectedTypeRef;
 
-    get type(): Function {
+    get type(): ReflectedTypeRef {
         if (this._type !== undefined)
             return this._type;
 
@@ -274,7 +473,7 @@ export class ReflectedProperty extends ReflectedMember {
             typeResolver = () => designType;
         }
 
-        return this._type = typeResolver ? typeResolver() : null;
+        return this._type = ReflectedTypeRef.createFromRtRef(typeResolver ? typeResolver() : null);
     }
 
     get isReadonly() {

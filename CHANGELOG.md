@@ -9,6 +9,7 @@
   * sample input: `string[]`
   * before: `[ String ]`
   * after: `{ TΦ: T_ARRAY, e: String }`
+- changes API (ie `ReflectedClass`) to properly expose type references (such as union, intersection, arrays, tuples, etc), not just function references
 
 **Features**
 - support for tuple types, `[ str : string, num : number ]` emits `{ TΦ: T_TUPLE, e: [ { n: 'str', t: String }, { n: 'num', t: Number } ] }`
