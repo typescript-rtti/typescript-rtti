@@ -50,8 +50,14 @@ interface ClassDetails {
 
 const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program : ts.Program) => {
 
-    let emitStandardMetadata = program.getCompilerOptions().emitDecoratorMetadata;
-    program.getCompilerOptions().emitDecoratorMetadata = false;
+    if (typeof program['rtti$emitStandardMetadata'] === 'undefined') {
+        let emitDecoratorMetadata = program.getCompilerOptions().emitDecoratorMetadata;
+        program['rtti$emitStandardMetadata'] = emitDecoratorMetadata;
+        program.getCompilerOptions().emitDecoratorMetadata = false;
+    }
+
+
+    let emitStandardMetadata = program['rtti$emitStandardMetadata'];
 
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
         function literalNode(node : ts.Node) {
@@ -90,7 +96,19 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createPropertyAccessExpression(expr, propAccess);
                 } else if (ts.isPropertyAccessExpression(propAccess.expression)) {
                     return ts.factory.createPropertyAccessExpression(propertyPrepend(expr, propAccess.expression), propAccess.name);
+                } else if (ts.isIdentifier(propAccess.expression)) {
+                    // expr, (identifier, identifier)
+                    // ((expr, identifier), identifier)
+
+                    return ts.factory.createPropertyAccessExpression( 
+                        ts.factory.createPropertyAccessExpression(
+                            expr,
+                            propAccess.expression
+                        ),
+                        propAccess.name
+                    );
                 } else {
+                    console.dir(propAccess);
                     throw new Error(`Unsupported expression type '${ts.SyntaxKind[propAccess.kind]}'`);
                 }
             }
@@ -157,6 +175,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createIdentifier('Boolean');
                 else if (typeNode.kind === ts.SyntaxKind.BigIntKeyword)
                     return ts.factory.createIdentifier('BigInt');
+                else if (typeNode.kind === ts.SyntaxKind.AnyKeyword)
+                    return ts.factory.createIdentifier('Object');
+                else if (typeNode.kind === ts.SyntaxKind.FunctionType)
+                    return ts.factory.createIdentifier('Function');
                 else if (ts.isArrayTypeNode(typeNode)) {
                     if (extended)
                         return ts.factory.createArrayLiteralExpression([serializeTypeRef(typeNode.elementType, true)]);
@@ -167,7 +189,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 /// ??
 
                 if (extended) {
-                    console.warn(`Failed to serializeTypeRef for kind ${ts.SyntaxKind[typeNode.kind]}! Emitting Object`);
+                    console.warn(`RTTI: Warning: serializeTypeRef: ${ts.SyntaxKind[typeNode.kind]} is unsupported, emitting Object`);
                     return ts.factory.createIdentifier('Object');
                 } else {
                     return ts.factory.createIdentifier('Object');
@@ -513,18 +535,21 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return statements;
             }
 
-            // Apply additional class metadata
-
-            sourceFile = ts.visitNode(sourceFile, visitor);
-            sourceFile = ts.factory.updateSourceFile(
-                sourceFile, 
-                generateImports(Array.from(sourceFile.statements)), 
-                sourceFile.isDeclarationFile, 
-                sourceFile.referencedFiles,
-                sourceFile.typeReferenceDirectives,
-                sourceFile.hasNoDefaultLib,
-                sourceFile.libReferenceDirectives
-            );
+            try {
+                sourceFile = ts.visitNode(sourceFile, visitor);
+                sourceFile = ts.factory.updateSourceFile(
+                    sourceFile, 
+                    generateImports(Array.from(sourceFile.statements)), 
+                    sourceFile.isDeclarationFile, 
+                    sourceFile.referencedFiles,
+                    sourceFile.typeReferenceDirectives,
+                    sourceFile.hasNoDefaultLib,
+                    sourceFile.libReferenceDirectives
+                );
+            } catch (e) {
+                console.error(e);
+                console.error(`RTTI: Failed to build source file ${sourceFile.fileName}: ${e.message}`);
+            }
 
             return sourceFile;
         };
