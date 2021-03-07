@@ -95,6 +95,15 @@ team decides to further advance runtime metadata, it is likely to be changed.
 
 Enabling `emitDecoratorMetadata` causes `typescript-rtti` to emit both the `design:*` style of metadata as well as its own `rt:*` format. Disabling it causes only `rt:*` metadata to be emitted.
 
+# Types without a value (Interfaces, Union/Intersection, Transformations, etc)
+
+This package will output a runtime type of `Object` for any type which is not a class, a constructor, or intrinsic 
+(primitive). There is currently no support for representing interfaces, transformation types, unions, intersections, or other 
+Typescript types which have no value at runtime. Adding representations for these types is not outside the scope of this 
+project, but emitting metadata for such types is extremely difficult to do correctly while avoiding ballooning the size of the 
+emitted output. If you are interested in adding support for these types, please open an issue to discuss how we might go about 
+adding support.
+
 # Format
 
 The metadata emitted has a terse but intuitive structure. 
