@@ -1,3 +1,18 @@
+# v0.0.14
+
+**Breaking**
+- changes emission of union, intersection
+  * sample input: `string | number` 
+  * before: `{ kind: 'union', types: [String, Number] }`
+  * after: `{ TΦ: T_UNION, t: [String, Number] }`
+- changes array emission to match. 
+  * sample input: `string[]`
+  * before: `[ String ]`
+  * after: `{ TΦ: T_ARRAY, e: String }`
+
+**Features**
+- support for tuple types, `[ str : string, num : number ]` emits `{ TΦ: T_TUPLE, e: [ { n: 'str', t: String }, { n: 'num', t: Number } ] }`
+
 # v0.0.13
 
 **Features**

@@ -6,7 +6,7 @@ import * as path from 'path';
 import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
 import { esRequire } from '../../test-esrequire.js';
-import { F_ABSTRACT, F_CLASS, F_EXPORTED } from '../common';
+import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_INTERSECTION, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
 import * as fs from 'fs';
 
 interface RunInvocation {
@@ -718,7 +718,87 @@ describe('RTTI: ', () => {
                 });
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.equal(Object);
+                expect(type()).to.eql({ TΦ: T_UNKNOWN });
+            })
+            it('emits for any return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        interface I {
+                            foo : number;
+                        }
+
+                        export class C {
+                            method(): any { return null; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_ANY });
+            })
+            it('emits for array types', async () => {
+                let exports = await runSimple({
+                    code: `
+                        interface I {
+                            foo : number;
+                        }
+
+                        export class C {
+                            method(): string[] { return null; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
+            })
+            it('emits for double array types', async () => {
+                let exports = await runSimple({
+                    code: `
+                        interface I {
+                            foo : number;
+                        }
+
+                        export class C {
+                            method(): string[][] { return null; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_ARRAY, e: { TΦ: T_ARRAY, e: String } });
+            })
+            it('emits for tuple types', async () => {
+                let exports = await runSimple({
+                    code: `
+                        interface I {
+                            foo : number;
+                        }
+
+                        export class C {
+                            method(): [string, number] { return ['foo', 123]; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_TUPLE, e: [ { t: String }, { t: Number } ] });
+            })
+            it('emits for tuple types with named elements', async () => {
+                let exports = await runSimple({
+                    code: `
+                        interface I {
+                            foo : number;
+                        }
+
+                        export class C {
+                            method(): [str : string, num : number] { return ['foo', 123]; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_TUPLE, e: [ { n: 'str', t: String }, { n: 'num', t: Number } ] });
             })
             it('emits for returned Boolean', async () => {
                 let exports = await runSimple({
@@ -850,7 +930,7 @@ describe('RTTI: ', () => {
                 });
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.eql({ kind: 'union', types: [ String, Number ] });
+                expect(type()).to.eql({ TΦ: T_UNION, t: [ String, Number ] });
             })
             it('emits for intersection return type', async () => {
                 let exports = await runSimple({
@@ -866,7 +946,7 @@ describe('RTTI: ', () => {
                 });
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.eql({ kind: 'intersection', types: [ String, Number ] });
+                expect(type()).to.eql({ TΦ: T_INTERSECTION, t: [ String, Number ] });
             })
         });
     });

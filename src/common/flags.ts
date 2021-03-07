@@ -9,3 +9,10 @@ export const F_CLASS        = 'C';
 export const F_OPTIONAL     = '?';
 export const F_ASYNC        = 'a';
 export const F_EXPORTED     = 'e';
+
+export const T_UNION        = '|';
+export const T_INTERSECTION = '&';
+export const T_ANY          = '~';
+export const T_UNKNOWN      = 'U';
+export const T_TUPLE        = 'T';
+export const T_ARRAY        = '[';

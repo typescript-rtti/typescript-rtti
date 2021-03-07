@@ -80,6 +80,7 @@ console.log(bClass.getMethod('baz').returnType) // A
 - Supports reflecting on intrinsic inferred return types (ie Number, String, etc) in addition to directly specified 
   types
 - Supports introspection of union and intersection types
+- Supports array and tuple types
 - Supports visibility (public, private), abstract, readonly, optional and more
 - Comprehensive and well tested implementation
 - Supports all targets (ES5 through ES2020)
@@ -107,7 +108,7 @@ adding support.
 
 # Format
 
-The metadata emitted has a terse but intuitive structure. 
+The metadata emitted has a terse but intuitive structure. Note that you are not intended to access this metadata directly, instead you should use the built-in Reflection API (`ReflectedClass` et al).
 
 ## Class Sample
 
