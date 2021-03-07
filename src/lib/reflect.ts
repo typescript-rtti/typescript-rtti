@@ -12,42 +12,42 @@ function Flag(value : string) {
     };
 }
 
-export type RtTypeRef = RtType | Function;
+type RtTypeRef = RtType | Function;
 
-export interface RtType {
+interface RtType {
     TΦ : string;
 }
 
-export interface RtUnionType {
+interface RtUnionType {
     TΦ : typeof Flags.T_UNION;
     t : RtTypeRef[];
 }
 
-export interface RtIntersectionType {
+interface RtIntersectionType {
     TΦ : typeof Flags.T_INTERSECTION;
     t : RtTypeRef[];
 }
 
-export interface RtArrayType {
+interface RtArrayType {
     TΦ : typeof Flags.T_ARRAY;
     e : RtTypeRef;
 }
 
-export interface RtTupleElement {
+interface RtTupleElement {
     n : string;
     t : RtTypeRef;
 }
 
-export interface RtTupleType {
+interface RtTupleType {
     TΦ : typeof Flags.T_TUPLE;
     e : RtTupleElement[];
 }
 
-export interface RtUnknown {
+interface RtUnknown {
     TΦ : typeof Flags.T_UNKNOWN;
 }
 
-export interface RtAny {
+interface RtAny {
     TΦ : typeof Flags.T_ANY;
 }
 
@@ -62,10 +62,6 @@ export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_TUPLE]: 'tuple',
     [Flags.T_ARRAY]: 'array'
 };
-
-function TypeRefKind(kind : ReflectedTypeRefKind) {
-    
-}
 
 export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
     protected constructor(
@@ -87,6 +83,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return ('TΦ' in ref) ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
     }
 
+    /** @internal */
     get ref(): Readonly<T> {
         return this._ref;
     }
@@ -128,6 +125,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return this.kind === 'any';
     }
 
+    /** @internal */
     static createFromRtRef(ref : RtTypeRef) {
         if (!ref)
             ref = { TΦ: Flags.T_UNKNOWN };

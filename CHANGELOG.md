@@ -1,3 +1,9 @@
+# v0.0.15
+
+**Breaking**
+- Made the structure of the `RtTypeRef` family of interfaces internal along with creation of `ReflectedTypeRef` and its `ref` property.
+  Technically this is a breaking change, but these interfaces have only been exposed since v0.0.14, which was released earlier today.
+
 # v0.0.14
 
 **Breaking**
