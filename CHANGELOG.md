@@ -2,9 +2,10 @@
 
 **Fixes**
 - emitDecoratorMetadata reverts to false on multi-file projects causing most `design:*` metadata not to be emitted
-- fixed a bug where prepending a require() on a property access expression did not work
+- prepending require() on a property access expression did not work in all cases
 - crash when an unsupported type reference is encountered (emit `Object` instead and print a warning)
 - runtime crash when an interface is returned (emit `Object` instead of a reference to a non-runtime identifier)
+- runtime crash when a type paramter is returned (emit `Object` instead of a reference to a non-runtime identifier)
 
 **Features**
 - support `any` (emit `Object`)
