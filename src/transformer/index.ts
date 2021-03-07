@@ -32,6 +32,48 @@ import { serialize } from './serialize';
 import * as ts from 'typescript';
 import { cloneEntityNameAsExpr, getRootNameOfEntityName } from './utils';
 
+export enum TypeReferenceSerializationKind {
+    // The TypeReferenceNode could not be resolved.
+    // The type name should be emitted using a safe fallback.
+    Unknown,
+
+    // The TypeReferenceNode resolves to a type with a constructor
+    // function that can be reached at runtime (e.g. a `class`
+    // declaration or a `var` declaration for the static side
+    // of a type, such as the global `Promise` type in lib.d.ts).
+    TypeWithConstructSignatureAndValue,
+
+    // The TypeReferenceNode resolves to a Void-like, Nullable, or Never type.
+    VoidNullableOrNeverType,
+
+    // The TypeReferenceNode resolves to a Number-like type.
+    NumberLikeType,
+
+    // The TypeReferenceNode resolves to a BigInt-like type.
+    BigIntLikeType,
+
+    // The TypeReferenceNode resolves to a String-like type.
+    StringLikeType,
+
+    // The TypeReferenceNode resolves to a Boolean-like type.
+    BooleanType,
+
+    // The TypeReferenceNode resolves to an Array-like type.
+    ArrayLikeType,
+
+    // The TypeReferenceNode resolves to the ESSymbol type.
+    ESSymbolType,
+
+    // The TypeReferenceNode resolved to the global Promise constructor symbol.
+    Promise,
+
+    // The TypeReferenceNode resolves to a Function type or a type with call signatures.
+    TypeWithCallSignature,
+
+    // The TypeReferenceNode resolves to any other type.
+    ObjectType,
+}
+
 interface TypeImport {
     importDeclaration : ts.ImportDeclaration;
     refName : string;
@@ -79,6 +121,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     
             let importMap = new Map<string,TypeImport>();
             let classMap = new Map<ts.ClassDeclaration,ClassDetails>();
+            let currentNameScope : ts.ClassDeclaration;
+            let currentLexicalScope : ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseBlock = sourceFile;
 
             function assureTypeAvailable(entityName : ts.EntityName) {
                 let rootName = getRootNameOfEntityName(entityName);
@@ -117,12 +161,32 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 if (!typeNode)
                     return ts.factory.createVoidZero();
                 
-                if (ts.isTypeReferenceNode(typeNode)) {
-                    let expr : ts.PropertyAccessExpression | ts.Identifier ;
-                    let type = program.getTypeChecker().getTypeFromTypeNode(typeNode);
 
-                    if (type.isClassOrInterface() && !type.isClass()) {
-                        // this is an interface
+                if (ts.isTypeReferenceNode(typeNode)) {
+                    const resolver = context['getEmitResolver']();
+                    const kind : TypeReferenceSerializationKind = resolver.getTypeReferenceSerializationKind(typeNode.typeName, currentNameScope || currentLexicalScope);
+    
+                    let expr : ts.PropertyAccessExpression | ts.Identifier ;
+
+                    if (ts.isIdentifier(typeNode.typeName)) {
+                        let primitiveTypes = ['Number', 'String', 'Boolean', 'Function', 'Object'];
+                        if (primitiveTypes.includes(typeNode.typeName.text)) {
+                            return ts.factory.createIdentifier(typeNode.typeName.text);
+                        }
+                    }
+                    //console.log(`KIND: ${TypeReferenceSerializationKind[kind]}`);
+                    if (kind !== TypeReferenceSerializationKind.Unknown && kind !== TypeReferenceSerializationKind.TypeWithConstructSignatureAndValue) {
+                        return ts.factory.createIdentifier('Object');
+                    }
+
+                    let type = program.getTypeChecker().getTypeFromTypeNode(typeNode);                
+
+                    // if (type.isClassOrInterface() && !type.isClass()) {
+                    //     // this is an interface
+                    //     return ts.factory.createIdentifier('Object');
+                    // }
+
+                    if (type.isIntersection() || type.isUnion()) {
                         return ts.factory.createIdentifier('Object');
                     }
 
@@ -448,16 +512,23 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     
                     let details = classAnalyzer(node);
                     
-                    node = ts.factory.updateClassDeclaration(
-                        node, 
-                        [ ...(node.decorators || []), ...extractClassMetadata(node, details) ],
-                        node.modifiers,
-                        node.name,
-                        node.typeParameters,
-                        node.heritageClauses,
-                        node.members
-                    );
+                    let savedCurrentNameScope = currentNameScope;
+                    currentNameScope = node;
+                    try {
+                        node = ts.factory.updateClassDeclaration(
+                            node, 
+                            [ ...(node.decorators || []), ...extractClassMetadata(node, details) ],
+                            node.modifiers,
+                            node.name,
+                            node.typeParameters,
+                            node.heritageClauses,
+                            node.members
+                        );
 
+                        return ts.visitEachChild(node, visitor, context);
+                    } finally {
+                        currentNameScope = savedCurrentNameScope;
+                    }
                 } else if (ts.isMethodDeclaration(node)) {
                     if (ts.isClassDeclaration(node.parent)) {
                         if (trace)

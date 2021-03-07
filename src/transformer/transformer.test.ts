@@ -2,10 +2,12 @@
 import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
+import * as path from 'path';
 import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
 import { esRequire } from '../../test-esrequire.js';
 import { F_ABSTRACT, F_CLASS, F_EXPORTED } from '../common';
+import * as fs from 'fs';
 
 interface RunInvocation {
     code : string;
@@ -22,7 +24,20 @@ function hasProperty(map: ts.MapLike<any>, key: string): boolean {
 
 function transpilerHost(sourceFile : ts.SourceFile, write : (output : string) => void) {
     return <ts.CompilerHost>{
-        getSourceFile: (fileName) => fileName === "module.ts" ? sourceFile : undefined,
+        getSourceFile: (fileName) => {
+            if (fileName === "module.ts")
+                return sourceFile;
+        
+            let libLoc = path.resolve(__dirname, '../../node_modules/typescript/lib', fileName);
+            let stat = fs.statSync(libLoc);
+
+            if (!stat.isFile())
+                return;
+            
+            let buf = fs.readFileSync(libLoc);
+
+            return ts.createSourceFile("module.ts", buf.toString('utf-8'), ts.ScriptTarget.Latest);            
+        },
         writeFile: (name, text) => {
             if (!name.endsWith(".map"))
                 write(text);
@@ -42,13 +57,15 @@ function transpilerHost(sourceFile : ts.SourceFile, write : (output : string) =>
 async function runSimple(invocation : RunInvocation) {
     let options : ts.CompilerOptions = Object.assign(
         ts.getDefaultCompilerOptions(),
-        {
+        <ts.CompilerOptions>{
             target: ts.ScriptTarget.ES2016,
             module: ts.ModuleKind.CommonJS,
             moduleResolution: ts.ModuleResolutionKind.NodeJs,
             experimentalDecorators: true,
+            lib: ['lib.es2016.d.ts'],
+            noLib: false,
             emitDecoratorMetadata: false,
-            suppressOutputPathCheck: true
+            suppressOutputPathCheck: true,
         }, 
         invocation.compilerOptions || {}
     );
@@ -63,8 +80,18 @@ async function runSimple(invocation : RunInvocation) {
     const compilerHost = transpilerHost(sourceFile, output => outputText = output);
     const program = ts.createProgram(["module.ts"], options, compilerHost);
 
-    program.getOptionsDiagnostics();
-    program.getSyntacticDiagnostics();
+    let optionsDiags = program.getOptionsDiagnostics();
+    let syntacticDiags = program.getSyntacticDiagnostics();
+
+    if (invocation.trace) {
+        for (let diag of optionsDiags) {
+            console.log(diag);
+        }
+        for (let diag of syntacticDiags) {
+            console.log(diag);
+        }
+    }
+
     program.emit(undefined, undefined, undefined, undefined, {
         before: [ 
             transformer(program) 
@@ -317,7 +344,13 @@ describe('RTTI: ', () => {
                 });
         
                 let params = Reflect.getMetadata('design:paramtypes', exports.C.prototype, 'method');
-                expect(params).to.eql([String, Number, Boolean, Function, RegExp]);
+                
+                expect(params[0]).to.equal(String);
+                expect(params[1]).to.equal(Number);
+                expect(params[2]).to.equal(Boolean);
+                expect(params[3]).to.equal(Function);
+                expect(params[4]).to.equal(RegExp);
+
             });
         });
         describe('design:returntype', it => {
@@ -657,11 +690,102 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(Object);
             })
+            it('emits for unknown return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        interface I {
+                            foo : number;
+                        }
+
+                        export class C {
+                            method(): unknown { return null; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Object);
+            })
+            it('emits for returned Boolean', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method<T>(t : T): Boolean { return false; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Boolean);
+            })
+            it('emits for returned String', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method<T>(t : T): String { return 'hello'; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(String);
+            })
+            it('emits for returned Number', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method<T>(t : T): Number { return 123; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Number);
+            })
+            it('emits for returned Function', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method<T>(t : T): Function { return () => {}; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Function);
+            })
             it('emits for returned type parameter', async () => {
                 let exports = await runSimple({
                     code: `
                         export class C {
                             method<T>(t : T): T { return t; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Object);
+            })
+            it('emits for type transformations', async () => {
+                let exports = await runSimple({
+                    code: `
+                        type Px<T> = {
+                            [P in keyof T]?: T[P];
+                        };
+                        export class C {
+                            method<T>(): Px<A> { return null; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Object);
+            })
+            it('emits for type transforms from TS lib', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method<T>(): Partial<A> { return null; }
                         }
                     `
                 });
