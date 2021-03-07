@@ -161,6 +161,31 @@ describe('ReflectedMethod', it => {
         expect(new ReflectedClass(B).getMethod('foo').returnType).to.equal(Number)
         expect(new ReflectedClass(B).getMethod('bar').returnType).to.be.null;
     })
+    it('reflects static method return type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B, 'foo');
+        Reflect.defineMetadata('rt:t', () => Number, B, 'foo');
+        Reflect.defineMetadata('rt:Sm', ['foo', 'bar'], B);
+        expect(new ReflectedClass(B).getStaticMethod('foo').returnType).to.equal(Number)
+        expect(new ReflectedClass(B).getStaticMethod('bar').returnType).to.be.null;
+    })
+    it('reflects static method names without metadata', () => {
+        class B {
+            static foo() { } 
+            static bar() { }
+        }
+
+        expect(new ReflectedClass(B).staticMethodNames).to.eql(['foo', 'bar'])
+    })
+    it('reflects static method return type using design:returntype', () => {
+        class B {
+            static foo() { } 
+            static bar() { }
+        }
+
+        Reflect.defineMetadata('design:returntype', RegExp, B, 'foo');
+        expect(new ReflectedClass(B).getStaticMethod('foo').returnType).to.equal(RegExp);
+    })
     it('reflects parameters', () => {
         class B {}
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
@@ -251,11 +276,37 @@ describe('ReflectedProperty', it => {
         expect(new ReflectedClass(B).getProperty('foo').type).to.equal(Number);
         expect(new ReflectedClass(B).getProperty('bar').type).to.equal(String);
     })
+    it('reflects static type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:t', () => Number, B, 'foo');
+        Reflect.defineMetadata('rt:t', () => String, B, 'bar');
+        Reflect.defineMetadata('rt:SP', ['foo', 'bar'], B);
+        expect(new ReflectedClass(B).getStaticProperty('foo').type).to.equal(Number);
+        expect(new ReflectedClass(B).getStaticProperty('bar').type).to.equal(String);
+    })
     it('reflects type with design:type', () => {
         class B {}
         Reflect.defineMetadata('design:type', Number, B.prototype, 'foo');
         Reflect.defineMetadata('design:type', String, B.prototype, 'bar');
         expect(new ReflectedClass(B).getProperty('foo').type).to.equal(Number);
         expect(new ReflectedClass(B).getProperty('bar').type).to.equal(String);
+    })
+    it('reflects static property names with design:type', () => {
+        class B {
+            static foo = 123;
+            static bar = 'val';
+        }
+
+        expect(new ReflectedClass(B).ownStaticPropertyNames).to.eql(['foo', 'bar']);
+    })
+    it('reflects static type with design:type', () => {
+        class B {
+            static foo = 123;
+            static bar;
+        }
+        Reflect.defineMetadata('design:type', Number, B, 'foo');
+        Reflect.defineMetadata('design:type', String, B, 'bar');
+        expect(new ReflectedClass(B).getStaticProperty('foo').type).to.equal(Number);
+        expect(new ReflectedClass(B).getStaticProperty('bar').type).to.equal(String);
     })
 });

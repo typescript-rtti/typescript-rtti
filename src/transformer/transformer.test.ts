@@ -674,6 +674,20 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(exports.B);
             })
+            it('emits for static method return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            static method(hello : A, world : B): B { return world; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C, 'method');
+                expect(type()).to.equal(exports.B);
+            })
             it('emits for designed interface return type', async () => {
                 let exports = await runSimple({
                     code: `

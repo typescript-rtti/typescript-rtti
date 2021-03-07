@@ -153,13 +153,18 @@ export class ReflectedConstructorParameter extends ReflectedParameter {
 export class ReflectedMember {
     constructor(
         reflectedClass : ReflectedClass,
-        readonly name : string
+        readonly name : string,
+        readonly isStatic : boolean
     ) {
         this._class = reflectedClass;
     }
 
     private _class : ReflectedClass;
     private _flags : ReflectedFlags;
+
+    get host() {
+        return this.isStatic ? this.class.class : this.class.prototype;
+    }
 
     get class() {
         return this._class;
@@ -169,7 +174,7 @@ export class ReflectedMember {
         if (this._flags)
             return this._flags;
         
-        return this._flags = new ReflectedFlags(Reflect.getMetadata('rt:f', this.class.prototype, this.name));
+        return this._flags = new ReflectedFlags(Reflect.getMetadata('rt:f', this.host, this.name));
     }
 
     get isAbstract() {
@@ -212,7 +217,7 @@ export class ReflectedMethod extends ReflectedMember {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
-        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.class.prototype, this.name) || [];
+        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.host, this.name) || [];
     }
 
     get parameterNames() {
@@ -238,9 +243,9 @@ export class ReflectedMethod extends ReflectedMember {
         if (this._returnType !== undefined)
             return this._returnType;
 
-        let typeResolver = Reflect.getMetadata('rt:t', this.class.prototype, this.name);
+        let typeResolver = Reflect.getMetadata('rt:t', this.host, this.name);
         if (!typeResolver) {
-            let designReturnType = Reflect.getMetadata('design:returntype', this.class.prototype, this.name);
+            let designReturnType = Reflect.getMetadata('design:returntype', this.host, this.name);
             typeResolver = () => (designReturnType || null);
         }
 
@@ -263,9 +268,9 @@ export class ReflectedProperty extends ReflectedMember {
         if (this._type !== undefined)
             return this._type;
 
-        let typeResolver = Reflect.getMetadata('rt:t', this.class.prototype, this.name);
+        let typeResolver = Reflect.getMetadata('rt:t', this.host, this.name);
         if (!typeResolver) {
-            let designType = Reflect.getMetadata('design:type', this.class.prototype, this.name);
+            let designType = Reflect.getMetadata('design:type', this.host, this.name);
             typeResolver = () => designType;
         }
 
@@ -341,6 +346,40 @@ export class ReflectedClass<ClassT = Function> {
         return this._ownMethodNames = methodNames;
     }
 
+    private _ownStaticPropertyNames : string[];
+    private _hasStaticPropertyNameMeta = false;
+
+    get ownStaticPropertyNames(): string[] {
+        if (this._ownStaticPropertyNames)
+            return this._ownStaticPropertyNames;
+        
+        let ownStaticPropertyNames = Reflect.getMetadata('rt:SP', this.class);
+        this._hasStaticPropertyNameMeta = !!ownStaticPropertyNames;
+        if (!ownStaticPropertyNames) {
+            this._hasStaticPropertyNameMeta = false;
+            ownStaticPropertyNames = Object.getOwnPropertyNames(this.class)
+                .filter(x => !['length', 'prototype', 'name'].includes(x))
+                .filter(x => typeof this.class[x] !== 'function')
+            ;
+        }
+        return this._ownStaticPropertyNames = ownStaticPropertyNames;
+    }
+
+    private _ownStaticMethodNames : string[];
+    get ownStaticMethodNames(): string[] {
+        if (this._ownStaticMethodNames)
+            return this._ownStaticMethodNames;
+        
+        let ownStaticMethodNames = Reflect.getMetadata('rt:Sm', this.class);
+        if (!ownStaticMethodNames) {
+            ownStaticMethodNames = Object.getOwnPropertyNames(this.class)
+                .filter(x => !['length', 'prototype', 'name'].includes(x))
+                .filter(x => typeof this.class[x] === 'function')
+        }
+
+        return this._ownStaticMethodNames = ownStaticMethodNames;
+    }
+
     get flags(): Readonly<ReflectedFlags> {
         if (this._flags)
             return this._flags;
@@ -382,6 +421,31 @@ export class ReflectedClass<ClassT = Function> {
         }
     }
 
+
+    private _staticPropertyNames : string[];
+    get staticPropertyNames() {
+        if (this._staticPropertyNames)
+            return this._staticPropertyNames;
+
+        if (this.super) {
+            return this._staticPropertyNames = this.super.staticPropertyNames.concat(this.ownStaticPropertyNames);
+        } else {
+            return this._staticPropertyNames = this.ownStaticPropertyNames;
+        }
+    }
+
+    private _staticMethodNames : string[];
+    get staticMethodNames(): string[] {
+        if (this._staticMethodNames)
+            return this._staticMethodNames;
+
+        if (this.super) {
+            return this._staticMethodNames = this.super.staticMethodNames.concat(this.ownStaticMethodNames);
+        } else {
+            return this._staticMethodNames = this.ownStaticMethodNames;
+        }
+    }
+
     private _propertyNames : string[];
 
     get propertyNames(): string[] {
@@ -399,7 +463,23 @@ export class ReflectedClass<ClassT = Function> {
         if (this._ownMethods)
             return this._ownMethods;
 
-        return this._ownMethods = this.ownMethodNames.map(name => new ReflectedMethod(<any>this, name));
+        return this._ownMethods = this.ownMethodNames.map(name => new ReflectedMethod(<any>this, name, false));
+    }
+
+    private _ownStaticProperties : ReflectedProperty[];
+    get ownStaticProperties(): ReflectedProperty[] {
+        if (this._ownStaticProperties)
+            return this._ownStaticProperties;
+        
+        return this._ownStaticProperties = this.staticPropertyNames.map(x => new ReflectedProperty(<any>this, x, true));
+    }
+
+    private _ownStaticMethods : ReflectedMethod[];
+    get ownStaticMethods(): ReflectedMethod[] {
+        if (this._ownStaticMethods)
+            return this._ownStaticMethods;
+
+        return this._ownStaticMethods = this.ownStaticMethodNames.map(name => new ReflectedMethod(<any>this, name, true));
     }
 
     get methods(): ReflectedMethod[] {
@@ -412,11 +492,33 @@ export class ReflectedClass<ClassT = Function> {
             return this._methods = this.ownMethods;
     }
 
+    private _staticProperties : ReflectedProperty[];
+    get staticProperties() {
+        if (this._staticProperties)
+            return this._staticProperties;
+        
+        if (this.super)
+            return this._staticProperties = this.super.staticProperties.concat(this.ownStaticProperties);
+        else
+            return this._staticProperties = this.ownStaticProperties;
+    }
+
+    private _staticMethods : ReflectedMethod[];
+    get staticMethods(): ReflectedMethod[] {
+        if (this._staticMethods)
+            return this._staticMethods;
+        
+        if (this.super)
+            return this._staticMethods = this.super.staticMethods.concat(this.ownStaticMethods);
+        else
+            return this._staticMethods = this.ownStaticMethods;
+    }
+
     get ownProperties(): ReflectedProperty[] {
         if (this._ownProperties)
             return this._ownProperties;
 
-        return this._ownProperties = this.ownPropertyNames.map(name => new ReflectedProperty(<any>this, name));
+        return this._ownProperties = this.ownPropertyNames.map(name => new ReflectedProperty(<any>this, name, false));
     }
 
     get properties(): ReflectedProperty[] {
@@ -471,22 +573,71 @@ export class ReflectedClass<ClassT = Function> {
         return this.methods.find(x => x.name === name);
     }
 
+    getStaticMethod(name : string) {
+        return this.staticMethods.find(x => x.name === name);
+    }
+
+    private _dynamicStaticProperties = new Map<string,ReflectedProperty>();
+
+    getOwnStaticProperty(name : string) {
+        let matchingProp = this.ownStaticProperties.find(x => x.name === name);
+        if (matchingProp)
+            return matchingProp;
+
+        if (!this._hasStaticPropertyNameMeta) {
+            if (this._dynamicStaticProperties.has(name))
+                return this._dynamicStaticProperties.get(name);
+            
+            let prop = new ReflectedProperty(this, name, true);
+            this._dynamicStaticProperties.set(name, prop);
+            return prop;
+        }
+    }
+
+    getStaticProperty(name : string) {
+        let matchingProp = this.staticProperties.find(x => x.name === name);
+        if (matchingProp)
+            return matchingProp;
+
+        if (!this._hasStaticPropertyNameMeta) {
+            if (this._dynamicStaticProperties.has(name))
+                return this._dynamicStaticProperties.get(name);
+            
+            let prop = new ReflectedProperty(this, name, true);
+            this._dynamicStaticProperties.set(name, prop);
+            return prop;
+        }
+    }
+
     getOwnProperty(name : string) {
-        return this.ownProperties.find(x => x.name === name);
+        let matchingProp = this.ownProperties.find(x => x.name === name);
+        if (matchingProp)
+            return matchingProp;
+
+        if (!this._hasPropertyNamesMeta) {
+            if (this._dynamicProperties.has(name))
+                return this._dynamicProperties.get(name);
+            
+            let prop = new ReflectedProperty(this, name, false);
+            this._dynamicProperties.set(name, prop);
+            return prop;
+        }
     }
 
     private _dynamicProperties = new Map<string, ReflectedProperty>();
 
     getProperty(name : string) {
+        let matchingProp = this.properties.find(x => x.name === name);
+        if (matchingProp)
+            return matchingProp;
+
         if (!this._hasPropertyNamesMeta) {
             if (this._dynamicProperties.has(name))
                 return this._dynamicProperties.get(name);
             
-            let prop = new ReflectedProperty(this, name);
+            let prop = new ReflectedProperty(this, name, false);
             this._dynamicProperties.set(name, prop);
             return prop;
         }
-
-        return this.properties.find(x => x.name === name);
     }
 }
