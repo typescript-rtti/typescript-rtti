@@ -17,6 +17,23 @@ describe('ReflectedClass', it => {
         expect(b.type).to.equal(String);
         expect(b.name).to.equal('b');
     });
+    it('can reflect constructor parameters from design:paramtypes', () => {
+        class A {
+            constructor(a, b, c) { }
+        }
+        Reflect.defineMetadata('design:paramtypes', [String, Number, String], A);
+        let refClass = new ReflectedClass(A);
+
+        expect(refClass.parameters.length).to.equal(3);
+
+        let [a, b, c] = refClass.parameters;
+        expect(a.type).to.equal(String);
+        expect(a.name).to.equal('a');
+        expect(b.type).to.equal(Number);
+        expect(b.name).to.equal('b');
+        expect(c.type).to.equal(String);
+        expect(c.name).to.equal('c');
+    });
     it('can reflect abstract', () => {
         class A {}
         let refClass = new ReflectedClass(A);
@@ -76,6 +93,26 @@ describe('ReflectedClass', it => {
 });
 
 describe('ReflectedMethod', it => {
+    it('reflects method names without metadata', () => {
+        class B {
+            foo() { }
+            bar() { }
+        }
+
+        let refClass = new ReflectedClass(B);
+        expect(refClass.ownMethodNames).to.eql(['foo', 'bar']);
+        expect(refClass.ownMethods[0].name).to.equal('foo');
+        expect(refClass.ownMethods[1].name).to.equal('bar');
+    })
+    it('reflects method return types using design:returntype', () => {
+        class B {
+            foo() { }
+        }
+
+        Reflect.defineMetadata('design:returntype', String, B.prototype, 'foo');
+        let refClass = new ReflectedClass(B);
+        expect(refClass.ownMethods.find(x => x.name === 'foo').returnType).to.equal(String);
+    })
     it('reflects public', () => {
         class B {}
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
@@ -213,9 +250,12 @@ describe('ReflectedProperty', it => {
         Reflect.defineMetadata('rt:P', ['foo', 'bar'], B);
         expect(new ReflectedClass(B).getProperty('foo').type).to.equal(Number);
         expect(new ReflectedClass(B).getProperty('bar').type).to.equal(String);
-        class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_READONLY}`, A.prototype, 'foo');
-        Reflect.defineMetadata('rt:P', ['foo'], A);
-        expect(new ReflectedClass(A).getProperty('foo').isReadonly).to.be.true
+    })
+    it('reflects type with design:type', () => {
+        class B {}
+        Reflect.defineMetadata('design:type', Number, B.prototype, 'foo');
+        Reflect.defineMetadata('design:type', String, B.prototype, 'bar');
+        expect(new ReflectedClass(B).getProperty('foo').type).to.equal(Number);
+        expect(new ReflectedClass(B).getProperty('bar').type).to.equal(String);
     })
 });

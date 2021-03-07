@@ -2,6 +2,7 @@
 
 **Features**
 - support union and intersection types. In place of a Function type you get `{ kind: 'union', types: [...] }` or `{ kind: 'intersection', types: [...] }`.
+- support reading design:* metadata via ReflectedClass, ReflectedProperty, ReflectedMethod
 
 # v0.0.11
 
