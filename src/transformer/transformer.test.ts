@@ -641,6 +641,22 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(exports.B);
             })
+            it('emits for designed interface return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        interface I {
+                            foo : number;
+                        }
+
+                        export class C {
+                            method(): I { return { foo: 123 }; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Object);
+            })
             it('emits for inferred class return type (as Object)', async () => {
                 // TODO: requires type checker to test
                 let exports = await runSimple({

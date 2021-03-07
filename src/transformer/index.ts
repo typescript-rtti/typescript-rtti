@@ -119,7 +119,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 
                 if (ts.isTypeReferenceNode(typeNode)) {
                     let expr : ts.PropertyAccessExpression | ts.Identifier ;
+                    let type = program.getTypeChecker().getTypeFromTypeNode(typeNode);
 
+                    if (type.isClassOrInterface() && !type.isClass()) {
+                        // this is an interface
+                        return ts.factory.createIdentifier('Object');
+                    }
 
                     if (context.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
                         let origName = getRootNameOfEntityName(typeNode.typeName);
