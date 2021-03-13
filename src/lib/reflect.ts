@@ -1,6 +1,17 @@
 import * as Flags from '../common/flags';
 import { getParameterNames } from './get-parameter-names';
 
+export function reflectType<T>(): ReflectedClass {
+    throw new Error(`reflectType() can only be used when project is built with the typescript-rtti transformer`);
+}
+
+/**
+ * Obtain a symbol which uniquely identifies an interface type. Use with: `reify<MyInterface>()`
+ */
+export function reify<InterfaceType>(): Symbol {
+    throw new Error(`reify() can only be used when project is built with the typescript-rtti transformer`);
+}
+
 function Flag(value : string) {
     return (target, propertyKey) => {
         if (!target.flagToProperty)

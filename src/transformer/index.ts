@@ -30,7 +30,7 @@ import { metadataDecorator } from './metadata-decorator';
 import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { cloneEntityNameAsExpr, getRootNameOfEntityName } from './utils';
+import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
 import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
 
 export enum TypeReferenceSerializationKind {
@@ -481,6 +481,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
         
             ////////////////////////////////////////////////////////////////////////////
 
+            let interfaceSymbols : { interfaceDecl : ts.InterfaceDeclaration, symbolDecl: ts.Statement[] }[] = [];
+
             const visitor = (node : ts.Node) => {
                 if (!node)
                     return;
@@ -504,10 +506,24 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         } else if (bindings) {
                             if (ts.isNamedImports(bindings)) {
                                 for (let binding of bindings.elements) {
+
+
                                     importMap.set(binding.name.text, {
                                         name: binding.name.text,
                                         localName: `${binding.propertyName?.text ?? binding.name.text}Φ`,
                                         refName: binding.name.text,
+                                        modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
+                                        isNamespace: false,
+                                        isDefault: false,
+                                        importDeclaration: node
+                                    });
+
+                                    let nameAsInterface = `IΦ${binding.name.text}`;
+
+                                    importMap.set(nameAsInterface, {
+                                        name: nameAsInterface,
+                                        localName: nameAsInterface,
+                                        refName: nameAsInterface,
                                         modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
                                         isNamespace: false,
                                         isDefault: false,
@@ -545,6 +561,107 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             node.initializer
                         )
                     }
+                } else if (ts.isCallExpression(node)) {
+                    if (ts.isIdentifier(node.expression)) {
+                        let checker = program.getTypeChecker();
+                        let symbol = checker.getSymbolAtLocation(node.expression);
+                        let type = checker.getTypeOfSymbolAtLocation(symbol, node.expression);
+
+                        if (symbol) {
+                            let decls = symbol.getDeclarations();
+                            let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
+                            let typeSpecifier : ts.TypeNode = node.typeArguments && node.typeArguments.length === 1 ? node.typeArguments[0] : null;
+
+                            if (importSpecifier) {
+                                let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
+                                if (ts.isStringLiteral(modSpecifier)) {
+                                    let isTypescriptRtti = 
+                                        modSpecifier.text === 'typescript-rtti'
+                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.js$/)
+                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.ts$/)
+                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/?$/)
+                                    ;
+
+                                    if (isTypescriptRtti) {
+                                        if (typeSpecifier) {
+                                            let type = checker.getTypeAtLocation(typeSpecifier);
+                                            let localName : string;
+
+                                            if (type) {
+                                                if (type.isClassOrInterface() && !type.isClass()) {
+                                                    if (ts.isTypeReferenceNode(typeSpecifier)) {
+                                                        localName = entityNameToString(typeSpecifier.typeName);
+                                                    }
+                                                } else {
+                                                    if (ts.isTypeReferenceNode(typeSpecifier)) {
+                                                        const resolver = context['getEmitResolver']();
+                                                        const kind : TypeReferenceSerializationKind = resolver.getTypeReferenceSerializationKind(typeSpecifier.typeName, currentNameScope || currentLexicalScope);
+                                        
+                                                        if (kind === TypeReferenceSerializationKind.Unknown) {
+                                                            console.warn(`RTTI: ${sourceFile.fileName}: reify<T> on unknown symbol: Assuming imported interface [This may be a bug]`);
+                                                            localName = entityNameToString(typeSpecifier.typeName);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if (localName) {
+                                                localName = `IΦ${localName}`;
+                                            }
+                                            
+                                            if (!localName) {
+                                                let text : string;
+                                                try {
+                                                    text = typeSpecifier.getText();
+                                                } catch (e) {
+                                                    console.warn(`RTTI: Failed to resolve type specifier (see <unresolvable> below):`);
+                                                    console.dir(typeSpecifier);
+                                                }
+
+                                                throw new Error(
+                                                    `RTTI: ${sourceFile.fileName}: reify(): cannot resolve interface ${text || '<unresolvable>'}`);
+                                            }
+
+                                            let impo = importMap.get(localName);
+                                            if (impo) {
+                                                impo.referenced = true;
+
+                                                if (program.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
+                                                    let origName = localName;
+                                                    let expr = dottedNameToExpr(origName);
+
+                                                    if (impo.isDefault) {
+                                                        return ts.factory.createCallExpression(
+                                                            ts.factory.createIdentifier('require'),
+                                                            [], [ ts.factory.createStringLiteral(impo.modulePath) ]
+                                                        );
+                                                    } else if (!impo.isNamespace) {
+                                                        expr = propertyPrepend(
+                                                            ts.factory.createCallExpression(
+                                                                ts.factory.createIdentifier('require'),
+                                                                [], [ ts.factory.createStringLiteral(impo.modulePath) ]
+                                                            ), expr
+                                                        );
+                                                    }
+
+                                                    return expr;
+                                                }
+
+                                                return ts.factory.createIdentifier(localName)
+
+                                            } else {
+                                                return ts.factory.createIdentifier(localName)
+                                            }
+                                        } else {
+                                            console.warn(`RTTI: ${sourceFile.fileName}: reify() call detected without a type argument. Use like reify<InterfaceTypeHere>() instead`);
+                                        }
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                
                 } else if (ts.isClassDeclaration(node)) {
                     if (trace)
                         console.log(`Decorating class ${node.name.text}`);
@@ -567,6 +684,46 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         return ts.visitEachChild(node, visitor, context);
                     } finally {
                         currentNameScope = savedCurrentNameScope;
+                    }
+                } else if (ts.isInterfaceDeclaration(node)) {
+                    if (node.modifiers && node.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword)) {
+                        interfaceSymbols.push(
+                            {
+                                interfaceDecl: node,
+                                symbolDecl: [
+                                    ts.factory.createVariableStatement(
+                                        [],
+                                        ts.factory.createVariableDeclarationList(
+                                            [ts.factory.createVariableDeclaration(
+                                                ts.factory.createIdentifier(`IΦ${node.name.text}`),
+                                                undefined,
+                                                undefined,
+                                                ts.factory.createCallExpression(
+                                                    ts.factory.createIdentifier("Symbol"),
+                                                undefined,
+                                                [ts.factory.createStringLiteral(`${node.name.text} (interface)`)]
+                                                )
+                                            )],
+                                            ts.NodeFlags.Const
+                                        )
+                                    ),
+                                    ts.factory.createExportDeclaration(
+                                        undefined,
+                                        undefined,
+                                        false,
+                                        ts.factory.createNamedExports(
+                                            [
+                                                ts.factory.createExportSpecifier(
+                                                    undefined,
+                                                    ts.factory.createIdentifier(`IΦ${node.name.text}`)
+                                                )
+                                            ]
+                                        ),
+                                        undefined
+                                    )
+                                ]
+                            }
+                        )
                     }
                 } else if (ts.isMethodDeclaration(node)) {
                     if (ts.isClassDeclaration(node.parent)) {
@@ -591,6 +748,20 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return ts.visitEachChild(node, visitor, context);
             };
 
+            function generateInterfaceSymbols(statements : ts.Statement[]): ts.Statement[] {
+                for (let iface of interfaceSymbols) {
+                    let impoIndex = statements.indexOf(iface.interfaceDecl);
+                    if (impoIndex >= 0) {
+                        statements.splice(impoIndex, 0, ...iface.symbolDecl);
+                    } else {
+                        statements.push(...iface.symbolDecl);
+                    }
+                    
+                }
+
+                return statements;
+            }
+
             function generateImports(statements : ts.Statement[]): ts.Statement[] {
                 let imports : ts.ImportDeclaration[] = [];
                 let isCommonJS = context.getCompilerOptions().module === ts.ModuleKind.CommonJS;
@@ -607,7 +778,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         continue;
                        
                     let ownedImpo : ts.ImportDeclaration;
-                    
+
                     if (impo.isDefault) {
                         ownedImpo = ts.factory.createImportDeclaration(
                             undefined,
@@ -659,7 +830,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 sourceFile = ts.visitNode(sourceFile, visitor);
                 sourceFile = ts.factory.updateSourceFile(
                     sourceFile, 
-                    generateImports(Array.from(sourceFile.statements)), 
+                    [
+                        ...generateInterfaceSymbols(generateImports(Array.from(sourceFile.statements))),
+                    ], 
                     sourceFile.isDeclarationFile, 
                     sourceFile.referencedFiles,
                     sourceFile.typeReferenceDirectives,

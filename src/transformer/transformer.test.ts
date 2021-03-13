@@ -151,6 +151,67 @@ async function runSimple(invocation : RunInvocation) {
 const MODULE_TYPES : ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
 
 describe('RTTI: ', () => {
+    describe('Interfaces', it => {
+        it('emits a symbol for every exported interface', async () => {
+            let exports = await runSimple({
+                code: `
+                    export interface Foo { }
+                `
+            });
+
+            expect(typeof exports.IΦFoo).to.equal('symbol');
+        });
+        it('emits no symbol for non-exported interface', async () => {
+            let exports = await runSimple({
+                code: `
+                    interface Foo { }
+                `
+            });
+            expect(exports.IΦFoo).not.to.exist;
+        });
+    });
+    describe('reify()', it => {
+        it('will resolve to the interface symbol generated in the same file', async () => {
+            let exports = await runSimple({
+                code: `
+                    import { reify } from 'typescript-rtti';
+                    export interface Foo { }
+                    export const ReifiedFoo = reify<Foo>();
+                `,
+                modules: {
+                    "typescript-rtti": { 
+                        reify: () => {}
+                    }
+                }
+            });
+            expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
+        })
+        for (let moduleType of MODULE_TYPES) {
+            describe(`(${moduleType})`, it => {
+                it('will resolve to the interface symbol generated in another file', async () => {
+                    let FooSym = "$$FOO";
+                    let exports = await runSimple({
+                        moduleType: moduleType,
+                        code: `
+                            import { reify } from 'typescript-rtti';
+                            import { Foo } from "another";
+                            export const ReifiedFoo = reify<Foo>();
+                        `,
+                        modules: {
+                            "typescript-rtti": { 
+                                reify: () => {}
+                            },
+                            "another": {
+                                IΦFoo: FooSym
+                            }
+                        }
+                    });
+                    expect(exports.ReifiedFoo).to.equal(FooSym);
+                })
+
+            });
+        }
+    });
     describe('Imports', it => {
         for (let moduleType of MODULE_TYPES) {
             describe(`(${moduleType})`, it => {
