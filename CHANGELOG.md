@@ -1,8 +1,11 @@
 # v0.0.15
 
+**Features**
+- Added support for serializing generic types including their type arguments. This means you can now obtain the type of a `Promise` for instance (provided that the referenced type has a value at runtime). Additionally, cases where the type references an interface, and that interface has type parameters will now emit a generic type which exposes the types of the parameters, even if the interface itself does not have a runtime value. For instance `InterfaceA<InterfaceB>` would emit a generic type with base type `Object` and one parameter type of `Object`.
+
 **Breaking**
 - Made the structure of the `RtTypeRef` family of interfaces internal along with creation of `ReflectedTypeRef` and its `ref` property.
-  Technically this is a breaking change, but these interfaces have only been exposed since v0.0.14, which was released earlier today.
+  Technically this is a breaking change, but these interfaces have only been exposed since v0.0.14
 
 # v0.0.14
 

@@ -51,8 +51,14 @@ interface RtAny {
     TΦ : typeof Flags.T_ANY;
 }
 
+interface RtGenericRef {
+    TΦ : typeof Flags.T_GENERIC;
+    t : RtTypeRef;
+    p : RtTypeRef[];
+}
+
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any' 
-    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown';
+    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic';
 
 export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_UNKNOWN]: 'unknown',
@@ -60,7 +66,8 @@ export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_UNION]: 'union',
     [Flags.T_INTERSECTION]: 'intersection',
     [Flags.T_TUPLE]: 'tuple',
-    [Flags.T_ARRAY]: 'array'
+    [Flags.T_ARRAY]: 'array',
+    [Flags.T_GENERIC]: 'generic'
 };
 
 export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
@@ -88,8 +95,49 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return this._ref;
     }
 
+    /**
+     * Checks if this type reference is a Promise, optionally a Promise of a specific type.
+     * If the type reference does not specify a type of Promise but you have provided a type
+     * to check for, this will return false.
+     * @param klass The type of promise to check for. Would be String when looking for Promise<string>
+     */
+    isPromise<T = Function>(klass? : Constructor<T>): boolean {
+        if (this.isClass(Promise))
+            return !klass;
+
+        if (this.isGeneric(Promise)) {
+            if (this.typeParameters.length === 0)
+                return !klass;
+            
+            return this.typeParameters[0].isClass(klass);
+        }
+        return false;
+    }
+
+    /**
+     * Checks if this type reference is a class. Note: If the class reference has type parameters, 
+     * (ie it is generic) this check will fail, and instead isGeneric() will succeed.
+     * @param klass 
+     */
     isClass<T = Function>(klass? : Constructor<T>): this is ReflectedClassRef<T> {
         return this.kind === 'class' && (!klass || <any>this.ref === klass);
+    }
+
+    /**
+     * Check if this type reference is a generic type, optionally checking if the generic's
+     * base type is the given class. For instance isGeneric(Promise) is true for Promise<string>.
+     * @param klass 
+     */
+    isGeneric<T = Function>(klass? : Constructor<T>): this is ReflectedGenericRef<T> {
+        if (this.kind === 'generic') {
+            let rtGeneric : RtGenericRef = <any>this.ref;
+            if (!rtGeneric.t['TΦ']) { // this is a class
+                return !klass || rtGeneric.t === klass;
+            }
+            return true;
+        }
+
+        return false;
     }
 
     isUnion(elementDiscriminator? : (elementType : ReflectedTypeRef) => boolean): this is ReflectedUnionRef {
@@ -186,6 +234,25 @@ export class ReflectedTupleRef extends ReflectedTypeRef<RtTupleType> {
         if (this._types)
             return this._types;
         return this._types = (this.ref.e || []).map(e => new ReflectedTupleElement(e));
+    }
+}
+
+@ReflectedTypeRef.Kind('generic')
+export class ReflectedGenericRef<Class> extends ReflectedTypeRef<RtGenericRef> {
+    get kind() { return 'generic' as const; }
+
+    private _baseType : ReflectedTypeRef;
+    get baseType() : ReflectedTypeRef { 
+        if (this._baseType)
+            return this._baseType;
+        return this._baseType = ReflectedTypeRef.createFromRtRef(this.ref.t)
+    }
+
+    private _typeParameters : ReflectedTypeRef[];
+    get typeParameters() : ReflectedTypeRef[] { 
+        if (this._typeParameters)
+            return this._typeParameters;
+        return this._typeParameters = this.ref.p.map(p => ReflectedTypeRef.createFromRtRef(p));
     }
 }
 

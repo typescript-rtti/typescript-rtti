@@ -166,6 +166,15 @@ describe('ReflectedMethod', it => {
         expect(new ReflectedClass(B).getMethod('foo').returnType.isClass(Number)).to.be.true;
         expect(new ReflectedClass(B).getMethod('bar').returnType.isUnknown()).to.be.true;
     })
+    it('reflects generic return type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: flags.T_GENERIC, t: Promise, p: [ String ]}), B.prototype, 'foo');
+        Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
+        expect(new ReflectedClass(B).getMethod('foo').returnType.isClass(Promise)).to.be.false;
+        expect(new ReflectedClass(B).getMethod('foo').returnType.isGeneric(Promise)).to.be.true;
+        expect(new ReflectedClass(B).getMethod('foo').returnType.isPromise(String)).to.be.true;
+    })
     it('reflects static method return type', () => {
         class B {}
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B, 'foo');

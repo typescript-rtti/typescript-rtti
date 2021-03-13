@@ -106,6 +106,12 @@ project, but emitting metadata for such types is extremely difficult to do corre
 emitted output. If you are interested in adding support for these types, please open an issue to discuss how we might go about 
 adding support.
 
+# Backward Compatibility
+
+The library is in alpha, so currently no backward compatibility is guaranteed but we are tracking back-compat breakage in CHANGELOG.md as we approach a release with proper adherence to semver. 
+
+We do not consider a change which causes the transformer to emit a more specific type where it used to emit `Object` as breaking backwards compatibility, but we do consider changes to other emitted types as breaking backward compatibility.
+
 # Format
 
 The metadata emitted has a terse but intuitive structure. Note that you are not intended to access this metadata directly, instead you should use the built-in Reflection API (`ReflectedClass` et al).

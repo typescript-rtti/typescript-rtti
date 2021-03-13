@@ -6,7 +6,7 @@ import * as path from 'path';
 import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
 import { esRequire } from '../../test-esrequire.js';
-import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
+import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
 import * as fs from 'fs';
 
 interface RunInvocation {
@@ -292,6 +292,23 @@ describe('RTTI: ', () => {
         
                 let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
                 expect(type).to.equal(exports.B);
+            });
+            it('emits for property of type Promise', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            property : Promise<B>;
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
+                expect(type).to.equal(Promise);
             });
         })
         describe('design:paramtypes', it => {
@@ -901,6 +918,7 @@ describe('RTTI: ', () => {
             it('emits for type transformations', async () => {
                 let exports = await runSimple({
                     code: `
+                        export class A {}
                         type Px<T> = {
                             [P in keyof T]?: T[P];
                         };
@@ -910,20 +928,29 @@ describe('RTTI: ', () => {
                     `
                 });
         
-                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.equal(Object);
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_GENERIC);
+                expect(type.t).to.equal(Object);
+                expect(type.p).to.eql([exports.A]);
             })
             it('emits for type transforms from TS lib', async () => {
                 let exports = await runSimple({
                     code: `
+                        export class A {}
                         export class C {
                             method<T>(): Partial<A> { return null; }
                         }
                     `
                 });
         
-                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.equal(Object);
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_GENERIC);
+                expect(type.t).to.equal(Object);
+                expect(type.p).to.eql([exports.A]);
             })
             it('emits for inferred class return type (as Object)', async () => {
                 // TODO: requires type checker to test
@@ -985,6 +1012,26 @@ describe('RTTI: ', () => {
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.eql({ TΦ: T_INTERSECTION, t: [ String, Number ] });
+            })
+            it('emits for Promise return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : Promise<string> { 
+                                return 123; 
+                            }
+                        }
+                    `
+                });
+        
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_GENERIC);
+                expect(type.t).to.equal(Promise);
+                expect(type.p).to.eql([ String ]);
             })
         });
     });

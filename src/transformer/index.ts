@@ -31,7 +31,7 @@ import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
 import { cloneEntityNameAsExpr, getRootNameOfEntityName } from './utils';
-import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
+import { T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
 
 export enum TypeReferenceSerializationKind {
     // The TypeReferenceNode could not be resolved.
@@ -159,6 +159,25 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             }
 
             function serializeTypeRef(typeNode : ts.Node, extended): ts.Expression {
+                let expr = serializeBaseTypeRef(typeNode, extended);
+
+                if (extended) {
+                    if (ts.isTypeReferenceNode(typeNode)) {
+                        if (typeNode.typeArguments && typeNode.typeArguments.length > 0) {
+                            // Handle generic types like Promise<string> etc
+                            expr = serialize({ 
+                                TΦ: T_GENERIC, 
+                                t: literalNode(expr),
+                                p: typeNode.typeArguments.map(x => literalNode(serializeTypeRef(x, extended)))
+                            });
+                        }
+                    }
+                }
+
+                return expr;
+            }
+
+            function serializeBaseTypeRef(typeNode : ts.Node, extended): ts.Expression {
                 if (!typeNode)
                     return ts.factory.createVoidZero();
                 
@@ -170,7 +189,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     let expr : ts.PropertyAccessExpression | ts.Identifier ;
 
                     if (ts.isIdentifier(typeNode.typeName)) {
-                        let primitiveTypes = ['Number', 'String', 'Boolean', 'Function', 'Object'];
+                        let primitiveTypes = ['Number', 'String', 'Boolean', 'Function', 'Object', 'Promise', 'Symbol'];
                         if (primitiveTypes.includes(typeNode.typeName.text)) {
                             return ts.factory.createIdentifier(typeNode.typeName.text);
                         }
