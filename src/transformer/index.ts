@@ -159,6 +159,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             }
 
             function serializeTypeRef(typeNode : ts.Node, extended): ts.Expression {
+                if (!typeNode)
+                    return ts.factory.createVoidZero();
+                
                 let expr = serializeBaseTypeRef(typeNode, extended);
 
                 if (extended) {

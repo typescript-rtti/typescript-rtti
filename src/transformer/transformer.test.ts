@@ -981,6 +981,15 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(Number);
             })
+            it('does not assume a property will have a TypeRef', async () => {
+                await runSimple({
+                    code: `
+                        export class TestClass {
+                            name = 'foobar'
+                        }
+                    `
+                });
+            });
             it('emits for union return type', async () => {
                 let exports = await runSimple({
                     code: `
