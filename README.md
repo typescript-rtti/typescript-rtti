@@ -37,7 +37,7 @@ Note that you do not need `emitDecoratorMetadata` turned on unless you have code
 After your project is compiled, you can then use the built-in reflection API:
 
 ```typescript
-import { ReflectedClass } from 'rtti-typescript';
+import { ReflectedClass } from 'typescript-rtti';
 
 class A {
     constructor(
