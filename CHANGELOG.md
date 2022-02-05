@@ -1,4 +1,4 @@
-# vNext
+# v0.0.19
 
 - Added better handling for literal types to `ReflectedClass`.
     * You can now expect `isClass(Boolean)` to be true for types `true` and `false`, `isClass(Object)` to be true for 
