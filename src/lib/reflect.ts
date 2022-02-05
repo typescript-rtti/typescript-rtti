@@ -12,7 +12,8 @@ function Flag(value : string) {
     };
 }
 
-type RtTypeRef = RtType | Function;
+type Literal = true | false | null | number | string;
+type RtTypeRef = RtType | Function | Literal;
 
 interface RtType {
     TΦ : string;
@@ -58,7 +59,7 @@ interface RtGenericRef {
 }
 
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any' 
-    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic';
+    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'literal';
 
 export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_UNKNOWN]: 'unknown',
@@ -87,7 +88,10 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
 
     get kind() : ReflectedTypeRefKind {
         let ref : RtTypeRef = this._ref;
-        return ('TΦ' in ref) ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
+        if (ref === null || ['string', 'number', 'boolean'].includes(typeof ref))
+            return 'literal';
+
+        return (typeof ref === 'object' && 'TΦ' in ref) ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
     }
 
     /** @internal */
@@ -120,7 +124,26 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
      * @param klass 
      */
     isClass<T = Function>(klass? : Constructor<T>): this is ReflectedClassRef<T> {
+        let literalTypes = {
+            'string': String,
+            'number': Number,
+            'boolean': Boolean,
+            'object': Object
+        };
+
+        if (this.kind === 'literal')
+            return literalTypes[typeof this.ref] === klass;
+        
         return this.kind === 'class' && (!klass || <any>this.ref === klass);
+    }
+
+    /**
+     * Checks if this type is a literal type (null/true/false/undefined or a literal expression)
+     * @param value 
+     * @returns 
+     */
+    isLiteral(value : any) {
+        return this.ref === value;
     }
 
     /**
@@ -173,12 +196,20 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return this.kind === 'any';
     }
 
+    /** 
+     * Creates an "unknown"
+     * @internal 
+     */
+    static createUnknown() {
+        return this.createFromRtRef({ TΦ: Flags.T_UNKNOWN });
+    }
+
     /** @internal */
     static createFromRtRef(ref : RtTypeRef) {
-        if (!ref)
-            ref = { TΦ: Flags.T_UNKNOWN };
+        if (ref === null || typeof ref !== 'object')
+            return new ReflectedTypeRef(ref);
         
-        let kind = 'TΦ' in ref ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
+        let kind = ('TΦ' in <object>ref) ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
         return new (ReflectedTypeRef.kinds[kind] || ReflectedTypeRef)(ref);
     }
 }
@@ -508,12 +539,15 @@ export class ReflectedMethod extends ReflectedMember {
             return this._returnType;
 
         let typeResolver = Reflect.getMetadata('rt:t', this.host, this.name);
-        if (!typeResolver) {
+        if (!typeResolver && Reflect.hasMetadata('design:returntype', this.host, this.name)) {
             let designReturnType = Reflect.getMetadata('design:returntype', this.host, this.name);
             typeResolver = () => (designReturnType || null);
         }
 
-        return this._returnType = ReflectedTypeRef.createFromRtRef(typeResolver ? typeResolver() : null);
+        if (!typeResolver)
+            return ReflectedTypeRef.createUnknown();
+        
+        return this._returnType = ReflectedTypeRef.createFromRtRef(typeResolver());
     }
 
     get isAsync() {
@@ -533,12 +567,15 @@ export class ReflectedProperty extends ReflectedMember {
             return this._type;
 
         let typeResolver = Reflect.getMetadata('rt:t', this.host, this.name);
-        if (!typeResolver) {
+        if (!typeResolver && Reflect.hasMetadata('design:type', this.host, this.name)) {
             let designType = Reflect.getMetadata('design:type', this.host, this.name);
             typeResolver = () => designType;
         }
 
-        return this._type = ReflectedTypeRef.createFromRtRef(typeResolver ? typeResolver() : null);
+        if (!typeResolver)
+            return ReflectedTypeRef.createUnknown();
+
+        return this._type = ReflectedTypeRef.createFromRtRef(typeResolver());
     }
 
     get isReadonly() {
@@ -546,7 +583,7 @@ export class ReflectedProperty extends ReflectedMember {
     }
 }
 
-export class ReflectedClass<ClassT = Function> {
+export class ReflectedClass<ClassT = any> {
     constructor(
         klass : Constructor<ClassT>
     ) {
@@ -800,12 +837,11 @@ export class ReflectedClass<ClassT = Function> {
             return this._rawParameterMetadata;
         
         let rawParams = Reflect.getMetadata('rt:p', this.class);
-        if (rawParams === void 0) {
+        if (rawParams === void 0 && Reflect.hasMetadata('design:paramtypes', this.class)) {
             let types = Reflect.getMetadata('design:paramtypes', this.class);
             let names = getParameterNames(this.class);
             rawParams = names.map((n, i) => ({ n, t: () => types[i] }));
         }
-
 
         return this._rawParameterMetadata = rawParams || [];
     }
@@ -890,7 +926,7 @@ export class ReflectedClass<ClassT = Function> {
 
     private _dynamicProperties = new Map<string, ReflectedProperty>();
 
-    getProperty(name : string) {
+    getProperty(name : string): ReflectedProperty {
         let matchingProp = this.properties.find(x => x.name === name);
         if (matchingProp)
             return matchingProp;
