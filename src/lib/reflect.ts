@@ -146,6 +146,19 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return this.ref === value;
     }
 
+    get isLiteralValue() { return this.kind === 'literal'; }
+    get isTrue() { return this.isLiteral(true); }
+    get isFalse() { return this.isLiteral(false); }
+    get isNull() { return this.isLiteral(null); }
+    get isStringLiteral() { return typeof this.ref === 'string'; }
+    get isNumberLiteral() { return typeof this.ref === 'number'; }
+    get isBooleanLiteral() { return typeof this.ref === 'boolean'; }
+    get isUndefined() { return this.isLiteral(void 0); }
+
+    get literalValue(): any {
+        return this.kind === 'literal' ? this.ref : void 0;
+    }
+
     /**
      * Check if this type reference is a generic type, optionally checking if the generic's
      * base type is the given class. For instance isGeneric(Promise) is true for Promise<string>.

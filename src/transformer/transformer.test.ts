@@ -907,6 +907,22 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(null);
             })
+            it('emits for literal undefined', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : undefined { 
+                                return 123; 
+                            }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(undefined);
+            })
             it('emits for literal false', async () => {
                 let exports = await runSimple({
                     code: `

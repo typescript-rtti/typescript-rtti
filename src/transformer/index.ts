@@ -339,7 +339,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                 if (ts.isTypePredicateNode(typeNode)) {
                     return ts.factory.createIdentifier('Boolean');
-                }
+
+                if (typeNode.kind === ts.SyntaxKind.UndefinedKeyword)
+                    return ts.factory.createVoidZero();
 
                 /// ??
 

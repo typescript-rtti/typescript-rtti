@@ -357,6 +357,23 @@ describe('ReflectedProperty', it => {
         expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(true)).to.be.false;
         expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(null)).to.be.false;
     })
+    it('reflects undefined literal type as undefined', () => {
+        class B {}
+        Reflect.defineMetadata('rt:t', () => undefined, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:P', ['foo'], B);
+
+        expect(new ReflectedClass(B).getProperty('foo').type.isClass(Object)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isClass(Function)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isClass(String)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isClass(Number)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isClass(Boolean)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(undefined)).to.be.true;
+        expect(new ReflectedClass(B).getProperty('foo').type.isLiteral('undefined')).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(123)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(false)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(true)).to.be.false;
+        expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(null)).to.be.false;
+    })
     it('reflects static type', () => {
         class B {}
         Reflect.defineMetadata('rt:t', () => Number, B, 'foo');
