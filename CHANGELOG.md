@@ -1,6 +1,10 @@
-# vNext
+# v0.0.18
 
 - Added support for type literal types, ie `foo(bar : false, baz : null, foobar : 123)`
+
+# v0.0.17
+
+- Fix: do not crash when property has no type (https://github.com/rezonant/typescript-rtti/commit/474eddf15160457e57a786f0c67918e99a11d8c2)
 
 # v0.0.15
 
