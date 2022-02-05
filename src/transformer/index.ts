@@ -329,15 +329,13 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     });
                 }
 
-                if (ts.isThisTypeNode(typeNode)) {
+                if (ts.isThisTypeNode(typeNode))
                     return serialize({ TΦ: T_THIS });
-                }
 
-                if (ts.isConditionalTypeNode(typeNode)) {
+                if (ts.isConditionalTypeNode(typeNode))
                     return ts.factory.createIdentifier('Object');
-                }
 
-                if (ts.isTypePredicateNode(typeNode)) {
+                if (ts.isTypePredicateNode(typeNode))
                     return ts.factory.createIdentifier('Boolean');
 
                 if (typeNode.kind === ts.SyntaxKind.UndefinedKeyword)
