@@ -4,7 +4,7 @@
     * You can now expect `isClass(Boolean)` to be true for types `true` and `false`, `isClass(Object)` to be true for 
       `null`, `isClass(Number)` to be true for numeric literals and `isClass(String)` to be true for string literals.
     * Added `isLiteral(value)` to check for a literal value
-
+- Fixed a bug where all unknown types were reported as `Boolean`
 # v0.0.18
 
 - Added support for type literal types, ie `foo(bar : false, baz : null, foobar : 123)`

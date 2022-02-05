@@ -337,7 +337,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createIdentifier('Object');
                 }
 
-                if (ts.isTypePredicateNode) {
+                if (ts.isTypePredicateNode(typeNode)) {
                     return ts.factory.createIdentifier('Boolean');
                 }
 
