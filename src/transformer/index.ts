@@ -276,6 +276,24 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         return ts.factory.createIdentifier('Array');
                 }
                 
+                if (ts.isLiteralTypeNode(typeNode)) {
+                    let literal = typeNode.literal;
+
+                    if (ts.isLiteralExpression(literal))
+                        return literal;
+                    if (ts.isPrefixUnaryExpression(literal))
+                        return literal;
+                    
+                    switch (literal.kind) {
+                        case ts.SyntaxKind.NullKeyword:
+                            return ts.factory.createIdentifier('null');
+                        case ts.SyntaxKind.FalseKeyword:
+                            return ts.factory.createIdentifier('false');
+                        case ts.SyntaxKind.TrueKeyword:
+                            return ts.factory.createIdentifier('true');
+                    }
+                }
+                
                 if (ts.isTupleTypeNode(typeNode)) {
                     if (!extended)
                         return ts.factory.createIdentifier('Object');

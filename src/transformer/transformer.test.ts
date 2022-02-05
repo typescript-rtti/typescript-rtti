@@ -891,6 +891,86 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(Number);
             })
+            it('emits for literal null', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : null { 
+                                return 123; 
+                            }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(null);
+            })
+            it('emits for literal false', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : false { 
+                                return false;
+                            }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(false);
+            })
+            it('emits for literal true', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : true { 
+                                return true;
+                            }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(true);
+            })
+            it('emits for literal expression', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : 3 { 
+                                return 3;
+                            }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(3);
+            })
+            it('emits for unary literal expression', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : A, world : B) : -3 { 
+                                return -3;
+                            }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(-3);
+            })
             it('emits for returned Function', async () => {
                 let exports = await runSimple({
                     code: `
@@ -1005,22 +1085,6 @@ describe('RTTI: ', () => {
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.eql({ TΦ: T_UNION, t: [ String, Number ] });
-            })
-            it.only('emits for union return type', async () => {
-                let exports = await runSimple({
-                    code: `
-                        export class A { }
-                        export class B { }
-                        export class C {
-                            method(hello : A, world : B) : string | null { 
-                                return 123; 
-                            }
-                        }
-                    `
-                });
-        
-                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.eql({ TΦ: T_UNION, t: [ String, null ] });
             })
             it('emits for intersection return type', async () => {
                 let exports = await runSimple({
