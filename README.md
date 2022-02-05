@@ -79,6 +79,8 @@ console.log(bClass.getMethod('baz').returnType) // A
 - Metadata format supports forward referencing via type resolvers
 - Supports reflecting on intrinsic inferred return types (ie Number, String, etc) in addition to directly specified 
   types
+- Supports reflecting on literal types (ie `null`, `true`, `false`, `undefined`, and literal expression types like 
+  `123` or `'foobar'`)
 - Supports introspection of union and intersection types
 - Supports array and tuple types
 - Supports visibility (public, private), abstract, readonly, optional and more
