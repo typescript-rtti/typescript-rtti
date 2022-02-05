@@ -1,3 +1,7 @@
+# vNext
+
+- Added support for type literal types, ie `foo(bar : false, baz : null, foobar : 123)`
+
 # v0.0.15
 
 **Features**
