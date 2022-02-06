@@ -37,7 +37,7 @@ Note that you do not need `emitDecoratorMetadata` turned on unless you have code
 After your project is compiled, you can then use the built-in reflection API:
 
 ```typescript
-import { ReflectedClass } from 'rtti-typescript';
+import { ReflectedClass } from 'typescript-rtti';
 
 class A {
     constructor(
@@ -79,6 +79,8 @@ console.log(bClass.getMethod('baz').returnType) // A
 - Metadata format supports forward referencing via type resolvers
 - Supports reflecting on intrinsic inferred return types (ie Number, String, etc) in addition to directly specified 
   types
+- Supports reflecting on literal types (ie `null`, `true`, `false`, `undefined`, and literal expression types like 
+  `123` or `'foobar'`)
 - Supports introspection of union and intersection types
 - Supports array and tuple types
 - Supports visibility (public, private), abstract, readonly, optional and more
@@ -105,6 +107,12 @@ Typescript types which have no value at runtime (they will be emitted as `Object
 project, but emitting metadata for such types is extremely difficult to do correctly while avoiding ballooning the size of the 
 emitted output. If you are interested in adding support for these types, please open an issue to discuss how we might go about 
 adding support.
+
+# Backward Compatibility
+
+The library is in alpha, so currently no backward compatibility is guaranteed but we are tracking back-compat breakage in CHANGELOG.md as we approach a release with proper adherence to semver. 
+
+We do not consider a change which causes the transformer to emit a more specific type where it used to emit `Object` as breaking backwards compatibility, but we do consider changes to other emitted types as breaking backward compatibility.
 
 # Format
 
