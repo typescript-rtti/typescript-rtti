@@ -1,6 +1,6 @@
 import { describe } from "razmin";
 import { expect } from "chai";
-import { ReflectedClass } from "./reflect";
+import { ReflectedClass, Interface } from "./reflect";
 import * as flags from '../common/flags';
 
 describe('ReflectedClass', it => {
@@ -441,4 +441,33 @@ describe('ReflectedProperty', it => {
         expect(new ReflectedClass(B).getStaticProperty('foo').type.isClass(Number)).to.be.true;
         expect(new ReflectedClass(B).getStaticProperty('bar').type.isClass(String)).to.be.true;
     })
+    it('reflects reified interfaces', () => {
+        let IΦFoo : Interface = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
+
+        Reflect.defineMetadata('rt:P', ['foobar', 'foobaz'], IΦFoo);
+        Reflect.defineMetadata('rt:m', ['helloWorld'], IΦFoo);
+        Reflect.defineMetadata('rt:t', () => Number, IΦFoo.prototype, 'foobar');
+        Reflect.defineMetadata('rt:t', () => String, IΦFoo.prototype, 'foobaz');
+        Reflect.defineMetadata('rt:t', () => Boolean, IΦFoo.prototype, 'helloWorld');
+        Reflect.defineMetadata('rt:p', [{ n: 'message', t: () => String }, { n: 'size', t: () => Number }], IΦFoo.prototype, 'helloWorld');
+
+        let foobar = new ReflectedClass(IΦFoo).getProperty('foobar');
+        let foobaz = new ReflectedClass(IΦFoo).getProperty('foobaz');
+        let helloWorld = new ReflectedClass(IΦFoo).getMethod('helloWorld');
+
+        expect(foobar.type.kind).to.equal('class');
+        expect(foobar.type.isClass(Number)).to.be.true;
+        expect(foobar.type.isClass(String)).to.be.false;
+        
+        expect(foobaz.type.kind).to.equal('class');
+        expect(foobaz.type.isClass(String)).to.be.true;
+        expect(foobaz.type.isClass(Number)).to.be.false;
+        
+        expect(helloWorld.returnType.kind).to.equal('class');
+        expect(helloWorld.returnType.isClass(Boolean)).to.be.true;
+        expect(helloWorld.returnType.isClass(Number)).to.be.false;
+        expect(helloWorld.parameterNames).to.eql(['message', 'size']);
+        expect(helloWorld.parameterTypes.map(pt => pt.classConstructor)).to.eql([String, Number]);
+
+    });
 });

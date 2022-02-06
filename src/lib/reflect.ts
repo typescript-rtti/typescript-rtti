@@ -1,14 +1,16 @@
 import * as Flags from '../common/flags';
 import { getParameterNames } from './get-parameter-names';
 
-export function reflectType<T>(): ReflectedClass {
-    throw new Error(`reflectType() can only be used when project is built with the typescript-rtti transformer`);
+export interface Interface {
+    name : string;
+    prototype : any;
+    identity : symbol;
 }
 
 /**
  * Obtain a symbol which uniquely identifies an interface type. Use with: `reify<MyInterface>()`
  */
-export function reify<InterfaceType>(): Symbol {
+export function reify<InterfaceType>(): Interface {
     throw new Error(`reify() can only be used when project is built with the typescript-rtti transformer`);
 }
 
@@ -632,12 +634,12 @@ export class ReflectedProperty extends ReflectedMember {
 
 export class ReflectedClass<ClassT = any> {
     constructor(
-        klass : Constructor<ClassT>
+        klass : Constructor<ClassT> | Interface
     ) {
         this._class = klass;
     }
 
-    private _class : Constructor<ClassT>;
+    private _class : Constructor<ClassT> | Interface;
     private _ownMethods : ReflectedMethod[];
     private _methods : ReflectedMethod[];
     private _ownPropertyNames : string[];

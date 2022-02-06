@@ -190,7 +190,7 @@ describe('RTTI: ', () => {
             expect(Reflect.getMetadata('rt:m', exports.IΦFoo.prototype)).to.eql(['method']);
         });
     });
-    describe('reify()', it => {
+    describe('reify<T>()', it => {
         it('will resolve to the interface symbol generated in the same file', async () => {
             let exports = await runSimple({
                 code: `
@@ -204,12 +204,19 @@ describe('RTTI: ', () => {
                     }
                 }
             });
+
+            let identity = exports.IΦFoo.identity;
+
+            expect(typeof identity).to.equal('symbol');
+            expect(exports.IΦFoo).to.eql({ name: 'Foo', prototype: {}, identity });
             expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
         })
         for (let moduleType of MODULE_TYPES) {
             describe(`(${moduleType})`, it => {
                 it('will resolve to the interface symbol generated in another file', async () => {
                     let FooSym = "$$FOO";
+                    let IΦFoo = { name: 'Foo', prototype: {}, identity: FooSym };
+
                     let exports = await runSimple({
                         moduleType: moduleType,
                         code: `
@@ -222,11 +229,11 @@ describe('RTTI: ', () => {
                                 reify: () => {}
                             },
                             "another": {
-                                IΦFoo: FooSym
+                                IΦFoo
                             }
                         }
                     });
-                    expect(exports.ReifiedFoo).to.equal(FooSym);
+                    expect(exports.ReifiedFoo).to.eql(IΦFoo);
                 })
 
             });

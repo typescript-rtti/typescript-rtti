@@ -721,7 +721,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         let symbol = checker.getSymbolAtLocation(node.expression);
                         let type = checker.getTypeOfSymbolAtLocation(symbol, node.expression);
 
-                        if (symbol) {
+                        if (symbol && symbol.name === 'reify') {
                             let decls = symbol.getDeclarations();
                             let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
                             let typeSpecifier : ts.TypeNode = node.typeArguments && node.typeArguments.length === 1 ? node.typeArguments[0] : null;
@@ -752,7 +752,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                                         const kind : TypeReferenceSerializationKind = resolver.getTypeReferenceSerializationKind(typeSpecifier.typeName, currentNameScope || currentLexicalScope);
                                         
                                                         if (kind === TypeReferenceSerializationKind.Unknown) {
-                                                            console.warn(`RTTI: ${sourceFile.fileName}: reify<T> on unknown symbol: Assuming imported interface [This may be a bug]`);
+                                                            console.warn(`RTTI: ${sourceFile.fileName}: reify<${typeSpecifier.getText()}>: unknown symbol: Assuming imported interface [This may be a bug]`);
                                                             localName = entityNameToString(typeSpecifier.typeName);
                                                         }
                                                     }
@@ -780,6 +780,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                             if (impo) {
                                                 impo.referenced = true;
 
+                                                // Special behavior for commonjs (inline require())
+                                                // For ESM this is handled by hoisting an import 
+                                                
                                                 if (program.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
                                                     let origName = localName;
                                                     let expr = dottedNameToExpr(origName);
@@ -799,8 +802,6 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                                     }
 
                                                     return expr;
-                                                } else {
-                                                    throw new Error(`Not implemented yet`); // TODO
                                                 }
 
                                                 return ts.factory.createIdentifier(localName)
@@ -832,42 +833,43 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     });
 
                 } else if (ts.isInterfaceDeclaration(node)) {
-                    if (node.modifiers && node.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword)) {
-                        interfaceSymbols.push(
-                            {
-                                interfaceDecl: node,
-                                symbolDecl: [
-                                    ts.factory.createVariableStatement(
-                                        [],
-                                        ts.factory.createVariableDeclarationList(
-                                            [ts.factory.createVariableDeclaration(
-                                                ts.factory.createIdentifier(`IΦ${node.name.text}`),
-                                                undefined,
-                                                undefined,
-                                                ts.factory.createObjectLiteralExpression([
-                                                    ts.factory.createPropertyAssignment(
-                                                        'name',
-                                                        ts.factory.createStringLiteral(node.name.text)
-                                                    ),
-                                                    ts.factory.createPropertyAssignment(
-                                                        'prototype',
-                                                        ts.factory.createObjectLiteralExpression()
-                                                    ),
-                                                    ts.factory.createPropertyAssignment(
-                                                        'identity',
-                                                        ts.factory.createCallExpression(
-                                                            ts.factory.createIdentifier("Symbol"),
-                                                            undefined,
-                                                            [ts.factory.createStringLiteral(`${node.name.text} (interface)`)]
-                                                        )
+                    interfaceSymbols.push(
+                        {
+                            interfaceDecl: node,
+                            symbolDecl: [
+                                ts.factory.createVariableStatement(
+                                    [],
+                                    ts.factory.createVariableDeclarationList(
+                                        [ts.factory.createVariableDeclaration(
+                                            ts.factory.createIdentifier(`IΦ${node.name.text}`),
+                                            undefined,
+                                            undefined,
+                                            ts.factory.createObjectLiteralExpression([
+                                                ts.factory.createPropertyAssignment(
+                                                    'name',
+                                                    ts.factory.createStringLiteral(node.name.text)
+                                                ),
+                                                ts.factory.createPropertyAssignment(
+                                                    'prototype',
+                                                    ts.factory.createObjectLiteralExpression()
+                                                ),
+                                                ts.factory.createPropertyAssignment(
+                                                    'identity',
+                                                    ts.factory.createCallExpression(
+                                                        ts.factory.createIdentifier("Symbol"),
+                                                        undefined,
+                                                        [ts.factory.createStringLiteral(`${node.name.text} (interface)`)]
                                                     )
-                                                ])
-                                                
-                                            )],
-                                            ts.NodeFlags.Const
-                                        )
-                                    ),
-                                    ts.factory.createExportDeclaration(
+                                                )
+                                            ])
+                                            
+                                        )],
+                                        ts.NodeFlags.Const
+                                    )
+                                ),
+                                ...(
+                                    (node.modifiers && node.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword))
+                                    ? [ts.factory.createExportDeclaration(
                                         undefined,
                                         undefined,
                                         false,
@@ -880,11 +882,11 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                             ]
                                         ),
                                         undefined
-                                    )
-                                ]
-                            }
-                        )
-                    }
+                                    )] : []
+                                )
+                            ]
+                        }
+                    );
                     
                     if (trace)
                         console.log(`Decorating interface ${node.name.text}`);
