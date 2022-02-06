@@ -703,6 +703,27 @@ export class ReflectedClass<ClassT = any> {
     implements(interfaceType : Interface | Constructor<any>) {
         return !!this.interfaces.find(i => typeof interfaceType === 'function' ? i.isClass(interfaceType) : i.isInterface(interfaceType));
     }
+
+    matchesShape(value) {
+        if (value === null || value === void 0)
+            throw new Error(`Value is undefined`);
+        
+        if (typeof value !== 'object')
+            throw new Error(`Value must be an object`);
+
+        for (let prop of this.properties) {
+            let hasValue = prop.name in value;
+            if (!hasValue && !prop.isOptional)
+                throw new Error(`Property '${prop.name}' is missing in value`);
+            if (!hasValue)
+                continue;
+            
+            if (['interface', 'class'].includes(prop.type.kind)) {
+                // TODO
+            }
+        }
+    }
+
     get prototype() {
         return this._class.prototype;
     }
@@ -1048,4 +1069,38 @@ export class ReflectedClass<ClassT = any> {
             return prop;
         }
     }
+}
+
+/**
+ * Returns true if the class (or the class of the given value) implement the given interface.
+ * Note that interfaceType can be a class constructor. Implementing a class is not the same as extending a class.
+ * 
+ * @param value The value to check. Can be a constructor or a value (whose constructor will be checked)
+ * @param interfaceType The interface type to use. Can be a class constructor or an Interface object.
+ * @returns True if the interface is implemented
+ */
+export function implementsInterface(value, interfaceType : Interface | Constructor<any>) {
+    if (value === null || value === undefined || !['object', 'function'].includes(typeof value))
+        return false;
+    if (interfaceType === null || interfaceType === undefined)
+        throw new TypeError(`Interface type must not be undefined`);
+    
+    if (typeof value === 'object')
+        return new ReflectedClass(value.constructor).implements(interfaceType);
+    else if (typeof value === 'function')
+        return new ReflectedClass(value).implements(interfaceType);
+}
+
+/**
+ * Returns true if the given value matches the shape of the interface / class passed as interfaceType.
+ * 
+ * @param value 
+ * @param interfaceType 
+ * @returns True if the value is the correct shape
+ */
+export function matchesShape(value, interfaceType : Interface | Constructor<any>, options : MatchOptions) {
+    if (interfaceType === null || interfaceType === undefined)
+        throw new TypeError(`Interface type must not be undefined`);
+    
+    return new ReflectedClass(interfaceType).matchesShape(value);
 }
