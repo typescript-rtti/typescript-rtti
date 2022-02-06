@@ -139,6 +139,15 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
     }
 
     /**
+     * Returns the constructor of this type if it has one. Only valid for class references.
+     */
+    get classConstructor(): Function {
+        if (this.kind !== 'class')
+            return undefined;
+        return <Function><unknown>this.ref;
+    }
+
+    /**
      * Checks if this type is a literal type (null/true/false/undefined or a literal expression)
      * @param value 
      * @returns 
@@ -527,15 +536,27 @@ export class ReflectedMethod extends ReflectedMember {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
-        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.host, this.name) || [];
+        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.host, this.name);
     }
 
     get parameterNames() {
         return this.rawParameterMetadata.map(x => x.n);
     }
 
+    private _parameterTypes : ReflectedTypeRef[];
+
     get parameterTypes() {
-        return this.rawParameterMetadata.map(x => x.t);
+        if (this._parameterTypes !== undefined)
+            return this._parameterTypes;
+        
+        if (this.rawParameterMetadata !== undefined) {
+            return this._parameterTypes = this.rawParameterMetadata.map(param => {
+                return param.t ? ReflectedTypeRef.createFromRtRef(param.t()) : ReflectedTypeRef.createUnknown();
+            });
+        } else if (Reflect.hasMetadata('design:paramtypes', this.host, this.name)) {
+            let params : Function[] = Reflect.getMetadata('design:paramtypes', this.host, this.name);
+            return this._parameterTypes = params.map(t => ReflectedTypeRef.createFromRtRef(() => t));
+        }
     }
 
     get parameters() {
@@ -854,7 +875,7 @@ export class ReflectedClass<ClassT = any> {
         let rawParams = Reflect.getMetadata('rt:p', this.class);
         if (rawParams === void 0 && Reflect.hasMetadata('design:paramtypes', this.class)) {
             let types = Reflect.getMetadata('design:paramtypes', this.class);
-            let names = getParameterNames(this.class);
+            let names = getParameterNames(<Function>this.class);
             rawParams = names.map((n, i) => ({ n, t: () => types[i] }));
         }
 

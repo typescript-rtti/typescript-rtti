@@ -407,6 +407,22 @@ describe('ReflectedProperty', it => {
         expect(new ReflectedClass(B).getProperty('foo').type.isClass(Number)).to.be.true;
         expect(new ReflectedClass(B).getProperty('bar').type.isClass(String)).to.be.true;
     })
+    it('reflects parameter details', () => {
+        class B {
+        }
+        Reflect.defineMetadata('rt:m', ['helloWorld'], B);
+        Reflect.defineMetadata('rt:t', () => Boolean, B.prototype, 'helloWorld');
+        Reflect.defineMetadata('rt:p', [{ n: 'message', t: () => String }, { n: 'size', t: () => Number }], B.prototype, 'helloWorld');
+        
+        let helloWorld = new ReflectedClass(B).getMethod('helloWorld');
+        expect(helloWorld.parameterNames).to.eql(['message', 'size']);
+        expect(helloWorld.parameterTypes[0].isClass(String)).to.be.true;
+        expect(helloWorld.parameterTypes[0].isClass(Number)).to.be.false;
+        expect(helloWorld.parameterTypes[1].isClass(Number)).to.be.true;
+        expect(helloWorld.parameterTypes[1].isClass(String)).to.be.false;
+
+        expect(helloWorld.parameterTypes.map(pt => pt.classConstructor)).to.eql([String, Number]);
+    })
     it('reflects static property names with design:type', () => {
         class B {
             static foo = 123;
