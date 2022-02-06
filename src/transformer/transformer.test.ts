@@ -151,7 +151,7 @@ async function runSimple(invocation : RunInvocation) {
 const MODULE_TYPES : ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
 
 describe('RTTI: ', () => {
-    describe('Interfaces', it => {
+    describe('interface', it => {
         it('emits a symbol for every exported interface', async () => {
             let exports = await runSimple({
                 code: `
@@ -159,7 +159,8 @@ describe('RTTI: ', () => {
                 `
             });
 
-            expect(typeof exports.IΦFoo).to.equal('symbol');
+            expect(typeof exports.IΦFoo).to.equal('object');
+            expect(typeof exports.IΦFoo.identity).to.equal('symbol');
         });
         it('emits no symbol for non-exported interface', async () => {
             let exports = await runSimple({
@@ -168,6 +169,25 @@ describe('RTTI: ', () => {
                 `
             });
             expect(exports.IΦFoo).not.to.exist;
+        });
+        it('\'s symbol has type metadata', async () => {
+            let exports = await runSimple({
+                code: `
+                    export interface Foo { 
+                        method(foo : number): boolean;
+                        field : string;
+                        blah : string | number;
+                    }
+                `
+            });
+
+            expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'method')()).to.equal(Boolean);
+            expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'field')()).to.equal(String);
+            expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'blah')()).to.eql({ TΦ: "|", t: [String, Number] });
+            expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].n).to.equal('foo');
+            expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].t()).to.equal(Number);
+            expect(Reflect.getMetadata('rt:P', exports.IΦFoo.prototype)).to.eql(['field', 'blah']);
+            expect(Reflect.getMetadata('rt:m', exports.IΦFoo.prototype)).to.eql(['method']);
         });
     });
     describe('reify()', it => {
