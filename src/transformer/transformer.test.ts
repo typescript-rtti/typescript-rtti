@@ -186,8 +186,8 @@ describe('RTTI: ', () => {
             expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'blah')()).to.eql({ TΦ: "|", t: [String, Number] });
             expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].n).to.equal('foo');
             expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].t()).to.equal(Number);
-            expect(Reflect.getMetadata('rt:P', exports.IΦFoo.prototype)).to.eql(['field', 'blah']);
-            expect(Reflect.getMetadata('rt:m', exports.IΦFoo.prototype)).to.eql(['method']);
+            expect(Reflect.getMetadata('rt:P', exports.IΦFoo)).to.eql(['field', 'blah']);
+            expect(Reflect.getMetadata('rt:m', exports.IΦFoo)).to.eql(['method']);
         });
     });
     describe('reify<T>()', it => {

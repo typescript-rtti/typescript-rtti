@@ -902,10 +902,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             result.node,
                             ...extractClassMetadata(<ts.InterfaceDeclaration>node, details)
                                 .map(decorator => ts.factory.createCallExpression(decorator.expression, undefined, [
-                                    ts.factory.createPropertyAccessExpression(
-                                        ts.factory.createIdentifier(`IΦ${(node as ts.InterfaceDeclaration).name.text}`), 
-                                        'prototype'
-                                    )
+                                    ts.factory.createIdentifier(`IΦ${(node as ts.InterfaceDeclaration).name.text}`)
                                 ])),
                             ...(result.decorators.map(dec => ts.factory.createCallExpression(dec.decorator.expression, undefined, [
                                 ts.factory.createPropertyAccessExpression(
