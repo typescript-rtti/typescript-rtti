@@ -693,6 +693,16 @@ export class ReflectedClass<ClassT = any> {
         return [];
     }
 
+    /**
+     * Check if this class implements the given interface. The parameter can be a reified interface 
+     * reference or a class reference. Note that implementing a class is not the same as extending a class.
+     * 
+     * @param interfaceType 
+     * @returns boolean
+     */
+    implements(interfaceType : Interface | Constructor<any>) {
+        return !!this.interfaces.find(i => typeof interfaceType === 'function' ? i.isClass(interfaceType) : i.isInterface(interfaceType));
+    }
     get prototype() {
         return this._class.prototype;
     }
