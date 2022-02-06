@@ -96,6 +96,60 @@ describe('ReflectedClass', it => {
         let refClass = new ReflectedClass(B);
         expect(refClass.getProperty('foo').type.isClass(Number)).to.be.true;
     });
+    it('reflects reified interfaces', () => {
+        let IΦFoo : Interface = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
+
+        Reflect.defineMetadata('rt:P', ['foobar', 'foobaz'], IΦFoo);
+        Reflect.defineMetadata('rt:m', ['helloWorld'], IΦFoo);
+        Reflect.defineMetadata('rt:t', () => Number, IΦFoo.prototype, 'foobar');
+        Reflect.defineMetadata('rt:t', () => String, IΦFoo.prototype, 'foobaz');
+        Reflect.defineMetadata('rt:t', () => Boolean, IΦFoo.prototype, 'helloWorld');
+        Reflect.defineMetadata('rt:p', [{ n: 'message', t: () => String }, { n: 'size', t: () => Number }], IΦFoo.prototype, 'helloWorld');
+
+        let foobar = new ReflectedClass(IΦFoo).getProperty('foobar');
+        let foobaz = new ReflectedClass(IΦFoo).getProperty('foobaz');
+        let helloWorld = new ReflectedClass(IΦFoo).getMethod('helloWorld');
+
+        expect(foobar.type.kind).to.equal('class');
+        expect(foobar.type.isClass(Number)).to.be.true;
+        expect(foobar.type.isClass(String)).to.be.false;
+        
+        expect(foobaz.type.kind).to.equal('class');
+        expect(foobaz.type.isClass(String)).to.be.true;
+        expect(foobaz.type.isClass(Number)).to.be.false;
+        
+        expect(helloWorld.returnType.kind).to.equal('class');
+        expect(helloWorld.returnType.isClass(Boolean)).to.be.true;
+        expect(helloWorld.returnType.isClass(Number)).to.be.false;
+        expect(helloWorld.parameterNames).to.eql(['message', 'size']);
+        expect(helloWorld.parameterTypes.map(pt => pt.classConstructor)).to.eql([String, Number]);
+    });
+    it('reflects implemented interfaces', () => {
+
+        class A {}
+
+        const IΦSomething = {
+            name: 'Something',
+            prototype: {},
+            identity: Symbol('Something (interface)')
+        }
+
+        const IΦSomethingElse = {
+            name: 'SomethingElse',
+            prototype: {},
+            identity: Symbol('SomethingElse (interface)')
+        }
+
+        Reflect.defineMetadata('rt:i', [ () => IΦSomething, () => IΦSomethingElse ], A);
+
+        let klass = new ReflectedClass(A);
+
+        expect(klass.interfaces.length).to.equal(2);
+        expect(klass.interfaces[0].isInterface(IΦSomething)).to.be.true;
+        expect(klass.interfaces[0].isInterface(IΦSomethingElse)).to.be.false;
+        expect(klass.interfaces[1].isInterface(IΦSomething)).to.be.false;
+        expect(klass.interfaces[1].isInterface(IΦSomethingElse)).to.be.true;
+    });
 });
 
 describe('ReflectedMethod', it => {
@@ -442,33 +496,4 @@ describe('ReflectedProperty', it => {
         expect(new ReflectedClass(B).getStaticProperty('foo').type.isClass(Number)).to.be.true;
         expect(new ReflectedClass(B).getStaticProperty('bar').type.isClass(String)).to.be.true;
     })
-    it('reflects reified interfaces', () => {
-        let IΦFoo : Interface = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
-
-        Reflect.defineMetadata('rt:P', ['foobar', 'foobaz'], IΦFoo);
-        Reflect.defineMetadata('rt:m', ['helloWorld'], IΦFoo);
-        Reflect.defineMetadata('rt:t', () => Number, IΦFoo.prototype, 'foobar');
-        Reflect.defineMetadata('rt:t', () => String, IΦFoo.prototype, 'foobaz');
-        Reflect.defineMetadata('rt:t', () => Boolean, IΦFoo.prototype, 'helloWorld');
-        Reflect.defineMetadata('rt:p', [{ n: 'message', t: () => String }, { n: 'size', t: () => Number }], IΦFoo.prototype, 'helloWorld');
-
-        let foobar = new ReflectedClass(IΦFoo).getProperty('foobar');
-        let foobaz = new ReflectedClass(IΦFoo).getProperty('foobaz');
-        let helloWorld = new ReflectedClass(IΦFoo).getMethod('helloWorld');
-
-        expect(foobar.type.kind).to.equal('class');
-        expect(foobar.type.isClass(Number)).to.be.true;
-        expect(foobar.type.isClass(String)).to.be.false;
-        
-        expect(foobaz.type.kind).to.equal('class');
-        expect(foobaz.type.isClass(String)).to.be.true;
-        expect(foobaz.type.isClass(Number)).to.be.false;
-        
-        expect(helloWorld.returnType.kind).to.equal('class');
-        expect(helloWorld.returnType.isClass(Boolean)).to.be.true;
-        expect(helloWorld.returnType.isClass(Number)).to.be.false;
-        expect(helloWorld.parameterNames).to.eql(['message', 'size']);
-        expect(helloWorld.parameterTypes.map(pt => pt.classConstructor)).to.eql([String, Number]);
-
-    });
 });

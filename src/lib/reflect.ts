@@ -22,7 +22,7 @@ function Flag(value : string) {
 }
 
 type Literal = true | false | null | number | string;
-type RtTypeRef = RtType | Function | Literal;
+type RtTypeRef = RtType | Function | Literal | Interface;
 
 interface RtType {
     TΦ : string;
@@ -68,7 +68,7 @@ interface RtGenericRef {
 }
 
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any' 
-    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'literal' | 'void';
+    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'literal' | 'void' | 'interface';
 
 export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_UNKNOWN]: 'unknown',
@@ -101,7 +101,13 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         if (ref === null || ['string', 'number', 'boolean'].includes(typeof ref))
             return 'literal';
 
-        return (typeof ref === 'object' && 'TΦ' in ref) ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
+        if (typeof ref === 'object' && 'TΦ' in ref) 
+            return TYPE_REF_KIND_EXPANSION[ref.TΦ];
+        
+        if (typeof ref === 'object')
+            return 'interface';
+        
+        return 'class';
     }
 
     /** @internal */
@@ -145,6 +151,12 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
             return literalTypes[typeof this.ref] === klass;
         
         return this.kind === 'class' && (!klass || <any>this.ref === klass);
+    }
+
+    isInterface(interfaceType : Interface): this is ReflectedTypeRef<Interface> {
+        if (this.kind === 'interface')
+            return (this.ref as unknown as Interface).identity === interfaceType.identity;
+        return false;
     }
 
     /**
@@ -242,7 +254,15 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         if (ref === null || typeof ref !== 'object')
             return new ReflectedTypeRef(ref);
         
-        let kind = ('TΦ' in <object>ref) ? TYPE_REF_KIND_EXPANSION[ref.TΦ] : 'class';
+        let kind : ReflectedTypeRefKind;
+        
+        if (typeof ref === 'object' && 'TΦ' in <object>ref)
+            kind = TYPE_REF_KIND_EXPANSION[(ref as RtType).TΦ];
+        else if (typeof ref === 'object')
+            kind = 'interface';
+        else
+            kind = 'class';
+        
         return new (ReflectedTypeRef.kinds[kind] || ReflectedTypeRef)(ref);
     }
 }
@@ -490,6 +510,14 @@ export class ReflectedMember {
     private _class : ReflectedClass;
     private _flags : ReflectedFlags;
 
+    getMetadata<T = any>(key : string): T {
+        return Reflect.getMetadata(key, this.host, this.name);
+    }
+
+    hasMetadata(key : string): boolean {
+        return Reflect.hasMetadata(key, this.host, this.name);
+    }
+
     get host() {
         return this.isStatic ? this.class.class : this.class.prototype;
     }
@@ -502,7 +530,7 @@ export class ReflectedMember {
         if (this._flags)
             return this._flags;
         
-        return this._flags = new ReflectedFlags(Reflect.getMetadata('rt:f', this.host, this.name));
+        return this._flags = new ReflectedFlags(this.getMetadata('rt:f'));
     }
 
     get isAbstract() {
@@ -545,7 +573,7 @@ export class ReflectedMethod extends ReflectedMember {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
-        return this._rawParameterMetadata = Reflect.getMetadata('rt:p', this.host, this.name);
+        return this._rawParameterMetadata = this.getMetadata('rt:p');
     }
 
     get parameterNames() {
@@ -562,8 +590,8 @@ export class ReflectedMethod extends ReflectedMember {
             return this._parameterTypes = this.rawParameterMetadata.map(param => {
                 return param.t ? ReflectedTypeRef.createFromRtRef(param.t()) : ReflectedTypeRef.createUnknown();
             });
-        } else if (Reflect.hasMetadata('design:paramtypes', this.host, this.name)) {
-            let params : Function[] = Reflect.getMetadata('design:paramtypes', this.host, this.name);
+        } else if (this.hasMetadata('design:paramtypes')) {
+            let params : Function[] = this.getMetadata('design:paramtypes');
             return this._parameterTypes = params.map(t => ReflectedTypeRef.createFromRtRef(() => t));
         }
     }
@@ -583,9 +611,9 @@ export class ReflectedMethod extends ReflectedMember {
         if (this._returnType !== undefined)
             return this._returnType;
 
-        let typeResolver = Reflect.getMetadata('rt:t', this.host, this.name);
-        if (!typeResolver && Reflect.hasMetadata('design:returntype', this.host, this.name)) {
-            let designReturnType = Reflect.getMetadata('design:returntype', this.host, this.name);
+        let typeResolver = this.getMetadata('rt:t');
+        if (!typeResolver && this.hasMetadata('design:returntype')) {
+            let designReturnType = this.getMetadata('design:returntype');
             typeResolver = () => (designReturnType || null);
         }
 
@@ -611,9 +639,9 @@ export class ReflectedProperty extends ReflectedMember {
         if (this._type !== undefined)
             return this._type;
 
-        let typeResolver = Reflect.getMetadata('rt:t', this.host, this.name);
-        if (!typeResolver && Reflect.hasMetadata('design:type', this.host, this.name)) {
-            let designType = Reflect.getMetadata('design:type', this.host, this.name);
+        let typeResolver = this.getMetadata('rt:t');
+        if (!typeResolver && this.hasMetadata('design:type')) {
+            let designType = this.getMetadata('design:type');
             typeResolver = () => designType;
         }
 
@@ -648,6 +676,23 @@ export class ReflectedClass<ClassT = any> {
     private _properties : ReflectedProperty[];
     private _flags : ReflectedFlags;
 
+    private _interfaces : ReflectedTypeRef[];
+
+    get interfaces() {
+        if (this._interfaces !== undefined)
+            return this._interfaces;
+
+        if (this.hasMetadata('rt:i')) {
+            return this._interfaces = (<(() => RtTypeRef)[]>this.getMetadata('rt:i'))
+                .map(resolver => resolver())
+                .filter(x => !!x)
+                .map(ref => ReflectedTypeRef.createFromRtRef(ref))
+            ;
+        }
+
+        return [];
+    }
+
     get prototype() {
         return this._class.prototype;
     }
@@ -669,11 +714,19 @@ export class ReflectedClass<ClassT = any> {
 
     private _hasPropertyNamesMeta = false;
 
+    hasMetadata(key : string): boolean {
+        return Reflect.hasMetadata(key, this.class);
+    }
+
+    getMetadata<T = any>(key : string): T {
+        return Reflect.getMetadata(key, this.class);
+    }
+
     get ownPropertyNames(): string[] {
         if (this._ownPropertyNames)
             return this._ownPropertyNames;
         
-        let propertyNames = Reflect.getMetadata('rt:P', this.class);
+        let propertyNames = this.getMetadata('rt:P');
         this._hasPropertyNamesMeta = !!propertyNames;
         return this._ownPropertyNames = propertyNames || [];
     }
@@ -682,7 +735,7 @@ export class ReflectedClass<ClassT = any> {
         if (this._ownMethodNames)
             return this._ownMethodNames;
         
-        let methodNames = Reflect.getMetadata('rt:m', this.class);
+        let methodNames = this.getMetadata('rt:m');
         if (!methodNames) {
             methodNames = Object.getOwnPropertyNames(this.class.prototype)
                 .filter(x => x !== 'constructor')
@@ -699,7 +752,7 @@ export class ReflectedClass<ClassT = any> {
         if (this._ownStaticPropertyNames)
             return this._ownStaticPropertyNames;
         
-        let ownStaticPropertyNames = Reflect.getMetadata('rt:SP', this.class);
+        let ownStaticPropertyNames = this.getMetadata('rt:SP');
         this._hasStaticPropertyNameMeta = !!ownStaticPropertyNames;
         if (!ownStaticPropertyNames) {
             this._hasStaticPropertyNameMeta = false;
@@ -716,7 +769,7 @@ export class ReflectedClass<ClassT = any> {
         if (this._ownStaticMethodNames)
             return this._ownStaticMethodNames;
         
-        let ownStaticMethodNames = Reflect.getMetadata('rt:Sm', this.class);
+        let ownStaticMethodNames = this.getMetadata('rt:Sm');
         if (!ownStaticMethodNames) {
             ownStaticMethodNames = Object.getOwnPropertyNames(this.class)
                 .filter(x => !['length', 'prototype', 'name'].includes(x))
@@ -730,7 +783,7 @@ export class ReflectedClass<ClassT = any> {
         if (this._flags)
             return this._flags;
         
-        return this._flags = new ReflectedFlags(Reflect.getMetadata('rt:f', this.class));
+        return this._flags = new ReflectedFlags(this.getMetadata('rt:f'));
     }
 
     get isAbstract() {
@@ -877,13 +930,13 @@ export class ReflectedClass<ClassT = any> {
             return this._properties = this.ownProperties;
     }
 
-    get rawParameterMetadata(): RawParameterMetadata[] {
+    private get rawParameterMetadata(): RawParameterMetadata[] {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
         
-        let rawParams = Reflect.getMetadata('rt:p', this.class);
-        if (rawParams === void 0 && Reflect.hasMetadata('design:paramtypes', this.class)) {
-            let types = Reflect.getMetadata('design:paramtypes', this.class);
+        let rawParams = this.getMetadata('rt:p');
+        if (rawParams === void 0 && this.hasMetadata('design:paramtypes')) {
+            let types = this.getMetadata('design:paramtypes');
             let names = getParameterNames(<Function>this.class);
             rawParams = names.map((n, i) => ({ n, t: () => types[i] }));
         }
