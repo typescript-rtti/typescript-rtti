@@ -787,54 +787,58 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                                             let typeImport = importMap.get(localName);
 
-                                            // Special behavior for commonjs (inline require())
-                                            // For ESM this is handled by hoisting an import
-                                            
-                                            if (program.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
-                                                let origName = localName;
-                                                let expr = dottedNameToExpr(`IΦ${localName}`);
+                                            if (typeImport) {
+                                                // Special behavior for commonjs (inline require())
+                                                // For ESM this is handled by hoisting an import
+                                                
+                                                if (program.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
+                                                    let origName = localName;
+                                                    let expr = dottedNameToExpr(`IΦ${localName}`);
 
-                                                if (typeImport.isDefault) {
-                                                    return ts.factory.createCallExpression(
-                                                        ts.factory.createIdentifier('require'),
-                                                        [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
-                                                    );
-                                                } else if (!typeImport.isNamespace) {
-                                                    expr = propertyPrepend(
-                                                        ts.factory.createCallExpression(
+                                                    if (typeImport.isDefault) {
+                                                        return ts.factory.createCallExpression(
                                                             ts.factory.createIdentifier('require'),
                                                             [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
-                                                        ), expr
-                                                    );
+                                                        );
+                                                    } else if (!typeImport.isNamespace) {
+                                                        expr = propertyPrepend(
+                                                            ts.factory.createCallExpression(
+                                                                ts.factory.createIdentifier('require'),
+                                                                [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
+                                                            ), expr
+                                                        );
+                                                    }
+
+                                                    return expr;
                                                 }
 
-                                                return expr;
-                                            }
+                                                // ESM
 
-                                            // ESM
-
-                                            if (localName) {
-                                                localName = `IΦ${localName}`;
+                                                if (localName) {
+                                                    localName = `IΦ${localName}`;
+                                                }
+                                                
+                                                let impo = importMap.get(`*:${typeImport.modulePath}`);
+                                                if (!impo) {
+                                                    importMap.set(`*${typeImport.modulePath}`, impo = {
+                                                        importDeclaration: typeImport?.importDeclaration,
+                                                        isDefault: false,
+                                                        isNamespace: true,
+                                                        localName: `LΦ_${freeImportReference++}`,
+                                                        modulePath: typeImport.modulePath,
+                                                        name: `*${typeImport.modulePath}`,
+                                                        refName: '',
+                                                        referenced: true
+                                                    })
+                                                }
+                                                
+                                                return ts.factory.createPropertyAccessExpression(
+                                                    ts.factory.createIdentifier(impo.localName), 
+                                                    ts.factory.createIdentifier(localName)
+                                                );
+                                            } else {
+                                                return ts.factory.createIdentifier(`IΦ${localName}`);
                                             }
-                                            
-                                            let impo = importMap.get(`*:${typeImport.modulePath}`);
-                                            if (!impo) {
-                                                importMap.set(`*${typeImport.modulePath}`, impo = {
-                                                    importDeclaration: typeImport?.importDeclaration,
-                                                    isDefault: false,
-                                                    isNamespace: true,
-                                                    localName: `LΦ_${freeImportReference++}`,
-                                                    modulePath: typeImport.modulePath,
-                                                    name: `*${typeImport.modulePath}`,
-                                                    refName: '',
-                                                    referenced: true
-                                                })
-                                            }
-                                            
-                                            return ts.factory.createPropertyAccessExpression(
-                                                ts.factory.createIdentifier(impo.localName), 
-                                                ts.factory.createIdentifier(localName)
-                                            );
                                         } else {
                                             console.warn(`RTTI: ${sourceFile.fileName}: reify() call detected without a type argument. Use like reify<InterfaceTypeHere>() instead`);
                                         }

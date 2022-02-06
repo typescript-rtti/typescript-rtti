@@ -214,7 +214,7 @@ describe('RTTI: ', () => {
         })
         for (let moduleType of MODULE_TYPES) {
             describe(` [${moduleType}]`, it => {
-                it('will resolve to the interface symbol generated in another file', async () => {
+                it.only('will resolve to the interface symbol generated in another file', async () => {
                     let FooSym = "$$FOO";
                     let IΦFoo = { name: 'Foo', prototype: {}, identity: FooSym };
 
@@ -236,19 +236,19 @@ describe('RTTI: ', () => {
                     });
                     expect(exports.ReifiedFoo).to.eql(IΦFoo);
                 })
-                it('will not choke if the imported interface has no type metadata', async () => {
+                it.only('will not choke if the imported interface has no type metadata', async () => {
                     let exports = await runSimple({
                         moduleType: moduleType,
                         code: `
                             import { reify } from 'typescript-rtti';
-                            import { Foo } from "another";
+                            import { Foo } from "another2";
                             export const ReifiedFoo = reify<Foo>();
                         `,
                         modules: {
                             "typescript-rtti": { 
                                 reify: () => {}
                             },
-                            "another": {}
+                            "another2": {}
                         }
                     });
 
