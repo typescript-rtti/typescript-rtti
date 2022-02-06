@@ -1,6 +1,12 @@
 # vNext
 
 - Added support for `void` type
+- Breaking: `ReflectedMethod#parameterTypes` now has type `ReflectedTypeRef[]` 
+  which allows them to express the full range of types possible. Previously the raw type refs (for instance type 
+  resolvers such as `() => String`) was returned here which inappropriately exposed the underlying metadata format.
+- `ReflectedMethod#parameterTypes` can now source metadata from `design:paramtypes`
+- Added `ReflectedTypeRef#classConstructor` to conveniently obtain the constructor for the type reference 
+  (when applicable)
 
 # v0.0.19
 
