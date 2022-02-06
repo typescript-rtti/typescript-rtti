@@ -31,7 +31,7 @@ import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
 import { cloneEntityNameAsExpr, getRootNameOfEntityName } from './utils';
-import { T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
+import { T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 
 export enum TypeReferenceSerializationKind {
     // The TypeReferenceNode could not be resolved.
@@ -340,6 +340,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                 if (typeNode.kind === ts.SyntaxKind.UndefinedKeyword)
                     return ts.factory.createVoidZero();
+
+                if (typeNode.kind === ts.SyntaxKind.VoidKeyword)
+                    return serialize({ TΦ: T_VOID })
 
                 /// ??
 
