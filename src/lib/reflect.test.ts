@@ -374,7 +374,7 @@ describe('ReflectedProperty', it => {
         expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(true)).to.be.false;
         expect(new ReflectedClass(B).getProperty('foo').type.isLiteral(null)).to.be.false;
     })
-    it.only('reflects void type', () => {
+    it('reflects void type', () => {
         class B {}
         Reflect.defineMetadata('rt:t', () => ({ TΦ: 'V' }), B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);

@@ -814,7 +814,7 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.eql({ TΦ: T_UNKNOWN });
             })
-            it.only('emits for void return type', async () => {
+            it('emits for void return type', async () => {
                 let exports = await runSimple({
                     code: `
                         export class C {
