@@ -1,6 +1,7 @@
 import { describe } from "razmin";
 import { expect } from "chai";
-import { ReflectedClass, Interface } from "./reflect";
+import { ReflectedClass } from "./reflect";
+import { Interface } from "../common";
 import * as flags from '../common/flags';
 
 describe('ReflectedClass', it => {

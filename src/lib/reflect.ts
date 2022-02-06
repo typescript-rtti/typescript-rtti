@@ -1,11 +1,7 @@
 import * as Flags from '../common/flags';
-import { getParameterNames } from './get-parameter-names';
+import { Interface } from '../common';
 
-export interface Interface {
-    name : string;
-    prototype : any;
-    identity : symbol;
-}
+import { getParameterNames } from './get-parameter-names';
 
 /**
  * Obtain a symbol which uniquely identifies an interface type. Use with: `reify<MyInterface>()`

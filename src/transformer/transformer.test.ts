@@ -8,6 +8,7 @@ import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flag
 import { esRequire } from '../../test-esrequire.js';
 import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import * as fs from 'fs';
+import { Interface } from '../common';
 
 interface RunInvocation {
     code : string;
@@ -212,7 +213,7 @@ describe('RTTI: ', () => {
             expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
         })
         for (let moduleType of MODULE_TYPES) {
-            describe(`(${moduleType})`, it => {
+            describe(` [${moduleType}]`, it => {
                 it('will resolve to the interface symbol generated in another file', async () => {
                     let FooSym = "$$FOO";
                     let IΦFoo = { name: 'Foo', prototype: {}, identity: FooSym };
@@ -235,7 +236,24 @@ describe('RTTI: ', () => {
                     });
                     expect(exports.ReifiedFoo).to.eql(IΦFoo);
                 })
+                it('will not choke if the imported interface has no type metadata', async () => {
+                    let exports = await runSimple({
+                        moduleType: moduleType,
+                        code: `
+                            import { reify } from 'typescript-rtti';
+                            import { Foo } from "another";
+                            export const ReifiedFoo = reify<Foo>();
+                        `,
+                        modules: {
+                            "typescript-rtti": { 
+                                reify: () => {}
+                            },
+                            "another": {}
+                        }
+                    });
 
+                    expect(exports.ReifiedFoo).to.equal(undefined);
+                });
             });
         }
     });
@@ -1233,6 +1251,56 @@ describe('RTTI: ', () => {
                 expect(type.TΦ).to.equal(T_GENERIC);
                 expect(type.t).to.equal(Promise);
                 expect(type.p).to.eql([ String ]);
+            })
+        });
+        describe('rt:i', it => {
+            it('emits for local interfaces implemented by a class', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export interface Something {}
+                        export interface SomethingElse {}
+                        export class C implements Something, SomethingElse {}
+                    `
+                });
+        
+                let typeRefs : any[] = Reflect.getMetadata('rt:i', exports.C);
+                
+                expect(typeRefs).to.exist;
+                expect(typeRefs.length).to.equal(2);
+                expect(typeRefs[0]()).to.equal(exports.Something);
+                expect(typeRefs[1]()).to.equal(exports.SomethingElse);
+            })
+            it('emits for external interfaces implemented by a class', async () => {
+                let IΦSomething : Interface = { 
+                    name: 'Something',
+                    prototype: {},
+                    identity: Symbol('Something (interface)')
+                };
+
+                let IΦSomethingElse : Interface = { 
+                    name: 'SomethingElse',
+                    prototype: {},
+                    identity: Symbol('SomethingElse (interface)')
+                };
+
+                let exports = await runSimple({
+                    modules: {
+                        other: {
+                            IΦSomething, IΦSomethingElse
+                        }
+                    },
+                    code: `
+                        import { Something, SomethingElse } from 'other';
+                        export class C implements Something, SomethingElse {}
+                    `
+                });
+        
+                let typeRefs : any[] = Reflect.getMetadata('rt:i', exports.C);
+                
+                expect(typeRefs).to.exist;
+                expect(typeRefs.length).to.equal(2);
+                expect(typeRefs[0]()).to.equal(IΦSomething);
+                expect(typeRefs[1]()).to.equal(IΦSomethingElse);
             })
         });
     });
