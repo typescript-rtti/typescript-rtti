@@ -1,3 +1,7 @@
+# vNext
+
+- Added support for `void` type
+
 # v0.0.19
 
 - Added better handling for literal types to `ReflectedClass`.

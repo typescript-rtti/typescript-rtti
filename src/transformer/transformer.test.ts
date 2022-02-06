@@ -6,7 +6,7 @@ import * as path from 'path';
 import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
 import { esRequire } from '../../test-esrequire.js';
-import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN } from '../common';
+import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import * as fs from 'fs';
 
 interface RunInvocation {
@@ -805,10 +805,6 @@ describe('RTTI: ', () => {
             it('emits for unknown return type', async () => {
                 let exports = await runSimple({
                     code: `
-                        interface I {
-                            foo : number;
-                        }
-
                         export class C {
                             method(): unknown { return null; }
                         }
@@ -817,6 +813,18 @@ describe('RTTI: ', () => {
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.eql({ TΦ: T_UNKNOWN });
+            })
+            it.only('emits for void return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method(): void { }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_VOID });
             })
             it('emits for any return type', async () => {
                 let exports = await runSimple({

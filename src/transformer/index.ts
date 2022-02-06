@@ -30,7 +30,7 @@ import { metadataDecorator } from './metadata-decorator';
 import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC } from '../common';
+import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID } from '../common';
 import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
 
 export enum TypeReferenceSerializationKind {
@@ -427,6 +427,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                 if (typeNode.kind === ts.SyntaxKind.UndefinedKeyword)
                     return ts.factory.createVoidZero();
+
+                if (typeNode.kind === ts.SyntaxKind.VoidKeyword)
+                    return serialize({ TΦ: T_VOID })
 
                 /// ??
 

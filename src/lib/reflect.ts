@@ -70,7 +70,7 @@ interface RtGenericRef {
 }
 
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any' 
-    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'literal';
+    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'literal' | 'void';
 
 export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_UNKNOWN]: 'unknown',
@@ -79,7 +79,8 @@ export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_INTERSECTION]: 'intersection',
     [Flags.T_TUPLE]: 'tuple',
     [Flags.T_ARRAY]: 'array',
-    [Flags.T_GENERIC]: 'generic'
+    [Flags.T_GENERIC]: 'generic',
+    [Flags.T_VOID]: 'void'
 };
 
 export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
@@ -159,6 +160,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
 
     get isLiteralValue() { return this.kind === 'literal'; }
     get isTrue() { return this.isLiteral(true); }
+    get isVoid() { return this.kind === 'void'; }
     get isFalse() { return this.isLiteral(false); }
     get isNull() { return this.isLiteral(null); }
     get isStringLiteral() { return typeof this.ref === 'string'; }
