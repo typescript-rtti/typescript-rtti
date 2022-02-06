@@ -462,11 +462,83 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 if (klass.heritageClauses) {
                     for (let clause of klass.heritageClauses) {
                         if (clause.token === ts.SyntaxKind.ImplementsKeyword) {
-                            for (let type of clause.types) {
-                                // TODO
-                            }
-                        } else if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
 
+                            let typeRefs : ts.Expression[] = [];
+
+                            for (let type of clause.types) {
+                                let checker = program.getTypeChecker();
+                                let symbol = checker.getSymbolAtLocation(type.expression);
+
+                                if (symbol) {
+                                    let symbolType = checker.getTypeOfSymbolAtLocation(symbol, type.expression);
+                                    let decls = symbol.getDeclarations();
+                                    let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
+                                    let typeSpecifier : ts.TypeNode = type.typeArguments && type.typeArguments.length === 1 ? type.typeArguments[0] : null;
+                                    let localName = type.expression.getText();
+                                    let typeImport = importMap.get(localName);
+
+                                    
+                                    if (importSpecifier) {
+                                        let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
+                                        if (ts.isStringLiteral(modSpecifier)) {
+                                            let modulePath = modSpecifier.text;
+                                            
+                                            let impo = importMap.get(`*:${typeImport.modulePath}`);
+                                            if (!impo) {
+                                                importMap.set(`*:${modulePath}`, impo = {
+                                                    importDeclaration: importSpecifier?.parent?.parent?.parent,
+                                                    isDefault: false,
+                                                    isNamespace: true,
+                                                    localName: `LΦ_${freeImportReference++}`,
+                                                    modulePath: modulePath,
+                                                    name: `*:${modulePath}`,
+                                                    refName: '',
+                                                    referenced: true
+                                                })
+                                            }
+
+                                            impo.referenced = true;
+                                            
+                                            symbol = checker.getExportSymbolOfSymbol(symbol);
+                                            if (symbolType.isClassOrInterface() && !symbolType.isClass()) {
+                                                localName = `IΦ${localName}`;
+                                            }
+
+                                            typeRefs.push(
+                                                ts.factory.createBinaryExpression(
+                                                    ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), localName),
+                                                    ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
+                                                    ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), `IΦ${localName}`)
+                                                )
+                                            );
+
+                                            continue;
+                                        } else {
+                                            console.error(`RTTI: Unexpected type for module specifier while processing class ${klass.name.text}: ${modSpecifier.getText()}`);
+                                        }
+                                    } else {
+                                        let interfaceDecl = decls.find(x => ts.isInterfaceDeclaration(x));
+                                        let classDecl = decls.find(x => ts.isClassDeclaration(x));
+
+                                        if (interfaceDecl && !classDecl)
+                                            localName = `IΦ${localName}`;
+                                        
+                                        // we're a local declaration
+                                        typeRefs.push(ts.factory.createIdentifier(localName));
+                                        continue;
+                                    }
+                                } else {
+                                    console.error(`RTTI: Cannot identify type ${type.getText()} on implements clause for class ${klass.name.text}`);
+                                }
+
+                                
+                                typeRefs.push(undefined);
+                            }
+
+                            decs.push(metadataDecorator('rt:i', typeRefs.map(tr => tr ? literalNode(forwardRef(tr)) : undefined)));
+
+                        } else if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+                            // always at most one class
                         }
                     }
                 }
@@ -820,13 +892,13 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                                 
                                                 let impo = importMap.get(`*:${typeImport.modulePath}`);
                                                 if (!impo) {
-                                                    importMap.set(`*${typeImport.modulePath}`, impo = {
+                                                    importMap.set(`*:${typeImport.modulePath}`, impo = {
                                                         importDeclaration: typeImport?.importDeclaration,
                                                         isDefault: false,
                                                         isNamespace: true,
                                                         localName: `LΦ_${freeImportReference++}`,
                                                         modulePath: typeImport.modulePath,
-                                                        name: `*${typeImport.modulePath}`,
+                                                        name: `*:${typeImport.modulePath}`,
                                                         refName: '',
                                                         referenced: true
                                                     })

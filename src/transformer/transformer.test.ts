@@ -1267,8 +1267,8 @@ describe('RTTI: ', () => {
                 
                 expect(typeRefs).to.exist;
                 expect(typeRefs.length).to.equal(2);
-                expect(typeRefs[0]()).to.equal(exports.Something);
-                expect(typeRefs[1]()).to.equal(exports.SomethingElse);
+                expect(typeRefs[0]()).to.equal(exports.IΦSomething);
+                expect(typeRefs[1]()).to.equal(exports.IΦSomethingElse);
             })
             it('emits for external interfaces implemented by a class', async () => {
                 let IΦSomething : Interface = { 
@@ -1284,6 +1284,7 @@ describe('RTTI: ', () => {
                 };
 
                 let exports = await runSimple({
+                    trace: true,
                     modules: {
                         other: {
                             IΦSomething, IΦSomethingElse
@@ -1300,6 +1301,41 @@ describe('RTTI: ', () => {
                 expect(typeRefs).to.exist;
                 expect(typeRefs.length).to.equal(2);
                 expect(typeRefs[0]()).to.equal(IΦSomething);
+                expect(typeRefs[1]()).to.equal(IΦSomethingElse);
+            })
+            it('prefers exported class over exported interface', async () => {
+                let IΦSomething : Interface = { 
+                    name: 'Something',
+                    prototype: {},
+                    identity: Symbol('Something (interface)')
+                };
+
+                let IΦSomethingElse : Interface = { 
+                    name: 'SomethingElse',
+                    prototype: {},
+                    identity: Symbol('SomethingElse (interface)')
+                };
+
+                class Something {}
+
+                let exports = await runSimple({
+                    trace: true,
+                    modules: {
+                        other: {
+                            Something, IΦSomething, IΦSomethingElse
+                        }
+                    },
+                    code: `
+                        import { Something, SomethingElse } from 'other';
+                        export class C implements Something, SomethingElse {}
+                    `
+                });
+        
+                let typeRefs : any[] = Reflect.getMetadata('rt:i', exports.C);
+                
+                expect(typeRefs).to.exist;
+                expect(typeRefs.length).to.equal(2);
+                expect(typeRefs[0]()).to.equal(Something);
                 expect(typeRefs[1]()).to.equal(IΦSomethingElse);
             })
         });
