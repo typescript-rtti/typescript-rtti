@@ -2,155 +2,122 @@
 import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
-import * as path from 'path';
-import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
-import { esRequire } from '../../test-esrequire.js';
 import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
-import * as fs from 'fs';
-
-interface RunInvocation {
-    code : string;
-    moduleType? : 'commonjs' | 'esm';
-    compilerOptions? : Partial<ts.CompilerOptions>;
-    modules? : Record<string,any>;
-    trace? : boolean;
-}
+import { InterfaceToken } from '../common';
+import { runSimple } from '../runner.test';
+import { reify, reflect } from '../lib';
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 function hasProperty(map: ts.MapLike<any>, key: string): boolean {
     return hasOwnProperty.call(map, key);
 }
 
-function transpilerHost(sourceFile : ts.SourceFile, write : (output : string) => void) {
-    return <ts.CompilerHost>{
-        getSourceFile: (fileName) => {
-            if (fileName === "module.ts")
-                return sourceFile;
-        
-            let libLoc = path.resolve(__dirname, '../../node_modules/typescript/lib', fileName);
-            let stat = fs.statSync(libLoc);
-
-            if (!stat.isFile())
-                return;
-            
-            let buf = fs.readFileSync(libLoc);
-
-            return ts.createSourceFile("module.ts", buf.toString('utf-8'), ts.ScriptTarget.Latest);            
-        },
-        writeFile: (name, text) => {
-            if (!name.endsWith(".map"))
-                write(text);
-        },
-        getDefaultLibFileName: () => "lib.d.ts",
-        useCaseSensitiveFileNames: () => false,
-        getCanonicalFileName: fileName => fileName,
-        getCurrentDirectory: () => "",
-        getNewLine: () => "\n",
-        fileExists: (fileName): boolean => fileName === "module.ts",
-        readFile: () => "",
-        directoryExists: () => true,
-        getDirectories: () => []
-    };
-}
-
-async function runSimple(invocation : RunInvocation) {
-    let options : ts.CompilerOptions = Object.assign(
-        ts.getDefaultCompilerOptions(),
-        <ts.CompilerOptions>{
-            target: ts.ScriptTarget.ES2016,
-            module: ts.ModuleKind.CommonJS,
-            moduleResolution: ts.ModuleResolutionKind.NodeJs,
-            experimentalDecorators: true,
-            lib: ['lib.es2016.d.ts'],
-            noLib: false,
-            emitDecoratorMetadata: false,
-            suppressOutputPathCheck: true,
-        }, 
-        invocation.compilerOptions || {}
-    );
-    
-    if (invocation.moduleType) {
-        if (invocation.moduleType === 'esm') 
-            options.module = ts.ModuleKind.ES2020;
-    }
-
-    const sourceFile = ts.createSourceFile("module.ts", invocation.code, options.target!);
-    let outputText: string | undefined;
-    const compilerHost = transpilerHost(sourceFile, output => outputText = output);
-    const program = ts.createProgram(["module.ts"], options, compilerHost);
-
-    let optionsDiags = program.getOptionsDiagnostics();
-    let syntacticDiags = program.getSyntacticDiagnostics();
-
-    if (invocation.trace) {
-        for (let diag of optionsDiags) {
-            console.log(diag);
-        }
-        for (let diag of syntacticDiags) {
-            console.log(diag);
-        }
-    }
-
-    program.emit(undefined, undefined, undefined, undefined, {
-        before: [ 
-            transformer(program) 
-        ]
-    });
-
-    if (outputText === undefined) {
-        if (program.getOptionsDiagnostics().length > 0) {
-            console.dir(program.getOptionsDiagnostics());
-        } else {
-            console.dir(program.getSyntacticDiagnostics(sourceFile));
-        }
-
-        throw new Error(`Failed to compile test code: '${invocation.code}'`);
-    }
-
-    if (invocation.trace) {
-        console.log(`========================`);
-        console.log(outputText);
-        console.log(`========================`);
-    }
-
-    let exports : Record<string,any> = {};
-    let rq = (moduleName : string) => {
-        if (!invocation.modules)
-            throw new Error(`(RTTI Test) Cannot find module '${moduleName}'`);
-            
-        let symbols = invocation.modules[moduleName];
-
-        if (!symbols)
-            throw new Error(`(RTTI Test) Cannot find module '${moduleName}'`);
-
-        return symbols;
-    };
-
-    if (invocation.moduleType === 'esm') {
-
-        global['moduleOverrides'] = invocation.modules;
-
-        exports = await esRequire(
-            `data:text/javascript;base64,${Buffer.from(`
-                ${outputText}
-            `).toString('base64')}`
-        );
-    } else {
-        let func = eval(`(
-            function(exports, require){
-                ${outputText}
-            }
-        )`);
-        func(exports, rq);
-    }
-
-    return exports;
-}
-
 const MODULE_TYPES : ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
 
 describe('RTTI: ', () => {
+    describe('interface', it => {
+        it('emits a symbol for every exported interface', async () => {
+            let exports = await runSimple({
+                code: `
+                    export interface Foo { }
+                `
+            });
+
+            expect(typeof exports.IΦFoo).to.equal('object');
+            expect(typeof exports.IΦFoo.identity).to.equal('symbol');
+        });
+        it('emits no symbol for non-exported interface', async () => {
+            let exports = await runSimple({
+                code: `
+                    interface Foo { }
+                `
+            });
+            expect(exports.IΦFoo).not.to.exist;
+        });
+        it('\'s symbol has type metadata', async () => {
+            let exports = await runSimple({
+                code: `
+                    export interface Foo { 
+                        method(foo : number): boolean;
+                        field : string;
+                        blah : string | number;
+                    }
+                `
+            });
+
+            expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'method')()).to.equal(Boolean);
+            expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'field')()).to.equal(String);
+            expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'blah')()).to.eql({ TΦ: "|", t: [String, Number] });
+            expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].n).to.equal('foo');
+            expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].t()).to.equal(Number);
+            expect(Reflect.getMetadata('rt:P', exports.IΦFoo)).to.eql(['field', 'blah']);
+            expect(Reflect.getMetadata('rt:m', exports.IΦFoo)).to.eql(['method']);
+        });
+    });
+    describe('reify<T>()', it => {
+        it('will resolve to the interface symbol generated in the same file', async () => {
+            let exports = await runSimple({
+                code: `
+                    import { reify } from 'typescript-rtti';
+                    export interface Foo { }
+                    export const ReifiedFoo = reify<Foo>();
+                `,
+                modules: {
+                    "typescript-rtti": { reify: a => a }
+                }
+            });
+
+            let identity = exports.IΦFoo.identity;
+
+            expect(typeof identity).to.equal('symbol');
+            expect(exports.IΦFoo).to.eql({ name: 'Foo', prototype: {}, identity });
+            expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
+        })
+        for (let moduleType of MODULE_TYPES) {
+            if (moduleType !== 'esm') continue;
+            describe(` [${moduleType}]`, it => {
+                it('will resolve to the interface symbol generated in another file', async () => {
+                    let FooSym = "$$FOO";
+                    let IΦFoo = { name: 'Foo', prototype: {}, identity: FooSym };
+
+                    let exports = await runSimple({
+                        moduleType: moduleType,
+                        code: `
+                            import { reify } from 'typescript-rtti';
+                            import { Foo } from "another";
+                            export const ReifiedFoo = reify<Foo>();
+                        `,
+                        modules: {
+                            "typescript-rtti": { reify: a => a, reflect: a => a },
+                            "another": {
+                                IΦFoo
+                            }
+                        }
+                    });
+                    expect(exports.ReifiedFoo).to.eql(IΦFoo);
+                })
+                it('will not choke if the imported interface has no type metadata', async () => {
+                    let exports = await runSimple({
+                        moduleType: moduleType,
+                        code: `
+                            import { reify } from 'typescript-rtti';
+                            import { Foo } from "another2";
+                            export const ReifiedFoo = reify<Foo>();
+                        `,
+                        modules: {
+                            "typescript-rtti": { 
+                                reify: () => {}
+                            },
+                            "another2": {}
+                        }
+                    });
+
+                    expect(exports.ReifiedFoo).to.equal(undefined);
+                });
+            });
+        }
+    });
     describe('Imports', it => {
         for (let moduleType of MODULE_TYPES) {
             describe(`(${moduleType})`, it => {
@@ -1145,6 +1112,90 @@ describe('RTTI: ', () => {
                 expect(type.TΦ).to.equal(T_GENERIC);
                 expect(type.t).to.equal(Promise);
                 expect(type.p).to.eql([ String ]);
+            })
+        });
+        describe('rt:i', it => {
+            it('emits for local interfaces implemented by a class', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export interface Something {}
+                        export interface SomethingElse {}
+                        export class C implements Something, SomethingElse {}
+                    `
+                });
+        
+                let typeRefs : any[] = Reflect.getMetadata('rt:i', exports.C);
+                
+                expect(typeRefs).to.exist;
+                expect(typeRefs.length).to.equal(2);
+                expect(typeRefs[0]()).to.equal(exports.IΦSomething);
+                expect(typeRefs[1]()).to.equal(exports.IΦSomethingElse);
+            })
+            it('emits for external interfaces implemented by a class', async () => {
+                let IΦSomething : InterfaceToken = { 
+                    name: 'Something',
+                    prototype: {},
+                    identity: Symbol('Something (interface)')
+                };
+
+                let IΦSomethingElse : InterfaceToken = { 
+                    name: 'SomethingElse',
+                    prototype: {},
+                    identity: Symbol('SomethingElse (interface)')
+                };
+
+                let exports = await runSimple({
+                    modules: {
+                        other: {
+                            IΦSomething, IΦSomethingElse
+                        }
+                    },
+                    code: `
+                        import { Something, SomethingElse } from 'other';
+                        export class C implements Something, SomethingElse {}
+                    `
+                });
+        
+                let typeRefs : any[] = Reflect.getMetadata('rt:i', exports.C);
+                
+                expect(typeRefs).to.exist;
+                expect(typeRefs.length).to.equal(2);
+                expect(typeRefs[0]()).to.equal(IΦSomething);
+                expect(typeRefs[1]()).to.equal(IΦSomethingElse);
+            })
+            it('prefers exported class over exported interface', async () => {
+                let IΦSomething : InterfaceToken = { 
+                    name: 'Something',
+                    prototype: {},
+                    identity: Symbol('Something (interface)')
+                };
+
+                let IΦSomethingElse : InterfaceToken = { 
+                    name: 'SomethingElse',
+                    prototype: {},
+                    identity: Symbol('SomethingElse (interface)')
+                };
+
+                class Something {}
+
+                let exports = await runSimple({
+                    modules: {
+                        other: {
+                            Something, IΦSomething, IΦSomethingElse
+                        }
+                    },
+                    code: `
+                        import { Something, SomethingElse } from 'other';
+                        export class C implements Something, SomethingElse {}
+                    `
+                });
+        
+                let typeRefs : any[] = Reflect.getMetadata('rt:i', exports.C);
+                
+                expect(typeRefs).to.exist;
+                expect(typeRefs.length).to.equal(2);
+                expect(typeRefs[0]()).to.equal(Something);
+                expect(typeRefs[1]()).to.equal(IΦSomethingElse);
             })
         });
     });

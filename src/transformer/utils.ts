@@ -31,3 +31,29 @@ export function cloneEntityNameAsExpr(entityName : ts.EntityName, rootName? : st
     else if (ts.isIdentifier(entityName))
         return ts.factory.createIdentifier(entityName.text);
 }
+
+export function qualifiedNameToString(qualifiedName : ts.QualifiedName) {
+    return ts.isIdentifier(qualifiedName.left) 
+        ? qualifiedName.left.text + '.' + qualifiedName.right.text
+        : entityNameToString(qualifiedName.left) + '.' + qualifiedName.right.text
+    ;
+}
+
+export function entityNameToString(entityName : ts.EntityName) {
+    if (ts.isQualifiedName(entityName))
+        return qualifiedNameToString(entityName);
+    else if (ts.isIdentifier(entityName))
+        return entityName.text;
+}
+
+export function dottedNameToExpr(dottedName : string) : ts.Identifier | ts.PropertyAccessExpression {
+    return dottedName
+        .split('.')
+        .map(ident => ts.factory.createIdentifier(ident) as (ts.Identifier | ts.PropertyAccessExpression))
+        .reduce((pv, cv : ts.Identifier) => 
+            pv 
+                ? ts.factory.createPropertyAccessExpression(pv, cv) 
+                : cv
+        )
+    ;
+}

@@ -14,6 +14,8 @@
  * 
  * - The "rt:f" metadata item holds a string of flags, where each character indicates the positive presence of a flag.
  *   For the list of available flags, see src/common/flags.ts
+ * - The "rt:i" metadata item contains an array of type references which point to interface objects representing the 
+ *   interfaces found in the "implements" clause of a class
  * - The "rt:t" metadata item represents the "type" of an item. This is the type of a property, the return type of a method,
  *   or Function in the case of a class (similar to "design:type" for a class).
  * - The "rt:p" metadata item represents parameters of a method or a class (ie constructor). It is an array of objects which 
@@ -30,8 +32,14 @@ import { metadataDecorator } from './metadata-decorator';
 import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { cloneEntityNameAsExpr, getRootNameOfEntityName } from './utils';
-import { T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
+import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID } from '../common';
+import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
+
+export class CompileError extends Error {}
+
+export interface RttiSettings {
+    trace? : boolean;
+}
 
 export enum TypeReferenceSerializationKind {
     // The TypeReferenceNode could not be resolved.
@@ -107,9 +115,13 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             return { $__isTSNode: true, node };
         }
 
-        let trace = false;
+        let settings = <RttiSettings> context.getCompilerOptions().rtti;
+        let trace = settings?.trace ?? false;
 
         return sourceFile => {
+            if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts'))
+                return sourceFile;
+
             sourceFile = ts.factory.updateSourceFile(
                 sourceFile, 
                 [ rtHelper(), ...sourceFile.statements ], 
@@ -122,8 +134,92 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     
             let importMap = new Map<string,TypeImport>();
             let classMap = new Map<ts.ClassDeclaration,ClassDetails>();
-            let currentNameScope : ts.ClassDeclaration;
+            let currentNameScope : ts.ClassDeclaration | ts.InterfaceDeclaration;
             let currentLexicalScope : ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseBlock = sourceFile;
+            let metadataCollector = inlineMetadataCollector;
+
+            function scope<T = any>(nameScope : ts.ClassDeclaration | ts.InterfaceDeclaration, callback: () => T) {
+                let originalScope = currentNameScope;
+                currentNameScope = nameScope;
+
+                try {
+                    return callback();
+                } finally {
+                    currentNameScope = originalScope;
+                }
+            }
+
+            function inlineMetadataCollector<T extends ts.Node>(node : T, decorators : ts.Decorator[]): T {
+                if (ts.isPropertyDeclaration(node)) {
+                    return <any>ts.factory.updatePropertyDeclaration(
+                        node, 
+                        [ ...(node.decorators || []), ...decorators ], 
+                        node.modifiers, 
+                        node.name, 
+                        node.questionToken || node.exclamationToken, 
+                        node.type,
+                        node.initializer
+                    );
+                } else if (ts.isMethodDeclaration(node)) {
+                    return <any>ts.factory.updateMethodDeclaration(
+                        node,
+                        [ ...(node.decorators || []), ...decorators ],
+                        node.modifiers,
+                        node.asteriskToken,
+                        node.name,
+                        node.questionToken,
+                        node.typeParameters,
+                        node.parameters,
+                        node.type,
+                        node.body
+                    );
+                } else if (ts.isClassDeclaration(node)) {
+                    return <any>ts.factory.updateClassDeclaration(
+                        node, 
+                        [ ...(node.decorators || []), ...decorators ],
+                        node.modifiers,
+                        node.name,
+                        node.typeParameters,
+                        node.heritageClauses,
+                        node.members
+                    );
+                } else {
+                    throw new TypeError(`Not sure how to collect metadata onto ${node}`);
+                }
+            }
+
+            function collectMetadata<T = any>(callback : () => T): { node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator }[] } {
+                let originalCollector = metadataCollector;
+
+                let decorators : { node : ts.Node, decorator : ts.Decorator }[] = [];
+
+                function externalMetadataCollector<T extends ts.Node>(node : T, addedDecorators : ts.Decorator[]): T {
+                    let property : string;
+
+                    if (ts.isMethodDeclaration(node)) {
+                        property = node.name.getText();
+                    } else if (ts.isPropertyDeclaration(node)) {
+                        property = node.name.getText();
+                    } else if (ts.isMethodSignature(node)) {
+                        property = node.name.getText();
+                    } else if (ts.isPropertySignature(node)) {
+                        property = node.name.getText();
+                    }
+
+                    decorators.push(...addedDecorators.map(decorator => ({ property, node, decorator })));
+                    return node;
+                };
+
+                metadataCollector = externalMetadataCollector;
+                try {
+                    return {
+                        node: callback(),
+                        decorators
+                    }
+                } finally {
+                    metadataCollector = originalCollector;
+                }
+            }
 
             function assureTypeAvailable(entityName : ts.EntityName) {
                 let rootName = getRootNameOfEntityName(entityName);
@@ -346,7 +442,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                 /// ??
 
-                if (extended)
+                if (extended && trace)
                     console.warn(`RTTI: ${sourceFile.fileName}: Warning: ${ts.SyntaxKind[typeNode.kind]} is unsupported, emitting Object`);
 
                 return ts.factory.createIdentifier('Object');
@@ -354,7 +450,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
             //////////////////////////////////////////////////////////
             
-            function extractClassMetadata(klass : ts.ClassDeclaration, details : ClassDetails) {
+            function extractClassMetadata(klass : ts.ClassDeclaration | ts.InterfaceDeclaration, details : ClassDetails) {
                 let decs : ts.Decorator[] = [
                 ];
 
@@ -363,17 +459,103 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 if (details.methodNames.length > 0)
                     decs.push(metadataDecorator('rt:m', details.methodNames));
 
-                let constructor = klass.members.find(x => ts.isConstructorDeclaration(x)) as ts.ConstructorDeclaration;
-                if (constructor) {
-                    decs.push(...extractParamsMetadata(constructor));
+                if (ts.isClassDeclaration(klass)) {
+                    let constructor = klass.members.find(x => ts.isConstructorDeclaration(x)) as ts.ConstructorDeclaration;
+                    if (constructor) {
+                        decs.push(...extractParamsMetadata(constructor));
+                    }
+                }
+
+                if (klass.heritageClauses) {
+                    for (let clause of klass.heritageClauses) {
+                        if (clause.token === ts.SyntaxKind.ImplementsKeyword) {
+
+                            let typeRefs : ts.Expression[] = [];
+
+                            for (let type of clause.types) {
+                                let checker = program.getTypeChecker();
+                                let symbol = checker.getSymbolAtLocation(type.expression);
+
+                                if (symbol) {
+                                    let symbolType = checker.getTypeOfSymbolAtLocation(symbol, type.expression);
+                                    let decls = symbol.getDeclarations();
+                                    let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
+                                    let typeSpecifier : ts.TypeNode = type.typeArguments && type.typeArguments.length === 1 ? type.typeArguments[0] : null;
+                                    let localName = type.expression.getText();
+                                    let typeImport = importMap.get(localName);
+
+                                    
+                                    if (importSpecifier) {
+                                        let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
+                                        if (ts.isStringLiteral(modSpecifier)) {
+                                            let modulePath = modSpecifier.text;
+                                            
+                                            let impo = importMap.get(`*:${typeImport.modulePath}`);
+                                            if (!impo) {
+                                                importMap.set(`*:${modulePath}`, impo = {
+                                                    importDeclaration: importSpecifier?.parent?.parent?.parent,
+                                                    isDefault: false,
+                                                    isNamespace: true,
+                                                    localName: `LΦ_${freeImportReference++}`,
+                                                    modulePath: modulePath,
+                                                    name: `*:${modulePath}`,
+                                                    refName: '',
+                                                    referenced: true
+                                                })
+                                            }
+
+                                            impo.referenced = true;
+                                            
+                                            symbol = checker.getExportSymbolOfSymbol(symbol);
+                                            if (symbolType.isClassOrInterface() && !symbolType.isClass()) {
+                                                localName = `IΦ${localName}`;
+                                            }
+
+                                            typeRefs.push(
+                                                ts.factory.createBinaryExpression(
+                                                    ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), localName),
+                                                    ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
+                                                    ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), `IΦ${localName}`)
+                                                )
+                                            );
+
+                                            continue;
+                                        } else {
+                                            console.error(`RTTI: Unexpected type for module specifier while processing class ${klass.name.text}: ${modSpecifier.getText()} [please report]`);
+                                        }
+                                    } else {
+                                        let interfaceDecl = decls.find(x => ts.isInterfaceDeclaration(x));
+                                        let classDecl = decls.find(x => ts.isClassDeclaration(x));
+
+                                        if (interfaceDecl && !classDecl)
+                                            localName = `IΦ${localName}`;
+                                        
+                                        // we're a local declaration
+                                        typeRefs.push(ts.factory.createIdentifier(localName));
+                                        continue;
+                                    }
+                                } else {
+                                    console.error(`RTTI: Cannot identify type ${type.getText()} on implements clause for class ${klass.name.text} [please report]`);
+                                }
+
+                                
+                                typeRefs.push(undefined);
+                            }
+
+                            decs.push(metadataDecorator('rt:i', typeRefs.map(tr => tr ? literalNode(forwardRef(tr)) : undefined)));
+
+                        } else if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
+                            // always at most one class
+                        }
+                    }
                 }
 
                 decs.push(metadataDecorator('rt:f', `${F_CLASS}${getVisibility(klass.modifiers)}${isAbstract(klass.modifiers)}${isExported(klass.modifiers)}`));
 
                 return decs;
             }
-
-            function extractPropertyMetadata(property : ts.PropertyDeclaration) {
+            
+            function extractPropertyMetadata(property : ts.PropertyDeclaration | ts.PropertySignature) {
                 return [
                     ...extractTypeMetadata(property.type, 'type'),
                     metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(property.modifiers)}${isReadOnly(property.modifiers)}`)
@@ -388,7 +570,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                 const visitor = function(node : ts.Node) {
                     if (ts.isPropertyDeclaration(node)) {
-                        details.methodNames.push(node.name.getText())
+                        details.propertyNames.push(node.name.getText())
                     } else if (ts.isMethodDeclaration(node)) {
                         details.methodNames.push(node.name.getText())
                     } else if (ts.isConstructorDeclaration(node)) {
@@ -418,6 +600,29 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return details;
             }
 
+            function interfaceAnalyzer(ifaceDecl : ts.InterfaceDeclaration): ClassDetails {
+                let details : ClassDetails = {
+                    methodNames: [],
+                    propertyNames: []
+                };
+
+                const visitor = function(node : ts.Node) {
+                    if (ts.isPropertySignature(node)) {
+                        details.propertyNames.push(node.name.getText());
+                    } else if (ts.isMethodSignature(node)) {
+                        details.methodNames.push(node.name.getText())
+                    } else {
+                        ts.visitEachChild(node, visitor, context);
+                    }
+
+                    return node;
+                }
+
+                ts.visitEachChild(ifaceDecl, visitor, context);
+
+                return details;
+            }
+
             function typeToTypeRef(type : ts.Type): ts.Expression {
                 if ((type.flags & ts.TypeFlags.String) !== 0) {
                     return ts.factory.createIdentifier('String');
@@ -437,7 +642,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return ts.factory.createIdentifier('Object');
             }
         
-            function extractMethodMetadata(method : ts.MethodDeclaration) {
+            function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature) {
                 let decs : ts.Decorator[] = [];
 
                 if (emitStandardMetadata)
@@ -473,7 +678,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return decs;
             }
 
-            function extractParamsMetadata(method : ts.FunctionLikeDeclaration) {
+            function extractParamsMetadata(method : ts.FunctionLikeDeclaration | ts.MethodSignature) {
                 let decs : ts.Decorator[] = [];
                 let standardParamTypes : ts.Expression[] = [];
                 let serializedParamMeta : any[] = [];
@@ -524,7 +729,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
         
             ////////////////////////////////////////////////////////////////////////////
 
-            const visitor = (node : ts.Node) => {
+            let interfaceSymbols : { interfaceDecl : ts.InterfaceDeclaration, symbolDecl: ts.Statement[] }[] = [];
+            let freeImportReference = 0;
+
+            const visitor = (node : ts.Node): ts.VisitResult<ts.Node> => {
                 if (!node)
                     return;
 
@@ -556,6 +764,18 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                         isDefault: false,
                                         importDeclaration: node
                                     });
+
+                                    let nameAsInterface = `IΦ${binding.name.text}`;
+
+                                    importMap.set(nameAsInterface, {
+                                        name: nameAsInterface,
+                                        localName: nameAsInterface,
+                                        refName: nameAsInterface,
+                                        modulePath: (<ts.StringLiteral>node.moduleSpecifier).text,
+                                        isNamespace: false,
+                                        isDefault: false,
+                                        importDeclaration: node
+                                    });
                                 }
                             } else if (ts.isNamespaceImport(bindings)) {
                                 importMap.set(bindings.name.text, {
@@ -575,64 +795,276 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                  
                 if (ts.isPropertyDeclaration(node)) {
                     if (trace)
-                        console.log(`Decorating property ${node.parent.name.text}#${node.name.getText()}`);
+                        console.log(`Decorating class property ${node.parent.name.text}#${node.name.getText()}`);
 
-                    if (ts.isClassDeclaration(node.parent)) {
-                        node = ts.factory.updatePropertyDeclaration(
-                            node, 
-                            [ ...(node.decorators || []), ...extractPropertyMetadata(node) ], 
-                            node.modifiers, 
-                            node.name, 
-                            node.questionToken || node.exclamationToken, 
-                            node.type,
-                            node.initializer
-                        )
+                    if (ts.isClassDeclaration(node.parent))
+                        node = metadataCollector(node, extractPropertyMetadata(node));
+                    
+                } else if (ts.isPropertySignature(node)) {
+                    if (trace)
+                        console.log(`Decorating interface property ${(node.parent as ts.InterfaceDeclaration).name.text}#${node.name.getText()}`);
+                    
+                    if (ts.isInterfaceDeclaration(node.parent))
+                        node = metadataCollector(node, extractPropertyMetadata(node));
+                    
+                } else if (ts.isCallExpression(node)) {
+                    if (ts.isIdentifier(node.expression)) {
+                        let checker = program.getTypeChecker();
+                        let symbol = checker.getSymbolAtLocation(node.expression);
+                        let type = checker.getTypeOfSymbolAtLocation(symbol, node.expression);
+                        let symbolName = symbol?.name;
+                        let identifier = node.expression;
+                        
+                        if (symbol && ['reify', 'reflect'].includes(symbol.name)) {
+                            let decls = symbol.getDeclarations();
+                            let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
+                            let typeSpecifier : ts.TypeNode = node.typeArguments && node.typeArguments.length === 1 ? node.typeArguments[0] : null;
+
+                            if (importSpecifier) {
+                                let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
+                                if (ts.isStringLiteral(modSpecifier)) {
+                                    let isTypescriptRtti = 
+                                        modSpecifier.text === 'typescript-rtti'
+                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.js$/)
+                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.ts$/)
+                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/?$/)
+                                    ;
+
+                                    if (isTypescriptRtti) {
+                                        if (typeSpecifier) {
+                                            let type = checker.getTypeAtLocation(typeSpecifier);
+                                            let localName : string;
+
+                                            if (type) {
+                                                if (type.isClassOrInterface() && !type.isClass()) {
+                                                    if (ts.isTypeReferenceNode(typeSpecifier)) {
+                                                        localName = entityNameToString(typeSpecifier.typeName);
+                                                    }
+                                                } else {
+                                                    if (ts.isTypeReferenceNode(typeSpecifier)) {
+                                                        const resolver = context['getEmitResolver']();
+                                                        const kind : TypeReferenceSerializationKind = resolver.getTypeReferenceSerializationKind(typeSpecifier.typeName, currentNameScope || currentLexicalScope);
+                                        
+                                                        if (kind === TypeReferenceSerializationKind.Unknown) {
+                                                            if (trace)
+                                                                console.warn(`RTTI: warning: ${sourceFile.fileName}: reify<${typeSpecifier.getText()}>: unknown symbol: Assuming imported interface [This may be a bug]`);
+                                                            localName = entityNameToString(typeSpecifier.typeName);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if (!localName) {
+                                                let text : string;
+                                                try {
+                                                    text = typeSpecifier.getText();
+                                                } catch (e) {
+                                                    if (globalThis.RTTI_TRACE)
+                                                        console.warn(`RTTI: Failed to resolve type specifier (see <unresolvable> below):`);
+                                                    console.dir(typeSpecifier);
+                                                }
+
+                                                throw new CompileError(
+                                                    `RTTI: ${sourceFile.fileName}: reify(): ` 
+                                                    + `cannot resolve interface: ${text || '<unresolvable>'}: Not supported.`
+                                                );
+                                            }
+
+                                            let typeImport = importMap.get(localName);
+                                            let expression : ts.Expression;
+
+                                            if (typeImport) {
+                                                // Special behavior for commonjs (inline require())
+                                                // For ESM this is handled by hoisting an import
+                                                
+                                                if (program.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
+                                                    let origName = localName;
+                                                    let expr = dottedNameToExpr(`IΦ${localName}`);
+
+                                                    if (typeImport.isDefault) {
+                                                        return ts.factory.createCallExpression(
+                                                            ts.factory.createIdentifier('require'),
+                                                            [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
+                                                        );
+                                                    } else if (!typeImport.isNamespace) {
+                                                        expr = propertyPrepend(
+                                                            ts.factory.createCallExpression(
+                                                                ts.factory.createIdentifier('require'),
+                                                                [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
+                                                            ), expr
+                                                        );
+                                                    }
+
+                                                    expression = expr;
+                                                } else {
+
+                                                    // ESM
+
+                                                    if (localName) {
+                                                        localName = `IΦ${localName}`;
+                                                    }
+                                                    
+                                                    let impo = importMap.get(`*:${typeImport.modulePath}`);
+                                                    if (!impo) {
+                                                        importMap.set(`*:${typeImport.modulePath}`, impo = {
+                                                            importDeclaration: typeImport?.importDeclaration,
+                                                            isDefault: false,
+                                                            isNamespace: true,
+                                                            localName: `LΦ_${freeImportReference++}`,
+                                                            modulePath: typeImport.modulePath,
+                                                            name: `*:${typeImport.modulePath}`,
+                                                            refName: '',
+                                                            referenced: true
+                                                        })
+                                                    }
+                                                    
+                                                    expression = ts.factory.createPropertyAccessExpression(
+                                                        ts.factory.createIdentifier(impo.localName), 
+                                                        ts.factory.createIdentifier(localName)
+                                                    )
+                                                }
+                                            } else {
+                                                expression = ts.factory.createIdentifier(`IΦ${localName}`);
+                                            }
+                                            
+
+                                            return ts.factory.createCallExpression(identifier, undefined, [
+                                                expression
+                                            ]);
+                                        }
+
+                                    }
+                                }
+                            }
+                        }
                     }
+                
                 } else if (ts.isClassDeclaration(node)) {
                     if (trace)
                         console.log(`Decorating class ${node.name.text}`);
                     
                     let details = classAnalyzer(node);
                     
-                    let savedCurrentNameScope = currentNameScope;
-                    currentNameScope = node;
-                    try {
-                        node = ts.factory.updateClassDeclaration(
-                            node, 
-                            [ ...(node.decorators || []), ...extractClassMetadata(node, details) ],
-                            node.modifiers,
-                            node.name,
-                            node.typeParameters,
-                            node.heritageClauses,
-                            node.members
+                    return scope(node, () => {
+                        return ts.visitEachChild(
+                            metadataCollector(node, extractClassMetadata(<ts.ClassDeclaration>node, details)), 
+                            visitor, context
                         );
+                    });
 
-                        return ts.visitEachChild(node, visitor, context);
-                    } finally {
-                        currentNameScope = savedCurrentNameScope;
-                    }
+                } else if (ts.isInterfaceDeclaration(node)) {
+                    interfaceSymbols.push(
+                        {
+                            interfaceDecl: node,
+                            symbolDecl: [
+                                ts.factory.createVariableStatement(
+                                    [],
+                                    ts.factory.createVariableDeclarationList(
+                                        [ts.factory.createVariableDeclaration(
+                                            ts.factory.createIdentifier(`IΦ${node.name.text}`),
+                                            undefined,
+                                            undefined,
+                                            ts.factory.createObjectLiteralExpression([
+                                                ts.factory.createPropertyAssignment(
+                                                    'name',
+                                                    ts.factory.createStringLiteral(node.name.text)
+                                                ),
+                                                ts.factory.createPropertyAssignment(
+                                                    'prototype',
+                                                    ts.factory.createObjectLiteralExpression()
+                                                ),
+                                                ts.factory.createPropertyAssignment(
+                                                    'identity',
+                                                    ts.factory.createCallExpression(
+                                                        ts.factory.createIdentifier("Symbol"),
+                                                        undefined,
+                                                        [ts.factory.createStringLiteral(`${node.name.text} (interface)`)]
+                                                    )
+                                                )
+                                            ])
+                                            
+                                        )],
+                                        ts.NodeFlags.Const
+                                    )
+                                ),
+                                ...(
+                                    (node.modifiers && node.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword))
+                                    ? [ts.factory.createExportDeclaration(
+                                        undefined,
+                                        undefined,
+                                        false,
+                                        ts.factory.createNamedExports(
+                                            [
+                                                ts.factory.createExportSpecifier(
+                                                    undefined,
+                                                    ts.factory.createIdentifier(`IΦ${node.name.text}`)
+                                                )
+                                            ]
+                                        ),
+                                        undefined
+                                    )] : []
+                                )
+                            ]
+                        }
+                    );
+                    
+                    if (trace)
+                        console.log(`Decorating interface ${node.name.text}`);
+                    
+                    let details = interfaceAnalyzer(node);
+                    
+                    return scope(node, () => {
+                        let result = collectMetadata(() => {
+                            return ts.visitEachChild(node, visitor, context)
+                        });
+
+                        return [
+                            result.node,
+                            ...extractClassMetadata(<ts.InterfaceDeclaration>node, details)
+                                .map(decorator => ts.factory.createCallExpression(decorator.expression, undefined, [
+                                    ts.factory.createIdentifier(`IΦ${(node as ts.InterfaceDeclaration).name.text}`)
+                                ])),
+                            ...(result.decorators.map(dec => ts.factory.createCallExpression(dec.decorator.expression, undefined, [
+                                ts.factory.createPropertyAccessExpression(
+                                    ts.factory.createIdentifier(`IΦ${(node as ts.InterfaceDeclaration).name.text}`), 
+                                    'prototype'
+                                ),
+                                ts.factory.createStringLiteral(dec.property)
+                            ])))
+                        ]
+                    });
                 } else if (ts.isMethodDeclaration(node)) {
                     if (ts.isClassDeclaration(node.parent)) {
                         if (trace)
-                            console.log(`Decorating method ${ts.isClassDeclaration(node.parent) ? node.parent.name.text : '<anon>'}#${node.name.getText()}`);
+                            console.log(`Decorating class method ${node.parent.name.text}#${node.name.getText()}`);
                         
-                        node = ts.factory.updateMethodDeclaration(
-                            node,
-                            [ ...(node.decorators || []), ...extractMethodMetadata(node) ],
-                            node.modifiers,
-                            node.asteriskToken,
-                            node.name,
-                            node.questionToken,
-                            node.typeParameters,
-                            node.parameters,
-                            node.type,
-                            node.body
-                        );
+                        node = metadataCollector(node, extractMethodMetadata(node));
+                    }
+                } else if (ts.isMethodSignature(node)) {
+                    if (ts.isInterfaceDeclaration(node.parent)) {
+                        if (trace)
+                            console.log(`Decorating interface method ${node.parent.name.text}#${node.name.getText()}`);
+                        
+                        node = metadataCollector(node, extractMethodMetadata(node));
                     }
                 }
 
                 return ts.visitEachChild(node, visitor, context);
             };
+
+            function generateInterfaceSymbols(statements : ts.Statement[]): ts.Statement[] {
+                for (let iface of interfaceSymbols) {
+                    let impoIndex = statements.indexOf(iface.interfaceDecl);
+                    if (impoIndex >= 0) {
+                        statements.splice(impoIndex, 0, ...iface.symbolDecl);
+                    } else {
+                        statements.push(...iface.symbolDecl);
+                    }
+                    
+                }
+
+                return statements;
+            }
 
             function generateImports(statements : ts.Statement[]): ts.Statement[] {
                 let imports : ts.ImportDeclaration[] = [];
@@ -650,7 +1082,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         continue;
                        
                     let ownedImpo : ts.ImportDeclaration;
-                    
+
                     if (impo.isDefault) {
                         ownedImpo = ts.factory.createImportDeclaration(
                             undefined,
@@ -702,7 +1134,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 sourceFile = ts.visitNode(sourceFile, visitor);
                 sourceFile = ts.factory.updateSourceFile(
                     sourceFile, 
-                    generateImports(Array.from(sourceFile.statements)), 
+                    [
+                        ...generateInterfaceSymbols(generateImports(Array.from(sourceFile.statements))),
+                    ], 
                     sourceFile.isDeclarationFile, 
                     sourceFile.referencedFiles,
                     sourceFile.typeReferenceDirectives,
@@ -710,8 +1144,11 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     sourceFile.libReferenceDirectives
                 );
             } catch (e) {
+                if (e instanceof CompileError)
+                    throw e;
+                
+                console.error(`RTTI: Failed to build source file ${sourceFile.fileName}: ${e.message} [please report]`);
                 console.error(e);
-                console.error(`RTTI: Failed to build source file ${sourceFile.fileName}: ${e.message}`);
             }
 
             return sourceFile;
