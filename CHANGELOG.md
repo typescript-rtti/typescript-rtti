@@ -1,4 +1,4 @@
-# vNext
+# v0.0.20
 
 - Added support for `void` type
 - Breaking: You must now use ReflectedClass.for(MyClass) instead of new ReflectedClass(MyClass)
