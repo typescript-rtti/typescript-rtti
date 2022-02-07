@@ -107,7 +107,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
 
     get kind() : ReflectedTypeRefKind {
         let ref : RtTypeRef = this._ref;
-        if (ref === null || ['string', 'number', 'boolean'].includes(typeof ref))
+        if (ref === null || ['undefined', 'string', 'number', 'boolean'].includes(typeof ref))
             return 'literal';
 
         if (typeof ref === 'object' && 'TΦ' in ref) 
@@ -336,12 +336,11 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
 
     /** @internal */
     static createFromRtRef(ref : RtTypeRef) {
-        if (ref === null || typeof ref !== 'object')
-            return new ReflectedTypeRef(ref);
-        
         let kind : ReflectedTypeRefKind;
         
-        if (typeof ref === 'object' && 'TΦ' in <object>ref)
+        if (ref === null || !['object', 'function'].includes(typeof ref))
+            kind = 'literal';
+        else if (typeof ref === 'object' && 'TΦ' in <object>ref)
             kind = TYPE_REF_KIND_EXPANSION[(ref as RtType).TΦ];
         else if (typeof ref === 'object')
             kind = 'interface';
@@ -820,6 +819,15 @@ export class ReflectedClass<ClassT = any> {
     }
 
     private static reflectedClasses = new WeakMap<object, ReflectedClass>();
+
+    /** 
+     * Create a new ReflectedClass instance for the given type without sharing. Used during testing.
+     * @internal 
+     **/
+    static new<ClassT>(constructorOrInterface : Constructor<ClassT> | Interface) {
+        return new ReflectedClass<ClassT>(<Constructor<ClassT> | Interface>constructorOrInterface);
+    }
+
 
     private static forConstructorOrInterface<ClassT>(constructorOrInterface : Constructor<ClassT> | Interface) {
         let key : object = constructorOrInterface;
