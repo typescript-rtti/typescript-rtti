@@ -1,5 +1,5 @@
 import * as Flags from '../common/flags';
-import { Interface, RtVoidType, RtUnknownType, RtAnyType } from '../common';
+import { InterfaceToken, RtVoidType, RtUnknownType, RtAnyType } from '../common';
 
 import { getParameterNames } from './get-parameter-names';
 import { Sealed } from './sealed';
@@ -10,14 +10,14 @@ const NotProvided = Symbol();
  * This has no effect because the Interface is already reified.
  * Simply use the Interface as is or use reflect() on the reified interface.
  */
-export function reify(value : Interface): Interface;
+export function reify(value : InterfaceToken): InterfaceToken;
 /**
  * Obtain an object which uniquely identifies an interface type.
  * You may prefer reflect<InterfaceType>() if you are writing reflect(reify<InterfaceType>()) or 
  * ReflectedClass.from(reify<InterfaceType>())
  */
-export function reify<InterfaceType>(): Interface;
-export function reify(value? : Interface | typeof NotProvided): Interface {
+export function reify<InterfaceType>(): InterfaceToken;
+export function reify(value? : InterfaceToken | typeof NotProvided): InterfaceToken {
     if (value === NotProvided)
         throw new Error(`reify<T>() can only be used when project is built with the typescript-rtti transformer`);
     return value;
@@ -35,7 +35,7 @@ function Flag(value : string) {
 }
 
 type Literal = true | false | null | number | string;
-type RtTypeRef = RtType | Function | Literal | Interface;
+type RtTypeRef = RtType | Function | Literal | InterfaceToken;
 
 interface RtType {
     TΦ : string;
@@ -176,9 +176,9 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return this.kind === 'class' && (!klass || <any>this.ref === klass);
     }
 
-    isInterface(interfaceType : Interface): this is ReflectedInterfaceRef {
+    isInterface(interfaceType : InterfaceToken): this is ReflectedInterfaceRef {
         if (this.kind === 'interface')
-            return (this.ref as unknown as Interface).identity === interfaceType.identity;
+            return (this.ref as unknown as InterfaceToken).identity === interfaceType.identity;
         return false;
     }
 
@@ -390,9 +390,9 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
 }
 
 @ReflectedTypeRef.Kind('interface')
-export class ReflectedInterfaceRef extends ReflectedTypeRef<Interface> {
+export class ReflectedInterfaceRef extends ReflectedTypeRef<InterfaceToken> {
     get kind() { return 'interface' as const; }
-    get interface() : Interface { return this.ref; }
+    get interface() : InterfaceToken { return this.ref; }
     toString() { return `interface ${this.interface.name}`; }
 
     matchesValue(value: any, errors : Error[] = [], context? : string) {
@@ -889,7 +889,7 @@ export class ReflectedClass<ClassT = any> {
      * Constructs a new ReflectedClass. Use ReflectedClass.for() to obtain a ReflectedClass.
      */
     private constructor(
-        klass : Constructor<ClassT> | Interface
+        klass : Constructor<ClassT> | InterfaceToken
     ) {
         this._class = klass;
     }
@@ -900,9 +900,9 @@ export class ReflectedClass<ClassT = any> {
      *                           instance's constructor will be used)
      * @returns The ReflectedClass.
      */
-    static for<ClassT>(constructorOrValue : Constructor<ClassT> | Interface | InstanceType<Constructor<ClassT>>) {
+    static for<ClassT>(constructorOrValue : Constructor<ClassT> | InterfaceToken | InstanceType<Constructor<ClassT>>) {
         if (typeof constructorOrValue === 'function' || ('name' in constructorOrValue && 'prototype' in constructorOrValue && typeof constructorOrValue.identity === 'symbol'))
-            return this.forConstructorOrInterface(<Constructor<ClassT> | Interface>constructorOrValue);
+            return this.forConstructorOrInterface(<Constructor<ClassT> | InterfaceToken>constructorOrValue);
         else
             return this.forConstructorOrInterface(<Constructor<ClassT>>constructorOrValue.constructor);
     }
@@ -913,28 +913,28 @@ export class ReflectedClass<ClassT = any> {
      * Create a new ReflectedClass instance for the given type without sharing. Used during testing.
      * @internal 
      **/
-    static new<ClassT>(constructorOrInterface : Constructor<ClassT> | Interface) {
-        return new ReflectedClass<ClassT>(<Constructor<ClassT> | Interface>constructorOrInterface);
+    static new<ClassT>(constructorOrInterface : Constructor<ClassT> | InterfaceToken) {
+        return new ReflectedClass<ClassT>(<Constructor<ClassT> | InterfaceToken>constructorOrInterface);
     }
 
 
-    private static forConstructorOrInterface<ClassT>(constructorOrInterface : Constructor<ClassT> | Interface) {
+    private static forConstructorOrInterface<ClassT>(constructorOrInterface : Constructor<ClassT> | InterfaceToken) {
         let key : object = constructorOrInterface;
         if (typeof key === 'object')
-            key = (constructorOrInterface as Interface).prototype;
+            key = (constructorOrInterface as InterfaceToken).prototype;
         
         let existing = this.reflectedClasses.get(constructorOrInterface);
         if (!existing) {
             this.reflectedClasses.set(
                 constructorOrInterface, 
-                existing = new ReflectedClass<ClassT>(<Constructor<ClassT> | Interface>constructorOrInterface)
+                existing = new ReflectedClass<ClassT>(<Constructor<ClassT> | InterfaceToken>constructorOrInterface)
             );
         }
 
         return existing;
     }
 
-    private _class : Constructor<ClassT> | Interface;
+    private _class : Constructor<ClassT> | InterfaceToken;
     private _ownMethods : ReflectedMethod[];
     private _methods : ReflectedMethod[];
     private _ownPropertyNames : string[];
@@ -971,7 +971,7 @@ export class ReflectedClass<ClassT = any> {
      * @param interfaceType 
      * @returns boolean
      */
-    implements(interfaceType : Interface | Constructor<any>) {
+    implements(interfaceType : InterfaceToken | Constructor<any>) {
         return !!this.interfaces.find(i => typeof interfaceType === 'function' ? i.isClass(interfaceType) : i.isInterface(interfaceType));
     }
 
@@ -1365,7 +1365,7 @@ export class ReflectedClass<ClassT = any> {
  * @param interfaceType The interface type to use. Can be a class constructor or an Interface object.
  * @returns True if the interface is implemented
  */
-export function implementsInterface(value, interfaceType : Interface | Constructor<any>) {
+export function implementsInterface(value, interfaceType : InterfaceToken | Constructor<any>) {
     if (value === null || value === undefined || !['object', 'function'].includes(typeof value))
         return false;
     if (interfaceType === null || interfaceType === undefined)
@@ -1384,7 +1384,7 @@ export function implementsInterface(value, interfaceType : Interface | Construct
  * @param interfaceType 
  * @returns True if the value is the correct shape
  */
-export function matchesShape(value, interfaceType : Interface | Constructor<any>) {
+export function matchesShape(value, interfaceType : InterfaceToken | Constructor<any>) {
     if (interfaceType === null || interfaceType === undefined)
         throw new TypeError(`Interface type must not be undefined`);
     
@@ -1395,7 +1395,7 @@ export function matchesShape(value, interfaceType : Interface | Constructor<any>
  * Get the reflected interface object for the given interface (identified by T)
  * @returns The reflected interface
  */
-export function reflect<T>() : ReflectedClass<Interface<T> | Constructor<T>>;
+export function reflect<T>() : ReflectedClass<InterfaceToken<T> | Constructor<T>>;
 /**
  * Get the reflected class for the given constructor or instance.
  * @param value A constructor, Interface value, or an instance of a class

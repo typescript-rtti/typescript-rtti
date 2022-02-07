@@ -1,7 +1,7 @@
 import { describe } from "razmin";
 import { expect } from "chai";
 import { ReflectedClass } from "./reflect";
-import { Interface } from "../common";
+import { InterfaceToken } from "../common";
 import * as flags from '../common/flags';
 import { ReflectedClassRef } from ".";
 
@@ -98,7 +98,7 @@ describe('ReflectedClass', it => {
         expect(refClass.getProperty('foo').type.isClass(Number)).to.be.true;
     });
     it('reflects reified interfaces', () => {
-        let IΦFoo : Interface = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
+        let IΦFoo : InterfaceToken = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
 
         Reflect.defineMetadata('rt:P', ['foobar', 'foobaz'], IΦFoo);
         Reflect.defineMetadata('rt:m', ['helloWorld'], IΦFoo);

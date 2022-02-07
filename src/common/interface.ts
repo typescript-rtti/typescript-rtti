@@ -1,4 +1,4 @@
-export interface Interface<T = any> {
+export interface InterfaceToken<T = any> {
     name : string;
     prototype : any;
     identity : symbol;

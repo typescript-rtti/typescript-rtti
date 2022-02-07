@@ -4,7 +4,7 @@ import { describe } from 'razmin';
 import ts from 'typescript';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
 import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
-import { Interface } from '../common';
+import { InterfaceToken } from '../common';
 import { runSimple } from '../runner.test';
 import { reify, reflect } from '../lib';
 
@@ -1132,13 +1132,13 @@ describe('RTTI: ', () => {
                 expect(typeRefs[1]()).to.equal(exports.IΦSomethingElse);
             })
             it('emits for external interfaces implemented by a class', async () => {
-                let IΦSomething : Interface = { 
+                let IΦSomething : InterfaceToken = { 
                     name: 'Something',
                     prototype: {},
                     identity: Symbol('Something (interface)')
                 };
 
-                let IΦSomethingElse : Interface = { 
+                let IΦSomethingElse : InterfaceToken = { 
                     name: 'SomethingElse',
                     prototype: {},
                     identity: Symbol('SomethingElse (interface)')
@@ -1164,13 +1164,13 @@ describe('RTTI: ', () => {
                 expect(typeRefs[1]()).to.equal(IΦSomethingElse);
             })
             it('prefers exported class over exported interface', async () => {
-                let IΦSomething : Interface = { 
+                let IΦSomething : InterfaceToken = { 
                     name: 'Something',
                     prototype: {},
                     identity: Symbol('Something (interface)')
                 };
 
-                let IΦSomethingElse : Interface = { 
+                let IΦSomethingElse : InterfaceToken = { 
                     name: 'SomethingElse',
                     prototype: {},
                     identity: Symbol('SomethingElse (interface)')
