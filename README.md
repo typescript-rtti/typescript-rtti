@@ -58,14 +58,14 @@ npm install typescript-rtti
 npm install ttypescript -D
 ```
 
-```json
+```jsonc
 // tsconfig.json
 "compilerOptions": {
     "plugins": [{ "transform": "typescript-rtti/dist/transformer" }]
 }
 ```
 
-```json
+```jsonc
 // package.json
 {
     "scripts": {
