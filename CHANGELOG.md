@@ -12,6 +12,9 @@
 - Added several more variants of `ReflectedTypeRef` to match how the 
   capabilities of the library have evolved
 - `ReflectedMethod#parameterTypes` can now source metadata from `design:paramtypes`
+- Support for interfaces, use `reify<MyInterface>()` to obtain interface tokens
+- Added `reflect<MyInterface>()`, `reflect(MyClass)`, `reflect(myInstance)` shortcuts for obtaining 
+  `ReflectedClass` instances
 
 # v0.0.19
 
