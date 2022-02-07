@@ -3,15 +3,51 @@
 [![CircleCI](https://circleci.com/gh/rezonant/typescript-rtti/tree/main.svg?style=shield)](https://circleci.com/gh/rezonant/typescript-rtti/tree/main)
 
 > **NOTE**
-> This software is _alpha quality_. There is no guarantee it will successfully compile your code just yet.
+> This software is _beta quality_, semver 0.0.x
 
 A Typescript transformer to implement comprehensive runtime type information (RTTI).
+
+# Introduction
+
+```typescript
+// Classes
+
+class User {
+    id : number;
+    username : string;
+    protected favoriteColor? : number | string;
+}
+
+// Get simple property types
+expect(reflect(User).getProperty('id').as('class').class).to.equal(Number);
+expect(reflect(User).getProperty('id').isClass(Number)).to.be.true;
+
+// Modifiers
+expect(reflect(User).getProperty('favoriteColor').isOptional).to.be.true;
+expect(reflect(User).getProperty('favoriteColor').isProtected).to.be.true;
+
+// Advanced types
+expect(reflect(User).getProperty('favoriteColor').type.is('union')).to.be.true;
+expect(reflect(User).getProperty('favoriteColor').type.as('union').types.length).to.equal(2);
+expect(reflect(User).getProperty('favoriteColor').type.as('union').types[0].as('class').class).to.equal(Number);
+expect(reflect(User).getProperty('favoriteColor').type.as('union').types[1].as('class').class).to.equal(String);
+
+// Interfaces support the same metadata as classes
+
+interface User {
+    foo : string;
+}
+
+expect(reflect<User>().getProperty('foo').type.isClass(String)).to.be.true;
+
+```
+
+
+# Usage
 
 ```
 npm install typescript-rtti
 ```
-
-# Usage
 
 The easiest way to use this transformer is via [ttypescript](https://github.com/cevek/ttypescript).
 Webpack users may also be interested in [awesome-typescript-loader](https://github.com/s-panferov/awesome-typescript-loader).
