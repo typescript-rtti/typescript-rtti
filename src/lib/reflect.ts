@@ -18,7 +18,6 @@ export function reify(value : Interface): Interface;
  */
 export function reify<InterfaceType>(): Interface;
 export function reify(value? : Interface | typeof NotProvided): Interface {
-    console.log(`REIFY IS RUNNING!`);
     if (value === NotProvided)
         throw new Error(`reify<T>() can only be used when project is built with the typescript-rtti transformer`);
     return value;
