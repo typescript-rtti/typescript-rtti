@@ -55,13 +55,13 @@ class B {
     }
 }
 
-let aClass = new ReflectedClass(A);
+let aClass = ReflectedClass.for(A);
 console.log(aClass.parameterNames); // ["someValue", "someOtherValue"]
 console.log(aClass.parameters[0].name); // "someValue"
 console.log(aClass.getParameter('someValue').type); // Number
 console.log(aClass.getParameter('someOtherValue').type); // String
 
-let bClass = new ReflectedClass(B);
+let bClass = ReflectedClass.for(B);
 console.log(bClass.propertyNames) // ["foo", "bar"]
 console.log(bClass.getProperty('foo').type) // A
 console.log(bClass.getProperty('foo').visibility) // "private"

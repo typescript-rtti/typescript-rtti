@@ -1,7 +1,8 @@
 import * as Flags from '../common/flags';
-import { Interface } from '../common';
+import { Interface, RtVoidType, RtUnknownType, RtAnyType } from '../common';
 
 import { getParameterNames } from './get-parameter-names';
+import { Sealed } from './sealed';
 
 /**
  * Obtain a symbol which uniquely identifies an interface type. Use with: `reify<MyInterface>()`
@@ -82,7 +83,8 @@ export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
 };
 
 export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
-    protected constructor(
+    /** @internal */
+    constructor(
         private _ref : T
     ) {
     }
@@ -92,6 +94,11 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return (target) => {
             ReflectedTypeRef.kinds[kind] = target;
         }
+    }
+
+    valueMatches(value, errors? : Error[], context? : string) {
+        errors.push(new Error(`No validation available for type with kind '${this.kind}'`));
+        return false;
     }
 
     private static kinds : Record<ReflectedTypeRefKind, Constructor<ReflectedTypeRef>> = <any>{};
@@ -121,7 +128,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
      * to check for, this will return false.
      * @param klass The type of promise to check for. Would be String when looking for Promise<string>
      */
-    isPromise<T = Function>(klass? : Constructor<T>): boolean {
+    isPromise<T = Function>(klass? : Constructor<T>): this is ReflectedGenericRef {
         if (this.isClass(Promise))
             return !klass;
 
@@ -153,19 +160,10 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         return this.kind === 'class' && (!klass || <any>this.ref === klass);
     }
 
-    isInterface(interfaceType : Interface): this is ReflectedTypeRef<Interface> {
+    isInterface(interfaceType : Interface): this is ReflectedInterfaceRef {
         if (this.kind === 'interface')
             return (this.ref as unknown as Interface).identity === interfaceType.identity;
         return false;
-    }
-
-    /**
-     * Returns the constructor of this type if it has one. Only valid for class references.
-     */
-    get classConstructor(): Function {
-        if (this.kind !== 'class')
-            return undefined;
-        return <Function><unknown>this.ref;
     }
 
     /**
@@ -173,9 +171,89 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
      * @param value 
      * @returns 
      */
-    isLiteral(value : any) {
-        return this.ref === value;
+    isLiteral<T>(value : T): this is ReflectedLiteralRef<T> {
+        return this.kind === 'literal' && <unknown>this.ref === value;
     }
+
+    is(kind : 'interface'): this is ReflectedInterfaceRef;
+    is(kind : 'class'): this is ReflectedClassRef<any>;
+    is(kind : 'generic'): this is ReflectedGenericRef;
+    is(kind : 'array'): this is ReflectedArrayRef;
+    is(kind : 'intersection'): this is ReflectedIntersectionRef;
+    is(kind : 'union'): this is ReflectedUnionRef;
+    is(kind : 'tuple'): this is ReflectedTupleRef;
+    is(kind : 'void'): this is ReflectedVoidRef;
+    is<T, U extends T>(this : T, type : Constructor<U>) : this is U;
+    is(this, kind : ReflectedTypeRefKind | Constructor<any>): boolean {
+        if (typeof kind === 'function')
+            return this instanceof kind;
+        else if (typeof kind === 'string' && this.kind !== kind)
+            return this.kind === kind;
+    }
+
+    /**
+     * Assert that this type reference is an interface type and cast it to ReflectedInterfaceRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'interface'): ReflectedInterfaceRef;
+    /**
+     * Assert that this type reference is a class type and cast it to ReflectedClassRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as<T = any>(kind : 'class'): ReflectedClassRef<T>;
+    /**
+     * Assert that this type reference is a generic type and cast it to ReflectedGenericRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as<T = any>(kind : 'generic'): ReflectedGenericRef;
+    /**
+     * Assert that this type reference is an array type and cast it to ReflectedArrayRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'array'): ReflectedArrayRef;
+    /**
+     * Assert that this type reference is an intersection type and cast it to ReflectedIntersectionRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'intersection'): ReflectedIntersectionRef;
+    /**
+     * Assert that this type reference is a union type and cast it to ReflectedUnionRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'union'): ReflectedUnionRef;
+    /**
+     * Assert that this type reference is a tuple type and cast it to ReflectedTupleRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'tuple'): ReflectedTupleRef;
+    /**
+     * Assert that this type reference is a void type and cast it to ReflectedVoidRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'void'): ReflectedVoidRef;
+    /**
+     * Assert that this type reference is a void type and cast it to ReflectedVoidRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'unknown'): ReflectedUnknownRef;
+    /**
+     * Assert that this type reference is a void type and cast it to ReflectedVoidRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'any'): ReflectedAnyRef;
+    /**
+     * Assert that this type reference is the given ReflectedTypeRef subclass.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as<T, U extends T>(this : T, subclass : Constructor<U>): U;
+    as(this, subclass : ReflectedTypeRefKind | Constructor<any>) {
+        if (typeof subclass === 'function' && !(this instanceof subclass))
+            throw new TypeError(`Value of type ${this.constructor.name} cannot be converted to ${subclass.name}`);
+        else if (typeof subclass === 'string' && this.kind !== subclass)
+            throw new TypeError(`Type has kind ${this.kind}, expected ${subclass}`);
+        return this;
+    }
+
 
     get isLiteralValue() { return this.kind === 'literal'; }
     get isTrue() { return this.isLiteral(true); }
@@ -196,7 +274,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
      * base type is the given class. For instance isGeneric(Promise) is true for Promise<string>.
      * @param klass 
      */
-    isGeneric<T = Function>(klass? : Constructor<T>): this is ReflectedGenericRef<T> {
+    isGeneric<T = Function>(klass? : Constructor<T>): this is ReflectedGenericRef {
         if (this.kind === 'generic') {
             let rtGeneric : RtGenericRef = <any>this.ref;
             if (!rtGeneric.t['TΦ']) { // this is a class
@@ -214,7 +292,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
             : this.kind === 'union';
     }
 
-    isIntersection(elementDiscriminator? : (elementType : ReflectedTypeRef) => boolean): this is ReflectedUnionRef {
+    isIntersection(elementDiscriminator? : (elementType : ReflectedTypeRef) => boolean): this is ReflectedIntersectionRef {
         return elementDiscriminator
             ? this.isIntersection() && this.types.every(e => elementDiscriminator(e))
             : this.kind === 'intersection';
@@ -267,10 +345,28 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
     }
 }
 
+export class ReflectedClassOrInterfaceRef<T extends RtTypeRef> extends ReflectedTypeRef<T> {    
+    valueMatches(value: any, errors : Error[] = [], context? : string) {
+        return ReflectedClass.for(this.ref).valueMatches(value);
+    }
+}
+
 @ReflectedTypeRef.Kind('class')
-export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class>> {
+export class ReflectedClassRef<Class> extends ReflectedClassOrInterfaceRef<Constructor<Class>> {
     get kind() { return 'class' as const; }
     get class() : Constructor<Class> { return <any>this.ref; }
+}
+
+@ReflectedTypeRef.Kind('literal')
+export class ReflectedLiteralRef<Class> extends ReflectedClassOrInterfaceRef<Constructor<Class>> {
+    get kind() { return 'literal' as const; }
+    get value() { return <any>this.ref; }
+}
+
+@ReflectedTypeRef.Kind('interface')
+export class ReflectedInterfaceRef extends ReflectedClassOrInterfaceRef<Interface> {
+    get kind() { return 'interface' as const; }
+    get interface() : Interface { return this.ref; }
 }
 
 @ReflectedTypeRef.Kind('union')
@@ -282,6 +378,10 @@ export class ReflectedUnionRef extends ReflectedTypeRef<RtUnionType> {
         if (this._types)
             return this._types;
         return this._types = (this.ref.t || []).map(t => ReflectedTypeRef.createFromRtRef(t));
+    }
+
+    valueMatches(value: any, errors : Error[] = [], context? : string) {
+        return this.types.some(t => t.valueMatches(value, errors, context));
     }
 }
 
@@ -307,6 +407,30 @@ export class ReflectedArrayRef extends ReflectedTypeRef<RtArrayType> {
             return this._elementType;
         return this._elementType = ReflectedTypeRef.createFromRtRef(this.ref.e);
     }
+
+    valueMatches(value) {
+        if (!Array.isArray(value))
+            throw new TypeError(`Value should be an array`);
+
+        (value as any[]).some(value => this.elementType.valueMatches(value));
+        
+        return true;
+    }
+}
+
+@ReflectedTypeRef.Kind('void')
+export class ReflectedVoidRef extends ReflectedTypeRef<RtVoidType> {
+    get kind() { return 'void' as const; }
+}
+
+@ReflectedTypeRef.Kind('unknown')
+export class ReflectedUnknownRef extends ReflectedTypeRef<RtUnknownType> {
+    get kind() { return 'unknown' as const; }
+}
+
+@ReflectedTypeRef.Kind('any')
+export class ReflectedAnyRef extends ReflectedTypeRef<RtAnyType> {
+    get kind() { return 'unknown' as const; }
 }
 
 @ReflectedTypeRef.Kind('tuple')
@@ -322,7 +446,7 @@ export class ReflectedTupleRef extends ReflectedTypeRef<RtTupleType> {
 }
 
 @ReflectedTypeRef.Kind('generic')
-export class ReflectedGenericRef<Class> extends ReflectedTypeRef<RtGenericRef> {
+export class ReflectedGenericRef extends ReflectedTypeRef<RtGenericRef> {
     get kind() { return 'generic' as const; }
 
     private _baseType : ReflectedTypeRef;
@@ -654,13 +778,56 @@ export class ReflectedProperty extends ReflectedMember {
     get isReadonly() {
         return this.flags.isReadonly;
     }
+    
+    matchesShape(object, errors : Error[] = []) {
+        return this.type.valueMatches(object, errors);
+    }
 }
 
+/**
+ * Provides access to the known runtime type metadata for a particular class 
+ * or Interface value (as obtained by reify<InterfaceT>()). 
+ */
+@Sealed()
 export class ReflectedClass<ClassT = any> {
-    constructor(
+    /**
+     * Constructs a new ReflectedClass. Use ReflectedClass.for() to obtain a ReflectedClass.
+     */
+    private constructor(
         klass : Constructor<ClassT> | Interface
     ) {
         this._class = klass;
+    }
+
+    /**
+     * Obtain a ReflectedClass for the given class constructor, Interface value or instance.
+     * @param constructorOrValue Can be a class constructor, Interface, or an instance of a class (in which case the 
+     *                           instance's constructor will be used)
+     * @returns The ReflectedClass.
+     */
+    static for<ClassT>(constructorOrValue : Constructor<ClassT> | Interface | InstanceType<Constructor<ClassT>>) {
+        if (typeof constructorOrValue === 'object' && typeof constructorOrValue.constructor === 'function')
+            return this.forConstructorOrInterface(<Constructor<ClassT>>constructorOrValue.constructor);
+        else
+            return this.forConstructorOrInterface(<Constructor<ClassT> | Interface>constructorOrValue);
+    }
+
+    private static reflectedClasses = new WeakMap<object, ReflectedClass>();
+
+    private static forConstructorOrInterface<ClassT>(constructorOrInterface : Constructor<ClassT> | Interface) {
+        let key : object = constructorOrInterface;
+        if (typeof key === 'object')
+            key = (constructorOrInterface as Interface).prototype;
+        
+        let existing = this.reflectedClasses.get(constructorOrInterface);
+        if (!existing) {
+            this.reflectedClasses.set(
+                constructorOrInterface, 
+                existing = new ReflectedClass<ClassT>(<Constructor<ClassT> | Interface>constructorOrInterface)
+            );
+        }
+
+        return existing;
     }
 
     private _class : Constructor<ClassT> | Interface;
@@ -704,24 +871,28 @@ export class ReflectedClass<ClassT = any> {
         return !!this.interfaces.find(i => typeof interfaceType === 'function' ? i.isClass(interfaceType) : i.isInterface(interfaceType));
     }
 
-    matchesShape(value) {
-        if (value === null || value === void 0)
+    valueMatches(object, errors : Error[] = []) {
+        if (object === null || object === void 0)
             throw new Error(`Value is undefined`);
         
-        if (typeof value !== 'object')
+        if (typeof object !== 'object')
             throw new Error(`Value must be an object`);
 
+        let matches = true;
+
         for (let prop of this.properties) {
-            let hasValue = prop.name in value;
+            let hasValue = prop.name in object;
+            let value = object[prop.name];
+
             if (!hasValue && !prop.isOptional)
-                throw new Error(`Property '${prop.name}' is missing in value`);
+                errors.push(new Error(`Property '${prop.name}' is missing in value`));
             if (!hasValue)
                 continue;
             
-            if (['interface', 'class'].includes(prop.type.kind)) {
-                // TODO
-            }
+            matches &&= prop.matchesShape(value, errors);
         }
+
+        return errors.length === 0;
     }
 
     get prototype() {
@@ -740,7 +911,7 @@ export class ReflectedClass<ClassT = any> {
         if (parentClass === Object)
             return this._super = null;
         else
-            return this._super = new ReflectedClass(parentClass);
+            return this._super = ReflectedClass.for(parentClass);
     }
 
     private _hasPropertyNamesMeta = false;
@@ -1086,9 +1257,9 @@ export function implementsInterface(value, interfaceType : Interface | Construct
         throw new TypeError(`Interface type must not be undefined`);
     
     if (typeof value === 'object')
-        return new ReflectedClass(value.constructor).implements(interfaceType);
+        return ReflectedClass.for(value.constructor).implements(interfaceType);
     else if (typeof value === 'function')
-        return new ReflectedClass(value).implements(interfaceType);
+        return ReflectedClass.for(value).implements(interfaceType);
 }
 
 /**
@@ -1098,9 +1269,9 @@ export function implementsInterface(value, interfaceType : Interface | Construct
  * @param interfaceType 
  * @returns True if the value is the correct shape
  */
-export function matchesShape(value, interfaceType : Interface | Constructor<any>, options : MatchOptions) {
+export function matchesShape(value, interfaceType : Interface | Constructor<any>) {
     if (interfaceType === null || interfaceType === undefined)
         throw new TypeError(`Interface type must not be undefined`);
     
-    return new ReflectedClass(interfaceType).matchesShape(value);
+    return ReflectedClass.for(interfaceType).valueMatches(value);
 }

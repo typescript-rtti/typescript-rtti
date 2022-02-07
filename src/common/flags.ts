@@ -19,3 +19,9 @@ export const T_TUPLE        = 'T';
 export const T_ARRAY        = '[';
 export const T_THIS         = 't';
 export const T_GENERIC      = 'g';
+
+export type RtSimpleType<T> = { TΦ: T };
+export type RtVoidType     = RtSimpleType<typeof T_VOID>;
+export type RtUnknownType  = RtSimpleType<typeof T_UNKNOWN>
+export type RtAnyType      = RtSimpleType<typeof T_ANY>;
+export type RtThisType     = RtSimpleType<typeof T_THIS>;

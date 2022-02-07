@@ -1,12 +1,17 @@
 # vNext
 
 - Added support for `void` type
+- Breaking: You must now use ReflectedClass.for(MyClass) instead of new ReflectedClass(MyClass)
+- Instances of ReflectedClass are now cached and shared. As a result all 
+  instances of ReflectedClass are now [sealed](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/seal)
 - Breaking: `ReflectedMethod#parameterTypes` now has type `ReflectedTypeRef[]` 
   which allows them to express the full range of types possible. Previously the raw type refs (for instance type 
   resolvers such as `() => String`) was returned here which inappropriately exposed the underlying metadata format.
+- Added support for is() type predicates and as() casting to `ReflectedTypeRef` 
+  for ease of use
+- Added several more variants of `ReflectedTypeRef` to match how the 
+  capabilities of the library have evolved
 - `ReflectedMethod#parameterTypes` can now source metadata from `design:paramtypes`
-- Added `ReflectedTypeRef#classConstructor` to conveniently obtain the constructor for the type reference 
-  (when applicable)
 
 # v0.0.19
 
