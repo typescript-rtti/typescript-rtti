@@ -16,8 +16,12 @@ export async function resolve(url, context, defaultResolve) {
         const DATA = ${JSON.stringify(override)};
         export default DATA;
         ${Object.keys(override)
-            .filter(k => isNaN(k))
+            .filter(k => isNaN(k) && typeof override[k] !== 'function')
             .map(k => `export const ${k} = DATA['${k}']`)
+            .join(";\n")}
+        ${Object.keys(override)
+            .filter(k => isNaN(k) && typeof override[k] === 'function')
+            .map(k => `export const ${k} = (${override[k].toString()})`)
             .join(";\n")}
     `;
 

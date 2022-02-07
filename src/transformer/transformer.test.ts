@@ -2,151 +2,15 @@
 import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
-import * as path from 'path';
-import transformer from './index';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
-import { esRequire } from '../../test-esrequire.js';
 import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
-import * as fs from 'fs';
 import { Interface } from '../common';
-
-interface RunInvocation {
-    code : string;
-    moduleType? : 'commonjs' | 'esm';
-    compilerOptions? : Partial<ts.CompilerOptions>;
-    modules? : Record<string,any>;
-    trace? : boolean;
-}
+import { runSimple } from '../runner.test';
+import { reify, reflect } from '../lib';
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 function hasProperty(map: ts.MapLike<any>, key: string): boolean {
     return hasOwnProperty.call(map, key);
-}
-
-function transpilerHost(sourceFile : ts.SourceFile, write : (output : string) => void) {
-    return <ts.CompilerHost>{
-        getSourceFile: (fileName) => {
-            if (fileName === "module.ts")
-                return sourceFile;
-        
-            let libLoc = path.resolve(__dirname, '../../node_modules/typescript/lib', fileName);
-            let stat = fs.statSync(libLoc);
-
-            if (!stat.isFile())
-                return;
-            
-            let buf = fs.readFileSync(libLoc);
-
-            return ts.createSourceFile("module.ts", buf.toString('utf-8'), ts.ScriptTarget.Latest);            
-        },
-        writeFile: (name, text) => {
-            if (!name.endsWith(".map"))
-                write(text);
-        },
-        getDefaultLibFileName: () => "lib.d.ts",
-        useCaseSensitiveFileNames: () => false,
-        getCanonicalFileName: fileName => fileName,
-        getCurrentDirectory: () => "",
-        getNewLine: () => "\n",
-        fileExists: (fileName): boolean => fileName === "module.ts",
-        readFile: () => "",
-        directoryExists: () => true,
-        getDirectories: () => []
-    };
-}
-
-async function runSimple(invocation : RunInvocation) {
-    let options : ts.CompilerOptions = Object.assign(
-        ts.getDefaultCompilerOptions(),
-        <ts.CompilerOptions>{
-            target: ts.ScriptTarget.ES2016,
-            module: ts.ModuleKind.CommonJS,
-            moduleResolution: ts.ModuleResolutionKind.NodeJs,
-            experimentalDecorators: true,
-            lib: ['lib.es2016.d.ts'],
-            noLib: false,
-            emitDecoratorMetadata: false,
-            suppressOutputPathCheck: true,
-        }, 
-        invocation.compilerOptions || {}
-    );
-    
-    if (invocation.moduleType) {
-        if (invocation.moduleType === 'esm') 
-            options.module = ts.ModuleKind.ES2020;
-    }
-
-    const sourceFile = ts.createSourceFile("module.ts", invocation.code, options.target!);
-    let outputText: string | undefined;
-    const compilerHost = transpilerHost(sourceFile, output => outputText = output);
-    const program = ts.createProgram(["module.ts"], options, compilerHost);
-
-    let optionsDiags = program.getOptionsDiagnostics();
-    let syntacticDiags = program.getSyntacticDiagnostics();
-
-    if (invocation.trace) {
-        for (let diag of optionsDiags) {
-            console.log(diag);
-        }
-        for (let diag of syntacticDiags) {
-            console.log(diag);
-        }
-    }
-
-    program.emit(undefined, undefined, undefined, undefined, {
-        before: [ 
-            transformer(program) 
-        ]
-    });
-
-    if (outputText === undefined) {
-        if (program.getOptionsDiagnostics().length > 0) {
-            console.dir(program.getOptionsDiagnostics());
-        } else {
-            console.dir(program.getSyntacticDiagnostics(sourceFile));
-        }
-
-        throw new Error(`Failed to compile test code: '${invocation.code}'`);
-    }
-
-    if (invocation.trace) {
-        console.log(`========================`);
-        console.log(outputText);
-        console.log(`========================`);
-    }
-
-    let exports : Record<string,any> = {};
-    let rq = (moduleName : string) => {
-        if (!invocation.modules)
-            throw new Error(`(RTTI Test) Cannot find module '${moduleName}'`);
-            
-        let symbols = invocation.modules[moduleName];
-
-        if (!symbols)
-            throw new Error(`(RTTI Test) Cannot find module '${moduleName}'`);
-
-        return symbols;
-    };
-
-    if (invocation.moduleType === 'esm') {
-
-        global['moduleOverrides'] = invocation.modules;
-
-        exports = await esRequire(
-            `data:text/javascript;base64,${Buffer.from(`
-                ${outputText}
-            `).toString('base64')}`
-        );
-    } else {
-        let func = eval(`(
-            function(exports, require){
-                ${outputText}
-            }
-        )`);
-        func(exports, rq);
-    }
-
-    return exports;
 }
 
 const MODULE_TYPES : ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
@@ -200,9 +64,7 @@ describe('RTTI: ', () => {
                     export const ReifiedFoo = reify<Foo>();
                 `,
                 modules: {
-                    "typescript-rtti": { 
-                        reify: () => {}
-                    }
+                    "typescript-rtti": { reify: a => a }
                 }
             });
 
@@ -213,6 +75,7 @@ describe('RTTI: ', () => {
             expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
         })
         for (let moduleType of MODULE_TYPES) {
+            if (moduleType !== 'esm') continue;
             describe(` [${moduleType}]`, it => {
                 it('will resolve to the interface symbol generated in another file', async () => {
                     let FooSym = "$$FOO";
@@ -226,9 +89,7 @@ describe('RTTI: ', () => {
                             export const ReifiedFoo = reify<Foo>();
                         `,
                         modules: {
-                            "typescript-rtti": { 
-                                reify: () => {}
-                            },
+                            "typescript-rtti": { reify: a => a, reflect: a => a },
                             "another": {
                                 IΦFoo
                             }
@@ -1284,7 +1145,6 @@ describe('RTTI: ', () => {
                 };
 
                 let exports = await runSimple({
-                    trace: true,
                     modules: {
                         other: {
                             IΦSomething, IΦSomethingElse
@@ -1319,7 +1179,6 @@ describe('RTTI: ', () => {
                 class Something {}
 
                 let exports = await runSimple({
-                    trace: true,
                     modules: {
                         other: {
                             Something, IΦSomething, IΦSomethingElse
