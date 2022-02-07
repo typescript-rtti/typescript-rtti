@@ -112,6 +112,13 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
         }
     }
 
+    /**
+     * Check if the given value matches this type reference. Collects any errors into the `errors` list.
+     * @param value 
+     * @param errors 
+     * @param context 
+     * @returns 
+     */
     matchesValue(value, errors? : Error[], context? : string) {
         errors.push(new Error(`No validation available for type with kind '${this.kind}'`));
         return false;
@@ -392,8 +399,8 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
 @ReflectedTypeRef.Kind('interface')
 export class ReflectedInterfaceRef extends ReflectedTypeRef<InterfaceToken> {
     get kind() { return 'interface' as const; }
-    get interface() : InterfaceToken { return this.ref; }
-    toString() { return `interface ${this.interface.name}`; }
+    get token() : InterfaceToken { return this.ref; }
+    toString() { return `interface ${this.token.name}`; }
 
     matchesValue(value: any, errors : Error[] = [], context? : string) {
         return ReflectedClass.for(this.ref).matchesValue(value);
@@ -949,6 +956,10 @@ export class ReflectedClass<ClassT = any> {
 
     private _interfaces : ReflectedTypeRef[];
 
+    /**
+     * Get the interfaces that this class implements.
+     * 
+     */
     get interfaces() {
         if (this._interfaces !== undefined)
             return this._interfaces;
