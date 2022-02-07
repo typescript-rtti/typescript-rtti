@@ -35,6 +35,8 @@ import * as ts from 'typescript';
 import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID } from '../common';
 import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
 
+export class CompileError extends Error {}
+
 export interface RttiSettings {
     trace? : boolean;
 }
@@ -862,8 +864,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                                     console.dir(typeSpecifier);
                                                 }
 
-                                                throw new Error(
-                                                    `RTTI: ${sourceFile.fileName}: reify(): cannot resolve interface ${text || '<unresolvable>'}`);
+                                                throw new CompileError(
+                                                    `RTTI: ${sourceFile.fileName}: reify(): ` 
+                                                    + `cannot resolve interface: ${text || '<unresolvable>'}: Not supported.`
+                                                );
                                             }
 
                                             let typeImport = importMap.get(localName);
@@ -1140,6 +1144,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     sourceFile.libReferenceDirectives
                 );
             } catch (e) {
+                if (e instanceof CompileError)
+                    throw e;
+                
                 console.error(`RTTI: Failed to build source file ${sourceFile.fileName}: ${e.message} [please report]`);
                 console.error(e);
             }
