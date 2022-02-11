@@ -9,6 +9,8 @@
 - [Breaking] The public flag (`F_PUBLIC`, `$`) is no longer emitted if the method or property is not explicitly marked public.
 - `ReflectedMember#isPublic` now returns true if no visibility flags are present (ie default visibility).
 - Added `ReflectedMember#isMarkedPublic` to check if a member is specifically marked public.
+- Added support for parameter initializers (ie default values). Note that care should be taken when evaluating initializers
+  because they may depend on `this`. `evaluateInitializer(thisObject)` is provided to make this simpler.
 
 # v0.0.21
 - Support more inferred types (class/interface/union/intersection)

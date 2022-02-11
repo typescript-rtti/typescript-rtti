@@ -164,11 +164,7 @@ describe('RTTI: ', () => {
                             export class C {
                                 method(hello : A) { return 123; }
                             }
-                        `, 
-                        compilerOptions: {
-                            // target: ts.ScriptTarget.ES2020,
-                            // module: ts.ModuleKind.ES2020
-                        },
+                        `,
                         modules: {
                             lib
                         }
@@ -715,6 +711,19 @@ describe('RTTI: ', () => {
                 expect(params[0].t()).to.equal(exports.A);
                 expect(params[0].n).to.equal('hello');
             });
+            it('supports ctor param default value', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B {
+                            constructor(hello : A = new A()) { }
+                        }
+                    `
+                });
+        
+                let params = Reflect.getMetadata('rt:p', exports.B);
+                expect(params[0].v()).to.be.instanceOf(exports.A);
+            });
             it('emits F_PUBLIC for ctor param', async () => {
                 let exports = await runSimple({
                     code: `
@@ -824,6 +833,19 @@ describe('RTTI: ', () => {
                 expect(params[1].t()).to.equal(exports.B);
                 expect(params[1].n).to.equal('world');
             });
+            it('supports method param default value', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B {
+                            foo(hello : A = new A()) { }
+                        }
+                    `
+                });
+        
+                let params = Reflect.getMetadata('rt:p', exports.B.prototype, 'foo');
+                expect(params[0].v()).to.be.instanceOf(exports.A);
+            });
             it('emits for function params', async () => {
                 let exports = await runSimple({
                     code: `
@@ -838,6 +860,17 @@ describe('RTTI: ', () => {
                 expect(params[0].n).to.equal('hello');
                 expect(params[1].t()).to.equal(exports.B);
                 expect(params[1].n).to.equal('world');
+            });
+            it.only('supports function param default value', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export function foo(hello : A = new A()) { }
+                    `
+                });
+        
+                let params = Reflect.getMetadata('rt:p', exports.foo);
+                expect(params[0].v()).to.be.instanceOf(exports.A);
             });
         });
         describe('rt:t', it => {

@@ -28,13 +28,13 @@
  * 
  */
 
-import { F_ABSTRACT, F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
-import { forwardRef } from './forward-ref';
+import { F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
+import { forwardRef, functionForwardRef } from './forward-ref';
 import { metadataDecorator } from './metadata-decorator';
 import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE } from '../common';
+import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode } from '../common';
 import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
 
 export class CompileError extends Error {}
@@ -115,7 +115,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     let emitStandardMetadata = program['rtti$emitStandardMetadata'];
 
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
-        function literalNode(node : ts.Node) {
+        function literalNode(node : ts.Node): LiteralSerializedNode {
             return { $__isTSNode: true, node };
         }
 
@@ -798,9 +798,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if (param.questionToken)
                         f.push(F_OPTIONAL)
 
-                    let meta : Record<string,any> = {
+                    let meta : RtSerialized<RtParameter> = {
                         n: param.name.getText(),
-                        t: literalNode(forwardRef(serializeTypeRef(param.type, true)))
+                        t: literalNode(forwardRef(serializeTypeRef(param.type, true))),
+                        v: param.initializer ? literalNode(functionForwardRef(param.initializer)) : null
                     };
 
                     if (f.length > 0)
@@ -904,128 +905,130 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if (ts.isIdentifier(node.expression)) {
                         let checker = program.getTypeChecker();
                         let symbol = checker.getSymbolAtLocation(node.expression);
-                        let type = checker.getTypeOfSymbolAtLocation(symbol, node.expression);
-                        let symbolName = symbol?.name;
-                        let identifier = node.expression;
-                        
-                        if (symbol && ['reify', 'reflect'].includes(symbol.name)) {
-                            let decls = symbol.getDeclarations();
-                            let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
-                            let typeSpecifier : ts.TypeNode = node.typeArguments && node.typeArguments.length === 1 ? node.typeArguments[0] : null;
+                        if (symbol) {
+                            let type = checker.getTypeOfSymbolAtLocation(symbol, node.expression);
+                            let symbolName = symbol?.name;
+                            let identifier = node.expression;
+                            
+                            if (symbol && ['reify', 'reflect'].includes(symbol.name)) {
+                                let decls = symbol.getDeclarations();
+                                let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
+                                let typeSpecifier : ts.TypeNode = node.typeArguments && node.typeArguments.length === 1 ? node.typeArguments[0] : null;
 
-                            if (importSpecifier) {
-                                let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
-                                if (ts.isStringLiteral(modSpecifier)) {
-                                    let isTypescriptRtti = 
-                                        modSpecifier.text === 'typescript-rtti'
-                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.js$/)
-                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.ts$/)
-                                        || modSpecifier.text.match(/^http.*\/typescript-rtti\/?$/)
-                                    ;
+                                if (importSpecifier) {
+                                    let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
+                                    if (ts.isStringLiteral(modSpecifier)) {
+                                        let isTypescriptRtti = 
+                                            modSpecifier.text === 'typescript-rtti'
+                                            || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.js$/)
+                                            || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.ts$/)
+                                            || modSpecifier.text.match(/^http.*\/typescript-rtti\/?$/)
+                                        ;
 
-                                    if (isTypescriptRtti) {
-                                        if (typeSpecifier) {
-                                            let type = checker.getTypeAtLocation(typeSpecifier);
-                                            let localName : string;
+                                        if (isTypescriptRtti) {
+                                            if (typeSpecifier) {
+                                                let type = checker.getTypeAtLocation(typeSpecifier);
+                                                let localName : string;
 
-                                            if (type) {
-                                                if (type.isClassOrInterface() && !type.isClass()) {
-                                                    if (ts.isTypeReferenceNode(typeSpecifier)) {
-                                                        localName = entityNameToString(typeSpecifier.typeName);
-                                                    }
-                                                } else {
-                                                    if (ts.isTypeReferenceNode(typeSpecifier)) {
-                                                        const resolver = context['getEmitResolver']();
-                                                        const kind : TypeReferenceSerializationKind = resolver.getTypeReferenceSerializationKind(typeSpecifier.typeName, currentNameScope || currentLexicalScope);
-                                        
-                                                        if (kind === TypeReferenceSerializationKind.Unknown) {
-                                                            if (trace)
-                                                                console.warn(`RTTI: warning: ${sourceFile.fileName}: reify<${typeSpecifier.getText()}>: unknown symbol: Assuming imported interface [This may be a bug]`);
+                                                if (type) {
+                                                    if (type.isClassOrInterface() && !type.isClass()) {
+                                                        if (ts.isTypeReferenceNode(typeSpecifier)) {
                                                             localName = entityNameToString(typeSpecifier.typeName);
+                                                        }
+                                                    } else {
+                                                        if (ts.isTypeReferenceNode(typeSpecifier)) {
+                                                            const resolver = context['getEmitResolver']();
+                                                            const kind : TypeReferenceSerializationKind = resolver.getTypeReferenceSerializationKind(typeSpecifier.typeName, currentNameScope || currentLexicalScope);
+                                            
+                                                            if (kind === TypeReferenceSerializationKind.Unknown) {
+                                                                if (trace)
+                                                                    console.warn(`RTTI: warning: ${sourceFile.fileName}: reify<${typeSpecifier.getText()}>: unknown symbol: Assuming imported interface [This may be a bug]`);
+                                                                localName = entityNameToString(typeSpecifier.typeName);
+                                                            }
                                                         }
                                                     }
                                                 }
-                                            }
 
-                                            if (!localName) {
-                                                let text : string;
-                                                try {
-                                                    text = typeSpecifier.getText();
-                                                } catch (e) {
-                                                    if (globalThis.RTTI_TRACE)
-                                                        console.warn(`RTTI: Failed to resolve type specifier (see <unresolvable> below):`);
-                                                    console.dir(typeSpecifier);
+                                                if (!localName) {
+                                                    let text : string;
+                                                    try {
+                                                        text = typeSpecifier.getText();
+                                                    } catch (e) {
+                                                        if (globalThis.RTTI_TRACE)
+                                                            console.warn(`RTTI: Failed to resolve type specifier (see <unresolvable> below):`);
+                                                        console.dir(typeSpecifier);
+                                                    }
+
+                                                    throw new CompileError(
+                                                        `RTTI: ${sourceFile.fileName}: reify(): ` 
+                                                        + `cannot resolve interface: ${text || '<unresolvable>'}: Not supported.`
+                                                    );
                                                 }
 
-                                                throw new CompileError(
-                                                    `RTTI: ${sourceFile.fileName}: reify(): ` 
-                                                    + `cannot resolve interface: ${text || '<unresolvable>'}: Not supported.`
-                                                );
-                                            }
+                                                let typeImport = importMap.get(localName);
+                                                let expression : ts.Expression;
 
-                                            let typeImport = importMap.get(localName);
-                                            let expression : ts.Expression;
+                                                if (typeImport) {
+                                                    // Special behavior for commonjs (inline require())
+                                                    // For ESM this is handled by hoisting an import
+                                                    
+                                                    if (program.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
+                                                        let origName = localName;
+                                                        let expr = dottedNameToExpr(`IΦ${localName}`);
 
-                                            if (typeImport) {
-                                                // Special behavior for commonjs (inline require())
-                                                // For ESM this is handled by hoisting an import
-                                                
-                                                if (program.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
-                                                    let origName = localName;
-                                                    let expr = dottedNameToExpr(`IΦ${localName}`);
-
-                                                    if (typeImport.isDefault) {
-                                                        return ts.factory.createCallExpression(
-                                                            ts.factory.createIdentifier('require'),
-                                                            [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
-                                                        );
-                                                    } else if (!typeImport.isNamespace) {
-                                                        expr = propertyPrepend(
-                                                            ts.factory.createCallExpression(
+                                                        if (typeImport.isDefault) {
+                                                            return ts.factory.createCallExpression(
                                                                 ts.factory.createIdentifier('require'),
                                                                 [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
-                                                            ), expr
-                                                        );
-                                                    }
+                                                            );
+                                                        } else if (!typeImport.isNamespace) {
+                                                            expr = propertyPrepend(
+                                                                ts.factory.createCallExpression(
+                                                                    ts.factory.createIdentifier('require'),
+                                                                    [], [ ts.factory.createStringLiteral(typeImport.modulePath) ]
+                                                                ), expr
+                                                            );
+                                                        }
 
-                                                    expression = expr;
+                                                        expression = expr;
+                                                    } else {
+
+                                                        // ESM
+
+                                                        if (localName) {
+                                                            localName = `IΦ${localName}`;
+                                                        }
+                                                        
+                                                        let impo = importMap.get(`*:${typeImport.modulePath}`);
+                                                        if (!impo) {
+                                                            importMap.set(`*:${typeImport.modulePath}`, impo = {
+                                                                importDeclaration: typeImport?.importDeclaration,
+                                                                isDefault: false,
+                                                                isNamespace: true,
+                                                                localName: `LΦ_${freeImportReference++}`,
+                                                                modulePath: typeImport.modulePath,
+                                                                name: `*:${typeImport.modulePath}`,
+                                                                refName: '',
+                                                                referenced: true
+                                                            })
+                                                        }
+                                                        
+                                                        expression = ts.factory.createPropertyAccessExpression(
+                                                            ts.factory.createIdentifier(impo.localName), 
+                                                            ts.factory.createIdentifier(localName)
+                                                        )
+                                                    }
                                                 } else {
-
-                                                    // ESM
-
-                                                    if (localName) {
-                                                        localName = `IΦ${localName}`;
-                                                    }
-                                                    
-                                                    let impo = importMap.get(`*:${typeImport.modulePath}`);
-                                                    if (!impo) {
-                                                        importMap.set(`*:${typeImport.modulePath}`, impo = {
-                                                            importDeclaration: typeImport?.importDeclaration,
-                                                            isDefault: false,
-                                                            isNamespace: true,
-                                                            localName: `LΦ_${freeImportReference++}`,
-                                                            modulePath: typeImport.modulePath,
-                                                            name: `*:${typeImport.modulePath}`,
-                                                            refName: '',
-                                                            referenced: true
-                                                        })
-                                                    }
-                                                    
-                                                    expression = ts.factory.createPropertyAccessExpression(
-                                                        ts.factory.createIdentifier(impo.localName), 
-                                                        ts.factory.createIdentifier(localName)
-                                                    )
+                                                    expression = ts.factory.createIdentifier(`IΦ${localName}`);
                                                 }
-                                            } else {
-                                                expression = ts.factory.createIdentifier(`IΦ${localName}`);
+                                                
+
+                                                return ts.factory.createCallExpression(identifier, undefined, [
+                                                    expression
+                                                ]);
                                             }
-                                            
 
-                                            return ts.factory.createCallExpression(identifier, undefined, [
-                                                expression
-                                            ]);
                                         }
-
                                     }
                                 }
                             }

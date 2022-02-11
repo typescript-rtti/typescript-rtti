@@ -1,3 +1,5 @@
+import ts from "typescript";
+
 export const F_READONLY     = 'R';
 export const F_ABSTRACT     = 'A';
 export const F_PUBLIC       = '$';
@@ -27,3 +29,19 @@ export type RtVoidType     = RtSimpleType<typeof T_VOID>;
 export type RtUnknownType  = RtSimpleType<typeof T_UNKNOWN>
 export type RtAnyType      = RtSimpleType<typeof T_ANY>;
 export type RtThisType     = RtSimpleType<typeof T_THIS>;
+
+export interface RtParameter {
+    n : string;
+    t : () => any;
+    v : () => any;
+    f? : string;
+}
+
+export interface LiteralSerializedNode {
+    $__isTSNode: true;
+    node: ts.Node;
+}
+
+export type RtSerialized<T> = {
+    [K in keyof T] : T[K] | LiteralSerializedNode;
+}
