@@ -566,6 +566,21 @@ describe('RTTI: ', () => {
                 expect(aFlags).not.to.contain(F_ASYNC);
                 expect(bFlags).to.contain(F_ASYNC);
             })
+            it('identifies readonly properties', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A {
+                            readonly foo = 123;
+                            bar = 321;
+                        }
+                    `
+                });
+        
+                let fooFlags = Reflect.getMetadata('rt:f', exports.A.prototype, 'foo');
+                let barFlags = Reflect.getMetadata('rt:f', exports.A.prototype, 'bar');
+                expect(fooFlags).to.contain(F_READONLY);
+                expect(barFlags).not.to.contain(F_READONLY);
+            })
             it('identifies public methods', async () => {
                 let exports = await runSimple({
                     code: `
