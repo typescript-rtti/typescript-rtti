@@ -1,4 +1,5 @@
-# vNext
+# v0.0.22
+
 - [Breaking] `ReflectedFunction#rawParameterMetadata` and `ReflectedProperty#rawParameterMetadata` are now marked 
   `@internal`. `RawParameterMetadata` is no longer exported. Use `parameterNames` and `parameterTypes` instead and 
   avoid relying on the underlying RTTI metadata.
