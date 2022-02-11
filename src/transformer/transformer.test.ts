@@ -861,7 +861,7 @@ describe('RTTI: ', () => {
                 expect(params[1].t()).to.equal(exports.B);
                 expect(params[1].n).to.equal('world');
             });
-            it.only('supports function param default value', async () => {
+            it('supports function param default value', async () => {
                 let exports = await runSimple({
                     code: `
                         export class A { }
