@@ -113,6 +113,7 @@ console.log(bClass.getMethod('baz').returnType) // A
 # Features
 
 - Emits metadata for the most useful elements (classes, interfaces, methods, properties, functions, related types) parsed by Typescript
+- Emits metadata for abstract classes / methods
 - Enables obtaining stable tokens for interfaces for dependency injection
 - Concise and terse metadata format saves space
 - Metadata format uses forward referencing via type resolvers to eliminate declaration ordering / circular reference 
