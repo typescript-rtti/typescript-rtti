@@ -737,22 +737,55 @@ export class ReflectedMember {
     private _class : ReflectedClass;
     private _flags : ReflectedFlags;
 
+    /**
+     * Get the given metadata key for this member. This is equivalent to
+     * Reflect.getMetadata(key, this.host, this.name)
+     * @param key 
+     * @returns 
+     */
     getMetadata<T = any>(key : string): T {
         return Reflect.getMetadata(key, this.host, this.name);
     }
 
+    /**
+     * Define a metadata key for this member. This is equivalent to
+     * Reflect.defineMetadata(key, value, this.host, this.name)
+     * @param key 
+     * @returns 
+     */
+    defineMetadata<T = any>(key : string, value : T) {
+        Reflect.defineMetadata(key, value, this.host, this.name);
+    }
+
+    /**
+     * Check if a metadata key exists for this member. This is equivalent to
+     * Reflect.hasMetadata(key, this.host, this.name)
+     * @param key 
+     * @returns 
+     */
     hasMetadata(key : string): boolean {
         return Reflect.hasMetadata(key, this.host, this.name);
     }
 
+    /**
+     * Get the host object for this method. For static members this is the 
+     * class constructor. For instance members this is the class's prototype.
+     */
     get host() {
         return this.isStatic ? this.class.class : this.class.prototype;
     }
 
+    /**
+     * Get the reflected class that hosts this member
+     */
     get class() {
         return this._class;
     }
     
+    /**
+     * Get the flags for this member. Includes modifiers and other properties about 
+     * the member.
+     */
     get flags(): Readonly<ReflectedFlags> {
         if (this._flags)
             return this._flags;
@@ -760,22 +793,38 @@ export class ReflectedMember {
         return this._flags = new ReflectedFlags(this.getMetadata('rt:f'));
     }
 
+    /**
+     * True if this member is abstract.
+     */
     get isAbstract() {
         return this.flags.isAbstract;
     }
 
+    /**
+     * True if this member has private visibility.
+     */
     get isPrivate() {
         return this.flags.isPrivate;
     }
 
+    /**
+     * True if this member has public visibility.
+     */
     get isPublic() {
         return this.flags.isPublic;
     }
 
+    /**
+     * True if this member has protected visibility.
+     */
     get isProtected() {
         return this.flags.isProtected;
     }
 
+    /**
+     * Get the visibility (accessibility) of this member.
+     * Can be 'public', 'protected', or 'private'
+     */
     get visibility(): Visibility {
         return this.isPublic ? 'public' 
              : this.isProtected ? 'protected' 
@@ -783,6 +832,9 @@ export class ReflectedMember {
              : 'public';
     }
 
+    /**
+     * Whether this member is marked as optional.
+     */
     get isOptional() {
         return this.flags.isOptional;
     }
@@ -807,14 +859,39 @@ export class ReflectedFunction<T extends Function = Function> {
         return new ReflectedFunction<FunctionT>(func);
     }
 
+    /**
+     * Check if the function has the given metadata key defined. This is equivalent
+     * to Reflect.hasMetadata(key, value, this.func)
+     * @param key 
+     * @returns 
+     */
     hasMetadata(key : string): boolean {
         return Reflect.hasMetadata(key, this.func);
     }
 
+    /**
+     * Get the specified metadata key for this function. This is equivalent
+     * to Reflect.getMetadata(key, value, this.func)
+     * @param key
+     * @returns 
+     */
     getMetadata<T = any>(key : string): T {
         return Reflect.getMetadata(key, this.func);
     }
 
+    /**
+     * Define a metadata key for this function. This is equivalent
+     * to Reflect.defineMetadata(key, value, this.func)
+     * @param key The metadata key to define.
+     * @param value 
+     */
+    defineMetadata<T = any>(key : string, value : T) {
+        Reflect.defineMetadata(key, value, this.func);
+    }
+
+    /**
+     * Get the flags for this function.
+     */
     get flags(): Readonly<ReflectedFlags> {
         if (this._flags)
             return this._flags;
@@ -822,6 +899,9 @@ export class ReflectedFunction<T extends Function = Function> {
         return this._flags = new ReflectedFlags(this.getMetadata('rt:f'));
     }
 
+    /**
+     * @internal
+     */
     get rawParameterMetadata(): RawParameterMetadata[] {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
@@ -829,12 +909,18 @@ export class ReflectedFunction<T extends Function = Function> {
         return this._rawParameterMetadata = this.getMetadata('rt:p');
     }
 
+    /**
+     * Names of the parameters for this function.
+     */
     get parameterNames() {
         return this.rawParameterMetadata.map(x => x.n);
     }
 
     private _parameterTypes : ReflectedTypeRef[];
 
+    /**
+     * Types for the parameter types of this function.
+     */
     get parameterTypes() {
         if (this._parameterTypes !== undefined)
             return this._parameterTypes;
@@ -849,6 +935,9 @@ export class ReflectedFunction<T extends Function = Function> {
         }
     }
 
+    /**
+     * Retrieve the set of reflected parameters for this method.
+     */
     get parameters() {
         if (this._parameters)
             return this._parameters;
@@ -856,10 +945,18 @@ export class ReflectedFunction<T extends Function = Function> {
         return this._parameters = this.rawParameterMetadata.map(x => new ReflectedMethodParameter(this, x));
     }
 
+    /**
+     * Get the parameter with the specified name
+     * @param name 
+     * @returns The reflected parameter
+     */
     getParameter(name : string) {
         return this.parameters.find(x => x.name === name);
     }
 
+    /**
+     * Retrieve the return type of this function. 
+     */
     get returnType(): ReflectedTypeRef {
         if (this._returnType !== undefined)
             return this._returnType;
@@ -876,6 +973,9 @@ export class ReflectedFunction<T extends Function = Function> {
         return this._returnType = ReflectedTypeRef.createFromRtRef(typeResolver());
     }
 
+    /**
+     * True if this function is declared as async.
+     */
     get isAsync() {
         return this.flags.isAsync;
     }
@@ -889,6 +989,9 @@ export class ReflectedMethod extends ReflectedMember {
     private _rawParameterMetadata : RawParameterMetadata[];
     private _parameters : ReflectedMethodParameter[];
 
+    /**
+     * @internal
+     */
     get rawParameterMetadata(): RawParameterMetadata[] {
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
@@ -896,12 +999,18 @@ export class ReflectedMethod extends ReflectedMember {
         return this._rawParameterMetadata = this.getMetadata('rt:p');
     }
 
+    /**
+     * Retrieve an array with the parameter names for this method.
+     */
     get parameterNames() {
         return this.rawParameterMetadata.map(x => x.n);
     }
 
     private _parameterTypes : ReflectedTypeRef[];
 
+    /**
+     * Retrieve an array with the parameter types for this method.
+     */
     get parameterTypes() {
         if (this._parameterTypes !== undefined)
             return this._parameterTypes;
@@ -916,6 +1025,9 @@ export class ReflectedMethod extends ReflectedMember {
         }
     }
 
+    /**
+     * Retrieve the set of reflected parameters for this method.
+     */
     get parameters() {
         if (this._parameters)
             return this._parameters;
@@ -923,10 +1035,18 @@ export class ReflectedMethod extends ReflectedMember {
         return this._parameters = this.rawParameterMetadata.map(x => new ReflectedMethodParameter(this, x));
     }
 
+    /**
+     * Get a reflected parameter by name
+     * @param name 
+     * @returns The reflected parameter
+     */
     getParameter(name : string) {
         return this.parameters.find(x => x.name === name);
     }
 
+    /**
+     * Get the return type of this method.
+     */
     get returnType(): ReflectedTypeRef {
         if (this._returnType !== undefined)
             return this._returnType;
@@ -943,18 +1063,30 @@ export class ReflectedMethod extends ReflectedMember {
         return this._returnType = ReflectedTypeRef.createFromRtRef(typeResolver());
     }
 
+    /**
+     * True if this method is declared as async.
+     */
     get isAsync() {
         return this.flags.isAsync;
     }
 }
 
+/**
+ * Represents a constructor for a specific type.
+ */
 export interface Constructor<T> extends Function {
     new(...args) : T;
 }
 
+/**
+ * Represents a reflected property of a class or interface.
+ */
 export class ReflectedProperty extends ReflectedMember {
     private _type : ReflectedTypeRef;
 
+    /**
+     * Get the type of this property.
+     */
     get type(): ReflectedTypeRef {
         if (this._type !== undefined)
             return this._type;
@@ -971,10 +1103,20 @@ export class ReflectedProperty extends ReflectedMember {
         return this._type = ReflectedTypeRef.createFromRtRef(typeResolver());
     }
 
+    /**
+     * True if this property is marked readonly.
+     */
     get isReadonly() {
         return this.flags.isReadonly;
     }
     
+    /**
+     * Check if the given value matches the type of this property, and would
+     * thus be a valid assignment.
+     * @param object 
+     * @param errors 
+     * @returns 
+     */
     matchesValue(object, errors : Error[] = []) {
         return this.type.matchesValue(object, errors);
     }
@@ -1052,7 +1194,6 @@ export class ReflectedClass<ClassT = any> {
 
     /**
      * Get the interfaces that this class implements.
-     * 
      */
     get interfaces() {
         if (this._interfaces !== undefined)
@@ -1080,6 +1221,12 @@ export class ReflectedClass<ClassT = any> {
         return !!this.interfaces.find(i => typeof interfaceType === 'function' ? i.isClass(interfaceType) : i.isInterface(interfaceType));
     }
 
+    /**
+     * Check if the given value matches the shape of this type, and thus would be a valid assignment.
+     * @param object 
+     * @param errors 
+     * @returns 
+     */
     matchesValue(object, errors : Error[] = []) {
         if (object === null || object === void 0) {
             errors.push(new Error(`Value is undefined`));
@@ -1115,14 +1262,23 @@ export class ReflectedClass<ClassT = any> {
         return matches;
     }
 
+    /**
+     * Get the prototype object for this reflected class.
+     */
     get prototype() {
         return this._class.prototype;
     }
 
+    /**
+     * Get the class constructor for this reflected class.
+     */
     get class() {
         return this._class;
     }
 
+    /**
+     * Get the reflected superclass for this class.
+     */
     get super() : ReflectedClass {
         if (this._super !== undefined)
             return this._super;
@@ -1136,23 +1292,73 @@ export class ReflectedClass<ClassT = any> {
 
     private _hasPropertyNamesMeta = false;
 
+    /**
+     * Check if the function has the given metadata key defined. This is equivalent
+     * to Reflect.hasMetadata(key, this.class)
+     * @param key 
+     * @returns 
+     */
     hasMetadata(key : string): boolean {
         return Reflect.hasMetadata(key, this.class);
     }
 
+    /**
+     * Get the specified metadata key. This is equivalent to Reflect.getMetadata(key, this.class).
+     * @param key 
+     * @returns 
+     */
     getMetadata<T = any>(key : string): T {
         return Reflect.getMetadata(key, this.class);
     }
 
+    /**
+     * Define a metadata key on this class. This is equivalent to Reflect.defineMetadata(key, value, this.class).
+     * @param key 
+     * @param value 
+     * @returns 
+     */
+    defineMetadata<T = any>(key : string, value : T): T {
+        Reflect.defineMetadata(key, value, this.class);
+        return value;
+    }
+
+    /**
+     * Define a metadata key on this class's prototype object. This is equivalent to Reflect.defineMetadata(key, value, this.class.prototype)
+     * @param key 
+     * @param value 
+     * @returns 
+     */
+    definePrototypeMetadata<T = any>(key : string, value : T): T {
+        Reflect.defineMetadata(key, value, this.class.prototype);
+        return value;
+    }
+
+    /**
+     * Retrieve the set of property names that are defined directly on this class, excluding 
+     * those which are inherited.
+     */
     get ownPropertyNames(): string[] {
         if (this._ownPropertyNames)
             return this._ownPropertyNames;
         
-        let propertyNames = this.getMetadata('rt:P');
-        this._hasPropertyNamesMeta = !!propertyNames;
+        let propertyNames : string[];
+
+        if (this.hasMetadata('rt:P')) {
+            propertyNames = this.getMetadata('rt:P');
+            this._hasPropertyNamesMeta = !!propertyNames;
+        } else {
+            propertyNames = Object.getOwnPropertyNames(this.class.prototype)
+                .filter(x => x !== 'constructor')
+                .filter(x => typeof this.class.prototype[x] === 'function');
+        }
+
         return this._ownPropertyNames = propertyNames || [];
     }
 
+    /**
+     * Retrieve the set of method names that are defined directly on this class, excluding 
+     * those which are inherited.
+     */
     get ownMethodNames(): string[] {
         if (this._ownMethodNames)
             return this._ownMethodNames;
@@ -1170,6 +1376,10 @@ export class ReflectedClass<ClassT = any> {
     private _ownStaticPropertyNames : string[];
     private _hasStaticPropertyNameMeta = false;
 
+    /**
+     * Retrieve the set of static property names that are defined directly on this class, excluding 
+     * those which are inherited. Always empty for interfaces.
+     */
     get ownStaticPropertyNames(): string[] {
         if (this._ownStaticPropertyNames)
             return this._ownStaticPropertyNames;
@@ -1187,6 +1397,11 @@ export class ReflectedClass<ClassT = any> {
     }
 
     private _ownStaticMethodNames : string[];
+
+    /**
+     * Retrieve the set of static method names that are defined directly on this class, 
+     * excluding those which are inherited. Always empty for interfaces
+     */
     get ownStaticMethodNames(): string[] {
         if (this._ownStaticMethodNames)
             return this._ownStaticMethodNames;
@@ -1201,6 +1416,10 @@ export class ReflectedClass<ClassT = any> {
         return this._ownStaticMethodNames = ownStaticMethodNames;
     }
 
+    /**
+     * Retrieve the set of flags for this class/interface. Use this to check for modifiers or other properties
+     * of the class/interface.
+     */
     get flags(): Readonly<ReflectedFlags> {
         if (this._flags)
             return this._flags;
@@ -1208,29 +1427,16 @@ export class ReflectedClass<ClassT = any> {
         return this._flags = new ReflectedFlags(this.getMetadata('rt:f'));
     }
 
+    /**
+     * True if the class is marked abstract.
+     */
     get isAbstract() {
         return this.flags.isAbstract;
     }
 
-    get isPrivate() {
-        return this.flags.isPrivate;
-    }
-
-    get isPublic() {
-        return this.flags.isPublic;
-    }
-
-    get isProtected() {
-        return this.flags.isProtected;
-    }
-
-    get visibility(): Visibility {
-        return this.isPublic ? 'public' 
-             : this.isProtected ? 'protected' 
-             : this.isPrivate ? 'private' 
-             : 'public';
-    }
-
+    /**
+     * Get the instance method names for this reflected class/interface.
+     */
     get methodNames(): string[] {
         if (this._methodNames)
             return this._methodNames;
@@ -1244,6 +1450,10 @@ export class ReflectedClass<ClassT = any> {
 
 
     private _staticPropertyNames : string[];
+
+    /**
+     * Get the static property names defined for this reflected class. Always empty for interfaces.
+     */
     get staticPropertyNames() {
         if (this._staticPropertyNames)
             return this._staticPropertyNames;
@@ -1256,6 +1466,11 @@ export class ReflectedClass<ClassT = any> {
     }
 
     private _staticMethodNames : string[];
+
+    /**
+     * Retrieve an array of the names of static methods defined on this reflected class.
+     * Always empty for interfaces.
+     */
     get staticMethodNames(): string[] {
         if (this._staticMethodNames)
             return this._staticMethodNames;
@@ -1269,6 +1484,9 @@ export class ReflectedClass<ClassT = any> {
 
     private _propertyNames : string[];
 
+    /**
+     * Retrieve an array of the names of instance properties defined on this class/interface
+     */
     get propertyNames(): string[] {
         if (this._propertyNames)
             return this._propertyNames;
@@ -1280,6 +1498,9 @@ export class ReflectedClass<ClassT = any> {
         }
     }
 
+    /**
+     * Retrieve the set of reflected methods defined directly on this class/interface.
+     */
     get ownMethods(): ReflectedMethod[] {
         if (this._ownMethods)
             return this._ownMethods;
@@ -1288,6 +1509,11 @@ export class ReflectedClass<ClassT = any> {
     }
 
     private _ownStaticProperties : ReflectedProperty[];
+
+    /**
+     * Retrieve the set of reflected static properties defined directly on this class. Always empty
+     * for interfaces.
+     */
     get ownStaticProperties(): ReflectedProperty[] {
         if (this._ownStaticProperties)
             return this._ownStaticProperties;
@@ -1296,6 +1522,11 @@ export class ReflectedClass<ClassT = any> {
     }
 
     private _ownStaticMethods : ReflectedMethod[];
+
+    /**
+     * Retrieve the set of reflected static methods defined directly on this class. Always
+     * empty for interfaces.
+     */
     get ownStaticMethods(): ReflectedMethod[] {
         if (this._ownStaticMethods)
             return this._ownStaticMethods;
@@ -1303,6 +1534,9 @@ export class ReflectedClass<ClassT = any> {
         return this._ownStaticMethods = this.ownStaticMethodNames.map(name => new ReflectedMethod(<any>this, name, true));
     }
 
+    /**
+     * Retrieve the set of reflected instance methods defined on this class/interface.
+     */
     get methods(): ReflectedMethod[] {
         if (this._methods)
             return this._methods;
@@ -1314,6 +1548,11 @@ export class ReflectedClass<ClassT = any> {
     }
 
     private _staticProperties : ReflectedProperty[];
+
+    /**
+     * Retrieve the set of reflected static properties defined on this class. Always 
+     * empty for interfaces.
+     */
     get staticProperties() {
         if (this._staticProperties)
             return this._staticProperties;
@@ -1325,6 +1564,11 @@ export class ReflectedClass<ClassT = any> {
     }
 
     private _staticMethods : ReflectedMethod[];
+
+    /**
+     * Retrieve the set of reflected static methods defined on this class. Always
+     * empty for interfaces
+     */
     get staticMethods(): ReflectedMethod[] {
         if (this._staticMethods)
             return this._staticMethods;
@@ -1335,6 +1579,9 @@ export class ReflectedClass<ClassT = any> {
             return this._staticMethods = this.ownStaticMethods;
     }
 
+    /**
+     * Retrieve the set of reflected instance properties defined directly on this class/interface
+     */
     get ownProperties(): ReflectedProperty[] {
         if (this._ownProperties)
             return this._ownProperties;
@@ -1342,6 +1589,9 @@ export class ReflectedClass<ClassT = any> {
         return this._ownProperties = this.ownPropertyNames.map(name => new ReflectedProperty(<any>this, name, false));
     }
 
+    /**
+     * Retrieve the set of reflected instance methods defined on this class/interface
+     */
     get properties(): ReflectedProperty[] {
         if (this._properties)
             return this._properties;
@@ -1366,14 +1616,24 @@ export class ReflectedClass<ClassT = any> {
         return this._rawParameterMetadata = rawParams || [];
     }
 
+    /**
+     * Retrieve an array of the parameter names for this class's constructor.
+     */
     get parameterNames() {
         return this.rawParameterMetadata.map(x => x.n);
     }
 
+    /**
+     * Retrieve an array of the types for the parameters of this class's
+     * constructor.
+     */
     get parameterTypes() {
         return this.rawParameterMetadata.map(x => x.t);
     }
 
+    /**
+     * Retrieve the set of reflected parameters for this class's constructor.
+     */
     get parameters(): ReflectedConstructorParameter[] {
         if (this._parameters)
             return this._parameters;
@@ -1381,24 +1641,49 @@ export class ReflectedClass<ClassT = any> {
         return this._parameters = this.rawParameterMetadata.map(x => new ReflectedConstructorParameter(<any>this, x));
     }
 
+    /**
+     * Get a reflected constructor parameter by name.
+     * @param name 
+     * @returns 
+     */
     getParameter(name : string) {
         return this.parameters.find(x => x.name === name);
     }
 
+    /**
+     * Get a reflected instance method (declared directly on this class) by name
+     * @param name 
+     * @returns 
+     */
     getOwnMethod(name : string) {
         return this.ownMethods.find(x => x.name === name);
     }
 
+    /**
+     * Get a reflected instance method by name
+     * @param name 
+     * @returns 
+     */
     getMethod(name : string) {
         return this.methods.find(x => x.name === name);
     }
 
+    /**
+     * Get a reflected static method by name
+     * @param name 
+     * @returns 
+     */
     getStaticMethod(name : string) {
         return this.staticMethods.find(x => x.name === name);
     }
 
     private _dynamicStaticProperties = new Map<string,ReflectedProperty>();
 
+    /**
+     * Get a reflected static property (declared directly on this class) by name
+     * @param name 
+     * @returns 
+     */
     getOwnStaticProperty(name : string) {
         let matchingProp = this.ownStaticProperties.find(x => x.name === name);
         if (matchingProp)
@@ -1414,6 +1699,11 @@ export class ReflectedClass<ClassT = any> {
         }
     }
 
+    /**
+     * Get a reflected static property by name
+     * @param name 
+     * @returns 
+     */
     getStaticProperty(name : string) {
         let matchingProp = this.staticProperties.find(x => x.name === name);
         if (matchingProp)
@@ -1429,6 +1719,11 @@ export class ReflectedClass<ClassT = any> {
         }
     }
 
+    /**
+     * Get a reflected instance property (declared directly on this class) by name
+     * @param name 
+     * @returns 
+     */
     getOwnProperty(name : string) {
         let matchingProp = this.ownProperties.find(x => x.name === name);
         if (matchingProp)
@@ -1446,6 +1741,11 @@ export class ReflectedClass<ClassT = any> {
 
     private _dynamicProperties = new Map<string, ReflectedProperty>();
 
+    /**
+     * Get a reflected instance property by name
+     * @param name 
+     * @returns 
+     */
     getProperty(name : string): ReflectedProperty {
         let matchingProp = this.properties.find(x => x.name === name);
         if (matchingProp)

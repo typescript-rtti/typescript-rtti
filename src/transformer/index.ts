@@ -23,6 +23,8 @@
  *   as above.
  * - The "rt:P" metadata item represents an array of property names
  * - The "rt:m" metadata item represents an array of method names
+ * - The "rt:SP" metadata item represents an array of static property names
+ * - The "rt:Sm" metadata item represents an array of static method names
  * 
  */
 
@@ -97,6 +99,8 @@ interface TypeImport {
 interface ClassDetails {
     methodNames : string[];
     propertyNames : string[];
+    staticPropertyNames : string[];
+    staticMethodNames : string[];
 }
 
 const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program : ts.Program) => {
@@ -498,10 +502,17 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 let decs : ts.Decorator[] = [
                 ];
 
-                if (details.propertyNames.length > 0)
+                if (details.propertyNames.length > 0) {
+                    if (ts.isClassDeclaration(klass))
+                        decs.push(metadataDecorator('rt:SP', details.staticPropertyNames));
                     decs.push(metadataDecorator('rt:P', details.propertyNames));
-                if (details.methodNames.length > 0)
+                }
+
+                if (details.methodNames.length > 0) {
+                    if (ts.isClassDeclaration(klass))
+                        decs.push(metadataDecorator('rt:Sm', details.staticMethodNames));
                     decs.push(metadataDecorator('rt:m', details.methodNames));
+                }
 
                 if (ts.isClassDeclaration(klass)) {
                     let constructor = klass.members.find(x => ts.isConstructorDeclaration(x)) as ts.ConstructorDeclaration;
@@ -610,14 +621,24 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             function classAnalyzer(classDecl : ts.ClassDeclaration): ClassDetails {
                 let details : ClassDetails = {
                     methodNames: [],
-                    propertyNames: []
+                    propertyNames: [],
+                    staticMethodNames: [],
+                    staticPropertyNames: []
                 };
 
                 const visitor = function(node : ts.Node) {
                     if (ts.isPropertyDeclaration(node)) {
-                        details.propertyNames.push(node.name.getText())
+                        if ((node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword)) {
+                            details.staticMethodNames.push(node.name.getText());
+                        } else {
+                            details.staticPropertyNames.push(node.name.getText());
+                        }
                     } else if (ts.isMethodDeclaration(node)) {
-                        details.methodNames.push(node.name.getText())
+                        if ((node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword)) {
+                            details.staticMethodNames.push(node.name.getText());
+                        } else {
+                            details.methodNames.push(node.name.getText())
+                        }
                     } else if (ts.isConstructorDeclaration(node)) {
                         for (let param of node.parameters) {
                             let isProperty = 
@@ -648,7 +669,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             function interfaceAnalyzer(ifaceDecl : ts.InterfaceDeclaration): ClassDetails {
                 let details : ClassDetails = {
                     methodNames: [],
-                    propertyNames: []
+                    propertyNames: [],
+                    staticPropertyNames: [],
+                    staticMethodNames: []
                 };
 
                 const visitor = function(node : ts.Node) {

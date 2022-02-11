@@ -6,6 +6,61 @@ import * as flags from '../common/flags';
 import { ReflectedFunction } from "./reflect";
 
 describe('ReflectedClass', it => {
+    describe('ownMethodNames', it => {
+        it('includes only the own methods', () => {
+            class A {
+                foo() { }
+            }
+
+            class B extends A {
+                bar() { }
+            }
+
+            Reflect.defineMetadata('rt:m', ['foo'], A);
+            Reflect.defineMetadata('rt:m', ['bar'], B);
+
+            expect(ReflectedClass.new(A).ownPropertyNames).to.eql(['foo']);
+            expect(ReflectedClass.new(B).ownPropertyNames).to.eql(['bar']);
+        });
+    });
+    describe('ownPropertyNames', it => {
+        it('includes only the own properties', () => {
+
+            class A {
+                foo : string;
+            }
+
+            class B extends A {
+                bar : string;
+            }
+
+            Reflect.defineMetadata('rt:P', ['foo'], A);
+            Reflect.defineMetadata('rt:P', ['bar'], B);
+
+            expect(ReflectedClass.new(A).ownPropertyNames).to.eql(['foo']);
+            expect(ReflectedClass.new(B).ownPropertyNames).to.eql(['bar']);
+        })
+        it('works on interfaces', () => {
+
+            interface A {
+                foo : string;
+            }
+            const IΦA = { name: 'A', prototype: {}, identity: Symbol('A') };
+            Reflect.defineMetadata('rt:P', ['foo'], IΦA);
+
+            interface B extends A {
+                bar : string;
+            }
+            const IΦB = { name: 'B', prototype: {}, identity: Symbol('B') };
+            Reflect.defineMetadata('rt:P', ['bar'], IΦB);
+
+            Reflect.defineMetadata('rt:P', ['foo'], IΦA);
+            Reflect.defineMetadata('rt:P', ['bar'], IΦB);
+
+            expect(ReflectedClass.new(IΦA).ownPropertyNames).to.eql(['foo']);
+            expect(ReflectedClass.new(IΦB).ownPropertyNames).to.eql(['bar']);
+        })
+    });
     it('can reflect constructor parameters', () => {
         class A {}
         Reflect.defineMetadata('rt:p', [{n: 'a', t: () => Number}, {n: 'b', t: () => String}], A);
@@ -49,33 +104,6 @@ describe('ReflectedClass', it => {
         Reflect.defineMetadata('rt:f', `C${flags.F_ABSTRACT}`, A);
         refClass = ReflectedClass.new(A);
         expect(refClass.flags.isAbstract).to.be.true;
-    });
-    it('can reflect public', () => {
-        class A {}
-        let refClass = ReflectedClass.new(A);
-        expect(refClass.flags.isPublic).to.be.false;
-
-        Reflect.defineMetadata('rt:f', `C${flags.F_PUBLIC}`, A);
-        refClass = ReflectedClass.new(A);
-        expect(refClass.visibility).to.equal('public');
-    });
-    it('can reflect private', () => {
-        class A {}
-        let refClass = ReflectedClass.new(A);
-        expect(refClass.flags.isPrivate).to.be.false;
-
-        Reflect.defineMetadata('rt:f', `C${flags.F_PRIVATE}`, A);
-        refClass = ReflectedClass.new(A);
-        expect(refClass.visibility).to.equal('private');
-    });
-    it('can reflect protected', () => {
-        class A {}
-        let refClass = ReflectedClass.new(A);
-        expect(refClass.flags.isProtected).to.be.false;
-
-        Reflect.defineMetadata('rt:f', `C${flags.F_PROTECTED}`, A);
-        refClass = ReflectedClass.new(A);
-        expect(refClass.visibility).to.equal('protected');
     });
     it('can reflect upon inherited methods', () => {
         class A {}
@@ -466,7 +494,8 @@ describe('ReflectedProperty', it => {
         class B {}
         Reflect.defineMetadata('rt:t', () => Number, B, 'foo');
         Reflect.defineMetadata('rt:t', () => String, B, 'bar');
-        Reflect.defineMetadata('rt:SP', ['foo', 'bar'], B);
+        Reflect.defineMetadata('rt:SP', ['foo', 'bar', 'baz'], B);
+        expect(ReflectedClass.new(B).staticPropertyNames).to.eql(['foo', 'bar', 'baz']);
         expect(ReflectedClass.new(B).getStaticProperty('foo').type.isClass(Number)).to.be.true;
         expect(ReflectedClass.new(B).getStaticProperty('bar').type.isClass(String)).to.be.true;
     })

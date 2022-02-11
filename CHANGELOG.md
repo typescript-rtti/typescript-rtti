@@ -1,3 +1,12 @@
+# vNext
+- Breaking: `ReflectedFunction#rawParameterMetadata` and `ReflectedProperty#rawParameterMetadata` are now marked `@internal`. Use 
+  `parameterNames` and `parameterTypes` instead.
+- Breaking: `isPrivate`, `isPublic` and `isProtected` accessors on `ReflectedClass` are removed. These were always 
+  false.
+- Adds support for emitting static method/property lists (rt:SP and rt:Sm)
+- Improved documentation
+
+
 # v0.0.21
 - Support more inferred types (class/interface/union/intersection)
 - Support function return type / parameter types
