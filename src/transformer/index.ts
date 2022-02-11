@@ -26,13 +26,13 @@
  * 
  */
 
-import { F_ABSTRACT, F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isExported, isReadOnly } from './flags';
+import { F_ABSTRACT, F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef } from './forward-ref';
 import { metadataDecorator } from './metadata-decorator';
 import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID } from '../common';
+import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE } from '../common';
 import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
 
 export class CompileError extends Error {}
@@ -137,6 +137,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             let currentNameScope : ts.ClassDeclaration | ts.InterfaceDeclaration;
             let currentLexicalScope : ts.SourceFile | ts.Block | ts.ModuleBlock | ts.CaseBlock = sourceFile;
             let metadataCollector = inlineMetadataCollector;
+            let outboardMetadataCollector = metadataCollector;
 
             function scope<T = any>(nameScope : ts.ClassDeclaration | ts.InterfaceDeclaration, callback: () => T) {
                 let originalScope = currentNameScope;
@@ -190,6 +191,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
             function collectMetadata<T = any>(callback : () => T): { node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator }[] } {
                 let originalCollector = metadataCollector;
+                let originalOutboardCollector = outboardMetadataCollector;
 
                 let decorators : { node : ts.Node, decorator : ts.Decorator }[] = [];
 
@@ -211,6 +213,14 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 };
 
                 metadataCollector = externalMetadataCollector;
+
+                // The outboard metadata collector is used for class elements which are compiled away in the 
+                // resulting Javascript, for instance abstract methods. In that case the decorators on the 
+                // item are discarded. So instead we collect the metadata for placement outside the class 
+                // definition, which is the nearest place where it is valid to insert a call expression.
+
+                outboardMetadataCollector = externalMetadataCollector;
+
                 try {
                     return {
                         node: callback(),
@@ -218,6 +228,40 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     }
                 } finally {
                     metadataCollector = originalCollector;
+                    outboardMetadataCollector = originalOutboardCollector;
+                }
+            }
+
+            function collectOutboardMetadata<T = any>(callback : () => T): { node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator }[] } {
+                let originalCollector = outboardMetadataCollector;
+
+                let decorators : { node : ts.Node, decorator : ts.Decorator }[] = [];
+
+                function externalMetadataCollector<T extends ts.Node>(node : T, addedDecorators : ts.Decorator[]): T {
+                    let property : string;
+
+                    if (ts.isMethodDeclaration(node)) {
+                        property = node.name.getText();
+                    } else if (ts.isPropertyDeclaration(node)) {
+                        property = node.name.getText();
+                    } else if (ts.isMethodSignature(node)) {
+                        property = node.name.getText();
+                    } else if (ts.isPropertySignature(node)) {
+                        property = node.name.getText();
+                    }
+
+                    decorators.push(...addedDecorators.map(decorator => ({ property, node, decorator })));
+                    return node;
+                };
+
+                outboardMetadataCollector = externalMetadataCollector;
+                try {
+                    return {
+                        node: callback(),
+                        decorators
+                    }
+                } finally {
+                    outboardMetadataCollector = originalCollector;
                 }
             }
 
@@ -297,7 +341,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if (kind !== TypeReferenceSerializationKind.Unknown && kind !== TypeReferenceSerializationKind.TypeWithConstructSignatureAndValue)
                         return ts.factory.createIdentifier('Object');
 
-                    let type = program.getTypeChecker().getTypeFromTypeNode(typeNode);                
+                    let type = program.getTypeChecker().getTypeFromTypeNode(typeNode); 
 
                     if (type.isIntersection() || type.isUnion())
                         return ts.factory.createIdentifier('Object');
@@ -550,7 +594,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     }
                 }
 
-                decs.push(metadataDecorator('rt:f', `${F_CLASS}${getVisibility(klass.modifiers)}${isAbstract(klass.modifiers)}${isExported(klass.modifiers)}`));
+                let fType = ts.isInterfaceDeclaration(klass) ? F_INTERFACE : F_CLASS;
+                decs.push(metadataDecorator('rt:f', `${fType}${getVisibility(klass.modifiers)}${isAbstract(klass.modifiers)}${isExported(klass.modifiers)}`));
 
                 return decs;
             }
@@ -634,26 +679,52 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return ts.factory.createVoidZero();
                 } else if ((type.flags & ts.TypeFlags.BigInt) !== 0) {
                     return ts.factory.createIdentifier('BigInt');
+                } else if (type.isUnion()) {
+                    return serialize({
+                        TΦ: T_UNION,
+                        t: type.types.map(x => literalNode(typeToTypeRef(x)))
+                    });
+                } else if (type.isIntersection()) {
+                    return serialize({
+                        TΦ: T_INTERSECTION,
+                        t: type.types.map(x => literalNode(typeToTypeRef(x)))
+                    });
+                } else if (type.isLiteral()) {
+                    return serialize(type.value);
                 } else if ((type.flags & ts.TypeFlags.Object) !== 0) {
+                    if (type.isClass()) {
+                        return ts.factory.createIdentifier(type.symbol.name);
+                    } else if (type.isClassOrInterface()) {
+                        return ts.factory.createIdentifier(`IΦ${type.symbol.name}`);
+                    }
+
                     return ts.factory.createIdentifier('Object');
+                } else if ((type.flags & ts.TypeFlags.Any) !== 0) {
+                    return serialize({ TΦ: T_ANY });
                 }
 
                 // No idea
                 return ts.factory.createIdentifier('Object');
             }
         
-            function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature) {
+            function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration) {
                 let decs : ts.Decorator[] = [];
 
                 if (emitStandardMetadata)
                     decs.push(metadataDecorator('design:type', literalNode(ts.factory.createIdentifier('Function'))));
                                 
                 decs.push(...extractParamsMetadata(method));
-                decs.push(metadataDecorator('rt:f', `${F_METHOD}${getVisibility(method.modifiers)}${isAbstract(method.modifiers)}`));
 
-                let returnType : ts.Expression;
+                if (ts.isFunctionDeclaration(method)) {
+                    let type = F_FUNCTION;
+                    decs.push(metadataDecorator('rt:f', `${type}${isAsync(method.modifiers)}`));
+                } else {
+                    let type = F_METHOD;
+                    let flags = `${type}${getVisibility(method.modifiers)}${isAbstract(method.modifiers)}${isAsync(method.modifiers)}`;
+                    decs.push(metadataDecorator('rt:f', flags));
+                }
+
                 if (method.type) {
-                    returnType = serializeTypeRef(method.type, true);
                     decs.push(...extractTypeMetadata(method.type, 'returntype'));
                 } else {
                     let signature = program.getTypeChecker().getSignatureFromDeclaration(method);
@@ -663,7 +734,6 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if (emitStandardMetadata)
                         decs.push(metadataDecorator('design:returntype', literalNode(ts.factory.createVoidZero())));
                 }
-
 
                 return decs;
             }
@@ -946,10 +1016,23 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     let details = classAnalyzer(node);
                     
                     return scope(node, () => {
-                        return ts.visitEachChild(
-                            metadataCollector(node, extractClassMetadata(<ts.ClassDeclaration>node, details)), 
-                            visitor, context
-                        );
+                        let outboardMetadata = collectOutboardMetadata(() => {
+                            node = ts.visitEachChild(
+                                metadataCollector(node, extractClassMetadata(<ts.ClassDeclaration>node, details)), 
+                                visitor, context
+                            );
+                        });
+
+                        return [
+                            node,
+                            ...(outboardMetadata.decorators.map(dec => ts.factory.createCallExpression(dec.decorator.expression, undefined, [
+                                ts.factory.createPropertyAccessExpression(
+                                    ts.factory.createIdentifier((node as ts.ClassDeclaration).name.text), 
+                                    'prototype'
+                                ),
+                                ts.factory.createStringLiteral(dec.property)
+                            ])))
+                        ]
                     });
 
                 } else if (ts.isInterfaceDeclaration(node)) {
@@ -1033,12 +1116,29 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             ])))
                         ]
                     });
+                } else if (ts.isFunctionDeclaration(node)) {
+                    let metadata = extractMethodMetadata(node);
+                    node = ts.visitEachChild(node, visitor, context);
+                    return [
+                        node,
+                        ...(metadata.map(dec => ts.factory.createCallExpression(dec.expression, undefined, [
+                            ts.factory.createIdentifier(`${(node as ts.FunctionDeclaration).name.text}`)
+                        ])))
+                    ]
                 } else if (ts.isMethodDeclaration(node)) {
                     if (ts.isClassDeclaration(node.parent)) {
                         if (trace)
                             console.log(`Decorating class method ${node.parent.name.text}#${node.name.getText()}`);
                         
-                        node = metadataCollector(node, extractMethodMetadata(node));
+                        let metadata = extractMethodMetadata(node);
+                        let name = node.name.getText();
+                        let isAbstract = (node.modifiers ?? []).some(x => x.kind === ts.SyntaxKind.AbstractKeyword);
+
+                        if (isAbstract) {
+                            outboardMetadataCollector(node, metadata);
+                        } else {
+                            node = metadataCollector(node, metadata);
+                        }
                     }
                 } else if (ts.isMethodSignature(node)) {
                     if (ts.isInterfaceDeclaration(node.parent)) {

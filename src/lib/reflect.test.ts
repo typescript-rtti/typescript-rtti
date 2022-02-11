@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { ReflectedClass } from "./reflect";
 import { InterfaceToken } from "../common";
 import * as flags from '../common/flags';
-import { ReflectedClassRef } from ".";
+import { ReflectedFunction } from "./reflect";
 
 describe('ReflectedClass', it => {
     it('can reflect constructor parameters', () => {
@@ -238,6 +238,20 @@ describe('ReflectedMethod', it => {
         Reflect.defineMetadata('rt:Sm', ['foo', 'bar'], B);
         expect(ReflectedClass.new(B).getStaticMethod('foo').returnType.isClass(Number)).to.be.true;
         expect(ReflectedClass.new(B).getStaticMethod('bar').returnType.isUnknown()).to.be.true;
+    })
+    it('reflects function return type', () => {
+        function B() { }
+        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}`, B);
+        Reflect.defineMetadata('rt:t', () => Number, B);
+        expect(ReflectedFunction.new(B).returnType.isClass(Number)).to.be.true;
+    })
+    it('reflects function async flag', () => {
+        function A() { }
+        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}`, A);
+        function B() { }
+        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}${flags.F_ASYNC}`, B);
+        expect(ReflectedFunction.new(A).isAsync).to.be.false;
+        expect(ReflectedFunction.new(B).isAsync).to.be.true;
     })
     it('reflects static method names without metadata', () => {
         class B {

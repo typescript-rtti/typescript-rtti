@@ -1,3 +1,11 @@
+# v0.0.21
+- Support more inferred types (class/interface/union/intersection)
+- Support function return type / parameter types
+- Support reflecting on abstract methods
+- Support the abstract flag on methods
+- Support async flag on methods and functions
+- Emit the interface flag on interfaces
+
 # v0.0.20
 
 - Added support for `void` type

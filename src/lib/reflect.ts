@@ -601,6 +601,7 @@ export class ReflectedFlags {
     @Flag(Flags.F_PROPERTY) isProperty : boolean;
     @Flag(Flags.F_METHOD) isMethod : boolean;
     @Flag(Flags.F_CLASS) isClass : boolean;
+    @Flag(Flags.F_INTERFACE) isInterface : boolean;
     @Flag(Flags.F_OPTIONAL) isOptional : boolean;
     @Flag(Flags.F_ASYNC) isAsync : boolean;
     @Flag(Flags.F_EXPORTED) isExported : boolean;
@@ -661,7 +662,7 @@ export class ReflectedParameter {
  */
 export class ReflectedMethodParameter extends ReflectedParameter {
     constructor(
-        readonly method : ReflectedMethod,
+        readonly method : ReflectedMethod | ReflectedFunction,
         readonly rawMetadata : RawParameterMetadata
     ) {
         super(rawMetadata);
@@ -784,6 +785,99 @@ export class ReflectedMember {
 
     get isOptional() {
         return this.flags.isOptional;
+    }
+}
+
+export class ReflectedFunction<T extends Function = Function> {
+    private constructor(
+        readonly func : T
+    ) {
+    }
+
+    private _flags : ReflectedFlags;
+    private _returnType : ReflectedTypeRef;
+    private _rawParameterMetadata : RawParameterMetadata[];
+    private _parameters : ReflectedMethodParameter[];
+
+    /** 
+     * Create a new ReflectedClass instance for the given type without sharing. Used during testing.
+     * @internal 
+     **/
+    static new<FunctionT extends Function>(func : FunctionT) {
+        return new ReflectedFunction<FunctionT>(func);
+    }
+
+    hasMetadata(key : string): boolean {
+        return Reflect.hasMetadata(key, this.func);
+    }
+
+    getMetadata<T = any>(key : string): T {
+        return Reflect.getMetadata(key, this.func);
+    }
+
+    get flags(): Readonly<ReflectedFlags> {
+        if (this._flags)
+            return this._flags;
+        
+        return this._flags = new ReflectedFlags(this.getMetadata('rt:f'));
+    }
+
+    get rawParameterMetadata(): RawParameterMetadata[] {
+        if (this._rawParameterMetadata)
+            return this._rawParameterMetadata;
+        
+        return this._rawParameterMetadata = this.getMetadata('rt:p');
+    }
+
+    get parameterNames() {
+        return this.rawParameterMetadata.map(x => x.n);
+    }
+
+    private _parameterTypes : ReflectedTypeRef[];
+
+    get parameterTypes() {
+        if (this._parameterTypes !== undefined)
+            return this._parameterTypes;
+        
+        if (this.rawParameterMetadata !== undefined) {
+            return this._parameterTypes = this.rawParameterMetadata.map(param => {
+                return param.t ? ReflectedTypeRef.createFromRtRef(param.t()) : ReflectedTypeRef.createUnknown();
+            });
+        } else if (this.hasMetadata('design:paramtypes')) {
+            let params : Function[] = this.getMetadata('design:paramtypes');
+            return this._parameterTypes = params.map(t => ReflectedTypeRef.createFromRtRef(() => t));
+        }
+    }
+
+    get parameters() {
+        if (this._parameters)
+            return this._parameters;
+        
+        return this._parameters = this.rawParameterMetadata.map(x => new ReflectedMethodParameter(this, x));
+    }
+
+    getParameter(name : string) {
+        return this.parameters.find(x => x.name === name);
+    }
+
+    get returnType(): ReflectedTypeRef {
+        if (this._returnType !== undefined)
+            return this._returnType;
+
+        let typeResolver = this.getMetadata('rt:t');
+        if (!typeResolver && this.hasMetadata('design:returntype')) {
+            let designReturnType = this.getMetadata('design:returntype');
+            typeResolver = () => (designReturnType || null);
+        }
+
+        if (!typeResolver)
+            return ReflectedTypeRef.createUnknown();
+        
+        return this._returnType = ReflectedTypeRef.createFromRtRef(typeResolver());
+    }
+
+    get isAsync() {
+        return this.flags.isAsync;
     }
 }
 

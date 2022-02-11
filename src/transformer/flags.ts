@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { F_ABSTRACT, F_EXPORTED, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from '../common';
+import { F_ABSTRACT, F_ASYNC, F_EXPORTED, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from '../common';
 export * from '../common/flags';
 
 export function getVisibility(modifiers : ts.ModifiersArray) {
@@ -27,6 +27,13 @@ export function isAbstract(modifiers : ts.ModifiersArray) {
         return '';
     
     return modifiers.some(x => x.kind === ts.SyntaxKind.AbstractKeyword) ? F_ABSTRACT : '';
+}
+
+export function isAsync(modifiers : ts.ModifiersArray) {
+    if (!modifiers)
+        return '';
+    
+    return modifiers.some(x => x.kind === ts.SyntaxKind.AsyncKeyword) ? F_ASYNC : '';
 }
 
 export function isExported(modifiers : ts.ModifiersArray) {

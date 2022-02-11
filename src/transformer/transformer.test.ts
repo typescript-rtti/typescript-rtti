@@ -3,10 +3,9 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
-import { F_ABSTRACT, F_CLASS, F_EXPORTED, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
+import { F_ABSTRACT, F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { InterfaceToken } from '../common';
 import { runSimple } from '../runner.test';
-import { reify, reflect } from '../lib';
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 function hasProperty(map: ts.MapLike<any>, key: string): boolean {
@@ -489,6 +488,18 @@ describe('RTTI: ', () => {
         
                 let aFlags = Reflect.getMetadata('rt:f', exports.A);
                 expect(aFlags).to.contain(F_CLASS);
+                expect(aFlags).not.to.contain(F_INTERFACE);
+            });
+            it('identify interfaces', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export interface A { }
+                    `
+                });
+        
+                let aFlags = Reflect.getMetadata('rt:f', exports.IΦA);
+                expect(aFlags).to.contain(F_INTERFACE);
+                expect(aFlags).not.to.contain(F_CLASS);
             });
             it('identifies exported classes', async () => {
                 let exports = await runSimple({
@@ -517,6 +528,44 @@ describe('RTTI: ', () => {
                 expect(aFlags).not.to.contain(F_ABSTRACT);
                 expect(bFlags).to.contain(F_ABSTRACT);
             });
+            it('identifies abstract methods', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export abstract class B { 
+                            foo() { }
+                            abstract bar();
+                        }
+                    `
+                });
+        
+                let fooFlags = Reflect.getMetadata('rt:f', exports.B.prototype, 'foo');
+                let barFlags = Reflect.getMetadata('rt:f', exports.B.prototype, 'bar');
+                expect(fooFlags).not.to.contain(F_ABSTRACT);
+                expect(barFlags).to.contain(F_ABSTRACT);
+            });
+            it('identifies functions', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export function a() { }
+                    `
+                });
+        
+                let aFlags = Reflect.getMetadata('rt:f', exports.a);
+                expect(aFlags).to.contain(F_FUNCTION);
+            })
+            it('identifies async functions', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export function a() { }
+                        export async function b() { }
+                    `
+                });
+        
+                let aFlags = Reflect.getMetadata('rt:f', exports.a);
+                let bFlags = Reflect.getMetadata('rt:f', exports.b);
+                expect(aFlags).not.to.contain(F_ASYNC);
+                expect(bFlags).to.contain(F_ASYNC);
+            })
         });
         describe('rt:p', () => {
             it('emits for ctor params', async () => {
@@ -642,6 +691,21 @@ describe('RTTI: ', () => {
                 expect(params[1].t()).to.equal(exports.B);
                 expect(params[1].n).to.equal('world');
             });
+            it('emits for function params', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export function c(hello : A, world : B): B { return world; }
+                    `
+                });
+        
+                let params = Reflect.getMetadata('rt:p', exports.c);
+                expect(params[0].t()).to.equal(exports.A);
+                expect(params[0].n).to.equal('hello');
+                expect(params[1].t()).to.equal(exports.B);
+                expect(params[1].n).to.equal('world');
+            });
         });
         describe('rt:t', it => {
             it('emits for designed class return type', async () => {
@@ -656,6 +720,30 @@ describe('RTTI: ', () => {
                 });
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(exports.B);
+            })
+            it('emits for designed function return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export function c(hello : A, world : B): B { return world; }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.c);
+                expect(type()).to.equal(exports.B);
+            })
+            it('emits for inferred function return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export function c(hello : A, world : B) { return world; }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.c);
                 expect(type()).to.equal(exports.B);
             })
             it('emits for static method return type', async () => {
@@ -1023,7 +1111,7 @@ describe('RTTI: ', () => {
                 expect(type.t).to.equal(Object);
                 expect(type.p).to.eql([exports.A]);
             })
-            it('emits for inferred class return type (as Object)', async () => {
+            it('emits for inferred class return type', async () => {
                 // TODO: requires type checker to test
                 let exports = await runSimple({
                     code: `
@@ -1036,7 +1124,100 @@ describe('RTTI: ', () => {
                 });
         
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-                expect(type()).to.equal(Object);
+                expect(type()).to.equal(exports.B);
+            })
+            it('emits for inferred interface return type', async () => {
+                // TODO: requires type checker to test
+                let exports = await runSimple({
+                    code: `
+                        export interface A {}
+                        export class C {
+                            method(hello : A) { return hello; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(exports.IΦA);
+            })
+            it('emits for inferred union return type', async () => {
+                // TODO: requires type checker to test
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method(hello : string, world : number) { if (1) return hello; else return world; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_UNION, t: [ String, Number ] });
+            })
+            it('emits for inferred intersection return type', async () => {
+                // TODO: requires type checker to test
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            method() { return <A & B><any>hello; }
+                        }
+                    `
+                });
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_INTERSECTION, t: [ exports.A, exports.B ] });
+            })
+            it('emits for inferred any return type (via null)', async () => {
+                // TODO: requires type checker to test
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method() { return null; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_ANY });
+            })
+            it('emits for inferred undefined return type (via undefined)', async () => {
+                // TODO: requires type checker to test
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method() { return undefined; }
+                        }
+                    `
+                });
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.eql({ TΦ: T_ANY });
+            })
+            it('emits for inferred boolean return type (via false)', async () => {
+                // TODO: requires type checker to test
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method() { return false; }
+                        }
+                    `
+                });
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Boolean);
+            })
+            it('emits for inferred boolean return type (via true)', async () => {
+                // TODO: requires type checker to test
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            method() { return true; }
+                        }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(Boolean);
             })
             it('emits for inferred intrinsic return type', async () => {
                 let exports = await runSimple({
@@ -1112,6 +1293,25 @@ describe('RTTI: ', () => {
                 expect(type.TΦ).to.equal(T_GENERIC);
                 expect(type.t).to.equal(Promise);
                 expect(type.p).to.eql([ String ]);
+            })
+            it('emits for union as type parameter', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A<T> { }
+                        export class C {
+                            method() : A<number | string> {
+                                return 123; 
+                            }
+                        }
+                    `
+                });
+        
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_GENERIC);
+                expect(type.t).to.equal(exports.A);
+                expect(type.p).to.eql([ { TΦ: T_UNION, t: [ Number, String ] } ]);
             })
         });
         describe('rt:i', it => {
