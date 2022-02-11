@@ -464,7 +464,7 @@ describe('RTTI: ', () => {
                     export class A { }
                     export class B { }
                     export class C {
-                        method(hello : A, world : B) { }
+                        public method(hello : A, world : B) { }
                     }
                 `, 
                 compilerOptions: { 
@@ -566,6 +566,124 @@ describe('RTTI: ', () => {
                 expect(aFlags).not.to.contain(F_ASYNC);
                 expect(bFlags).to.contain(F_ASYNC);
             })
+            it('identifies public methods', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            public foo() { }
+                            protected bar() { }
+                            private baz() { }
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'foo')).to.contain(F_PUBLIC);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'bar')).not.to.contain(F_PUBLIC);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PUBLIC);
+            });
+            it('identifies protected methods', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            public foo() { }
+                            protected bar() { }
+                            private baz() { }
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'foo')).not.to.contain(F_PROTECTED);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'bar')).to.contain(F_PROTECTED);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PROTECTED);
+            });
+            it('identifies private methods', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            public foo() { }
+                            protected bar() { }
+                            private baz() { }
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'foo')).not.to.contain(F_PRIVATE);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'bar')).not.to.contain(F_PRIVATE);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).to.contain(F_PRIVATE);
+            });
+            it('identifies bare methods', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            baz() { }
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PUBLIC);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PROTECTED);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PRIVATE);
+            });
+
+
+            it('identifies public properties', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            public foo;
+                            protected bar;
+                            private baz;
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'foo')).to.contain(F_PUBLIC);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'bar')).not.to.contain(F_PUBLIC);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PUBLIC);
+            });
+            it('identifies protected properties', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            public foo;
+                            protected bar;
+                            private baz;
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'foo')).not.to.contain(F_PROTECTED);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'bar')).to.contain(F_PROTECTED);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PROTECTED);
+            });
+            it('identifies private properties', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            public foo;
+                            protected bar;
+                            private baz;
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'foo')).not.to.contain(F_PRIVATE);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'bar')).not.to.contain(F_PRIVATE);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).to.contain(F_PRIVATE);
+            });
+            it('identifies bare properties', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class C {
+                            baz;
+                        }
+                    `
+                });
+        
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PUBLIC);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PROTECTED);
+                expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PRIVATE);
+            });
         });
         describe('rt:p', () => {
             it('emits for ctor params', async () => {

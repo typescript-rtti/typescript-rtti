@@ -616,7 +616,7 @@ export class ReflectedFlags {
 
 export type Visibility = 'public' | 'private' | 'protected';
 
-export interface RawParameterMetadata {
+interface RawParameterMetadata {
     n : string;
     t : Function;
     f? : string;
@@ -633,18 +633,27 @@ export class ReflectedParameter {
 
     private _flags : ReflectedFlags;
 
+    /**
+     * Get the unmangled original name for this parameter
+     */
     get name() {
         return this.rawMetadata.n;
     }
 
     private _type : ReflectedTypeRef;
 
+    /**
+     * Get the reflected type of this parameter
+     */
     get type(): ReflectedTypeRef {
         if (this._type)
             return this._type;
         return this._type = ReflectedTypeRef.createFromRtRef(this.rawMetadata.t());
     }
 
+    /**
+     * Get flags that define aspects of this property.
+     */
     get flags() {
         if (this._flags)
             return this._flags;
@@ -652,6 +661,9 @@ export class ReflectedParameter {
         return this._flags = new ReflectedFlags(this.rawMetadata.f)
     }
 
+    /**
+     * True if this parameter is optional
+     */
     get isOptional() {
         return this.flags.isOptional;
     }
@@ -683,22 +695,41 @@ export class ReflectedConstructorParameter extends ReflectedParameter {
 
     private _class : ReflectedClass;
 
+    /**
+     * Retrieve the reflected class that this constructor parameter is defined on.
+     */
     get class() {
         return this._class;
     }
 
+    /**
+     * True if this constructor parameter is declared readonly, meaning it is
+     * also an instance property of the class.
+     */
     get isReadonly() {
         return this.flags.isReadonly;
     }
 
+    /**
+     * True if this constructor parameter is declared public, meaning it is 
+     * also an instance property of the class.
+     */
     get isPublic() {
         return this.flags.isPublic;
     }
 
+    /**
+     * True if this constructor parameter is declared protected, meaning it is 
+     * also an instance property of the class.
+     */
     get isProtected() {
         return this.flags.isProtected;
     }
 
+    /**
+     * True if this constructor parameter is declared private, meaning it is 
+     * also an instance property of the class.
+     */
     get isPrivate() {
         return this.flags.isPrivate;
     }
@@ -811,6 +842,14 @@ export class ReflectedMember {
      * True if this member has public visibility.
      */
     get isPublic() {
+        return this.visibility === 'public';
+    }
+
+    /**
+     * True if this member is specifically marked as public
+     * (as opposed to default visibility).
+     */
+    get isMarkedPublic() {
         return this.flags.isPublic;
     }
 
@@ -826,7 +865,7 @@ export class ReflectedMember {
      * Can be 'public', 'protected', or 'private'
      */
     get visibility(): Visibility {
-        return this.isPublic ? 'public' 
+        return this.isMarkedPublic ? 'public' 
              : this.isProtected ? 'protected' 
              : this.isPrivate ? 'private' 
              : 'public';

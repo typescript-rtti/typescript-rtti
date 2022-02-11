@@ -12,7 +12,7 @@ export function getVisibility(modifiers : ts.ModifiersArray) {
             return F_PROTECTED;
     }
 
-    return F_PUBLIC;
+    return '';
 }
 
 export function isReadOnly(modifiers : ts.ModifiersArray) {

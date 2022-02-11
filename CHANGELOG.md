@@ -1,11 +1,14 @@
 # vNext
-- Breaking: `ReflectedFunction#rawParameterMetadata` and `ReflectedProperty#rawParameterMetadata` are now marked `@internal`. Use 
-  `parameterNames` and `parameterTypes` instead.
-- Breaking: `isPrivate`, `isPublic` and `isProtected` accessors on `ReflectedClass` are removed. These were always 
+- [Breaking] `ReflectedFunction#rawParameterMetadata` and `ReflectedProperty#rawParameterMetadata` are now marked 
+  `@internal`. `RawParameterMetadata` is no longer exported. Use `parameterNames` and `parameterTypes` instead and 
+  avoid relying on the underlying RTTI metadata.
+- [Breaking] `isPrivate`, `isPublic` and `isProtected` accessors on `ReflectedClass` are removed. These were always 
   false.
 - Adds support for emitting static method/property lists (rt:SP and rt:Sm)
 - Improved documentation
-
+- [Breaking] The public flag (`F_PUBLIC`, `$`) is no longer emitted if the method or property is not explicitly marked public.
+- `ReflectedMember#isPublic` now returns true if no visibility flags are present (ie default visibility).
+- Added `ReflectedMember#isMarkedPublic` to check if a member is specifically marked public.
 
 # v0.0.21
 - Support more inferred types (class/interface/union/intersection)
