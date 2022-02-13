@@ -20,36 +20,53 @@ A Typescript transformer to implement comprehensive runtime type information (RT
 # Introduction
 
 ```typescript
-// Classes
+
+// Comprehensive support for classes
 
 class User {
     id : number;
-    username : string;
+    username? : string;
     protected favoriteColor? : number | string;
+    doIt() { return 123; }
 }
 
-// Get simple property types
-expect(reflect(User).getProperty('id').as('class').class).to.equal(Number);
-expect(reflect(User).getProperty('id').isClass(Number)).to.be.true;
-
-// Modifiers
-expect(reflect(User).getProperty('favoriteColor').isOptional).to.be.true;
-expect(reflect(User).getProperty('favoriteColor').isProtected).to.be.true;
-
-// Advanced types
 expect(reflect(User).getProperty('favoriteColor').type.is('union')).to.be.true;
-expect(reflect(User).getProperty('favoriteColor').type.as('union').types.length).to.equal(2);
-expect(reflect(User).getProperty('favoriteColor').type.as('union').types[0].as('class').class).to.equal(Number);
-expect(reflect(User).getProperty('favoriteColor').type.as('union').types[1].as('class').class).to.equal(String);
+expect(reflect(User).getMethod('doIt').type.isClass(Number)).to.be.true;
 
-// Interfaces support the same metadata as classes
+// Interfaces
 
 interface User {
-    foo : string;
+    id : number;
+    username? : string;
+    protected favoriteColor? : number | string;
+    doIt() { return 123; }
 }
 
-expect(reflect<User>().getProperty('foo').type.isClass(String)).to.be.true;
+expect(reflect<User>().getProperty('username').isOptional).to.be.true;
 
+// Function declarations
+
+function foo(id : number, username : string, protected favoriteColor? : number | string) {
+    return id;
+}
+
+expect(reflect(foo).getParameter('username').type.isClass(String)).to.be.true;
+
+// Function expressions
+
+let foo = function (id : number, username : string, protected favoriteColor? : number | string) {
+    return id;
+}
+
+expect(reflect(foo).getParameter('username').type.isClass(String)).to.be.true;
+
+// Arrow functions
+
+let foo = function (id : number, username : string, protected favoriteColor? : number | string) {
+    return id;
+}
+
+expect(reflect(foo).getParameter('favoriteColor').type.is('union')).to.be.true;
 ```
 
 

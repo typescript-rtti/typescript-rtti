@@ -6,21 +6,33 @@ import rimraf from 'rimraf';
 import { promisify } from 'util';
 
 interface Package {
+    enabled : boolean;
+    acceptFailure? : boolean;
     url : string;
     ref : string;
 }
 
+/**
+ * What open source packages should be compiled by corpus using the local build of 
+ * the typescript-rtti transformer. Failure to build is a failure for the corpus test.
+ */
 const PACKAGES : Record<string, Package> = {
     razmin: {
+        enabled: true,
         url: 'https://github.com/rezonant/razmin.git',
-        ref: 'v1.2.0'
+        ref: '2b643273035cdf2efcab41315562e6e1a49bb16a'
     },
     "@astronautlabs/bitstream": {
+        enabled: true,
+        acceptFailure: true,
         url: 'https://github.com/astronautlabs/bitstream.git',
         ref: 'main'
     }
 };
 
+/**
+ * What Typescript versions should be tested (git tags)
+ */
 const TYPESCRIPTS = ['4.5.5', '4.5', '4', 'latest'];
 
 function run(str : string, cwd? : string) {
@@ -40,9 +52,13 @@ function run(str : string, cwd? : string) {
 async function main() {
     try {
         for (let pkgName of Object.keys(PACKAGES)) {
+            let pkg = PACKAGES[pkgName];
+
+            if (!pkg.enabled)
+                continue;
+
             for (let tsVersion of TYPESCRIPTS) {
                 try {
-                    let pkg = PACKAGES[pkgName];
 
                     let local = `corpus.${pkgName.replace(/\//g, '__')}`;
 
@@ -59,10 +75,25 @@ async function main() {
                     tsconfig.compilerOptions.plugins = [{ transform: '../dist/transformer' }];
                     await fs.writeFile(tsconfigFileName, JSON.stringify(tsconfig, undefined, 2));
 
-                    let result = shell.exec(`ttsc -b`, { cwd: local });
+                    // Patch package.json to call ttsc instead of tsc
+                    let packageFileName = path.join(local, 'package.json');
+                    let packageJson = JSON.parse((await fs.readFile(packageFileName)).toString());
+                    for (let key of Object.keys(packageJson.scripts))
+                        packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/, 'ttsc');
+                    await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
+
+                    let result = shell.exec(`npm run build`, { cwd: local });
                     if (result.code !== 0) {
+                        if (pkg.acceptFailure) {
+                            console.log(`⚠ ${pkgName} [typescript@${tsVersion}]: expected failure`);
+                            continue;
+                        }
                         throw new Error(`ERROR: build failed [${result.code}]`);
                     }
+
+                    result = shell.exec(`npm test`, { cwd: local });
+                    if (result.code !== 0)
+                        throw new Error(`ERROR: tests failed [${result.code}]`);
 
                     console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
                 } catch (e) {
