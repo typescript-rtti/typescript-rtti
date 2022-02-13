@@ -1717,7 +1717,7 @@ describe('RTTI: ', () => {
         });
     });
     describe('lateral', it => {
-        it.only('does not collapse exports', async () => {
+        it('does not collapse exports', async () => {
             let exports = await runSimple({
                 code: `
                     export interface A { }
