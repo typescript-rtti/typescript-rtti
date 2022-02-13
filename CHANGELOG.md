@@ -3,9 +3,10 @@
 - Reflected flags are now used to determine what kind of value is being passed to `reflect(value)`. This enables 
   differentiating between functions and classes according to their flags. For functions without RTTI, reflect() returns
   `ReflectedClass` (instead of `ReflectedFunction`) because there is no way to determine at runtime (without RTTI)
-  whether a `function` expression is a plain function or a constructor. Note that arrow functions do not have this 
-  issue as they are not constructable, and thus they have no prototype.
-- `reflect(value) now has better typed overrides to clarify what kind of value you will get back depending on what value
+  whether a `function` expression is a plain function or a constructor. Use `ReflectedFunction.for(value)` instead if 
+  you know the value is intended to be a regular function, as opposed to a constructor. Note that arrow functions do 
+  not have this issue as they are not constructable, and thus they have no prototype.
+- `reflect(value)` now has better typed overrides to clarify what kind of value you will get back depending on what value
   you pass in
 - You can now obtain `ReflectedMethod` directly from a method function, even without knowing what class it belongs to.
   For instance:
