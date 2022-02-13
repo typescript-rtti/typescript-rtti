@@ -1,9 +1,11 @@
 src/test.ts
 src/**/*.test.ts
+src/test/**
 
 dist/test.js
 dist/test.d.ts
 dist/test.js.map
+dist/test/**
 
 dist/**/*.test.js
 dist/**/*.test.js.map
@@ -12,6 +14,7 @@ dist/**/*.test.d.ts
 dist.esm/test.js
 dist.esm/test.d.ts
 dist.esm/test.js.map
+dist.esm/test/**
 
 dist.esm/**/*.test.js
 dist.esm/**/*.test.js.map

@@ -613,6 +613,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             }
 
             function classAnalyzer(classDecl : ts.ClassDeclaration): ClassDetails {
+                let className = classDecl.name.getText();
                 let details : ClassDetails = {
                     methodNames: [],
                     propertyNames: [],
@@ -649,18 +650,29 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                 details.propertyNames.push(param.name.getText());
                         }
                     } else {
-                        ts.visitEachChild(node, visitor, context);
+                        try {
+                            ts.visitEachChild(node, visitor, context);
+                        } catch (e) {
+                            console.error(`RTTI: During class analyzer visit for node '${node.getText()}': ${e.message}`);
+                            throw e;
+                        }
                     }
 
                     return node;
                 }
 
-                ts.visitEachChild(classDecl, visitor, context);
+                try {
+                    ts.visitEachChild(classDecl, visitor, context);
+                } catch (e) {
+                    console.error(`RTTI: During analyzer for class ${className}: ${e.message}`);
+                    throw e;
+                }
 
                 return details;
             }
 
             function interfaceAnalyzer(ifaceDecl : ts.InterfaceDeclaration): ClassDetails {
+                let interfaceName = ifaceDecl.name.getText();
                 let details : ClassDetails = {
                     methodNames: [],
                     propertyNames: [],
@@ -674,13 +686,23 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     } else if (ts.isMethodSignature(node)) {
                         details.methodNames.push(node.name.getText())
                     } else {
-                        ts.visitEachChild(node, visitor, context);
+                        try {
+                            ts.visitEachChild(node, visitor, context);
+                        } catch (e) {
+                            console.error(`RTTI: During interface analyzer visitor for ${node.getText()}: ${e.message}`);
+                            throw e;
+                        }
                     }
 
                     return node;
                 }
 
-                ts.visitEachChild(ifaceDecl, visitor, context);
+                try {
+                    ts.visitEachChild(ifaceDecl, visitor, context);
+                } catch (e) {
+                    console.error(`RTTI: During analyzer for interface ${interfaceName}: ${e.message}`);
+                    throw e;
+                }
 
                 return details;
             }
@@ -1072,13 +1094,19 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         console.log(`Decorating class ${node.name.text}`);
                     
                     let details = classAnalyzer(node);
-                    
+                    let className = node.name.getText();
+
                     return scope(node, () => {
                         let outboardMetadata = collectOutboardMetadata(() => {
-                            node = ts.visitEachChild(
-                                metadataCollector(node, extractClassMetadata(<ts.ClassDeclaration>node, details)), 
-                                visitor, context
-                            );
+                            try {
+                                node = ts.visitEachChild(
+                                    metadataCollector(node, extractClassMetadata(<ts.ClassDeclaration>node, details)), 
+                                    visitor, context
+                                );
+                            } catch (e) {
+                                console.error(`RTTI: During outboard metadata collection for class ${className}: ${e.message}`);
+                                throw e;
+                            }
                         });
 
                         return [
@@ -1131,6 +1159,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                         ts.factory.createNamedExports(
                                             [
                                                 ts.factory.createExportSpecifier(
+                                                    false,
                                                     undefined,
                                                     ts.factory.createIdentifier(`IΦ${node.name.text}`)
                                                 )
@@ -1147,10 +1176,16 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         console.log(`Decorating interface ${node.name.text}`);
                     
                     let details = interfaceAnalyzer(node);
+                    let interfaceName = node.name.getText();
                     
                     return scope(node, () => {
                         let result = collectMetadata(() => {
-                            return ts.visitEachChild(node, visitor, context)
+                            try {
+                                return ts.visitEachChild(node, visitor, context)
+                            } catch (e) {
+                                console.error(`RTTI: During metadata collection for interface ${interfaceName}: ${e.message}`);
+                                throw e;
+                            }
                         });
 
                         return [
@@ -1173,6 +1208,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     // "function a();" which will trigger an error later anyway.
 
                     let metadata = extractMethodMetadata(node);
+                    let functionName = node.name.getText();
 
                     if (!ts.isBlock(node.parent) && !ts.isSourceFile(node.parent)) {
                         // Care must be taken here. Take this example:
@@ -1199,7 +1235,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             node.type, node.body
                         );
 
-                        expr = ts.visitEachChild(expr, visitor, context);
+                        try {
+                            expr = ts.visitEachChild(expr, visitor, context);
+                        } catch (e) {
+                            console.error(`RTTI: During non-block function declaration ${functionName}: ${e.message}`);
+                            throw e;
+                        }
 
                         return ts.factory.createVariableStatement([], [
                             ts.factory.createVariableDeclaration(
@@ -1209,7 +1250,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         ]);
                     }
 
-                    node = ts.visitEachChild(node, visitor, context);
+                    try {
+                        node = ts.visitEachChild(node, visitor, context);
+                    } catch (e) {
+                        console.error(`RTTI: During function declaration ${functionName}: ${e.message}`);
+                        throw e;
+                    }
 
                     return [
                         node,
@@ -1256,7 +1302,14 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 if (node === undefined || node === null)
                     throw new Error(`RTTI: Bugcheck: Node should not be undefined/null here`);
                 
-                return ts.visitEachChild(node, visitor, context);
+                try {
+                    return ts.visitEachChild(node, visitor, context);
+                } catch (e) {
+                    console.error(`RTTI: Failed while processing node '${node.getText()}' in ${node.getSourceFile().fileName}:`);
+                    console.error(e);
+
+                    throw e;
+                }
             };
 
             function generateInterfaceSymbols(statements : ts.Statement[]): ts.Statement[] {
@@ -1314,6 +1367,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                     : ts.factory.createNamedImports(
                                         [
                                             ts.factory.createImportSpecifier(
+                                                false,
                                                 ts.factory.createIdentifier(impo.refName),
                                                 ts.factory.createIdentifier(impo.localName)
                                             )
