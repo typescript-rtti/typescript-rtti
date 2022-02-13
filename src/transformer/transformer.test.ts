@@ -1002,7 +1002,6 @@ describe('RTTI: ', () => {
             })
             it('emits for designed function expression return type', async () => {
                 let exports = await runSimple({
-                    trace: true,
                     code: `
                         export class A { }
                         export class B { }
