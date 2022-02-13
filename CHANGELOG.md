@@ -1,5 +1,6 @@
 # vNext
 - Minimum Typescript version is now 4.5.5
+- Minimum Node.js version is now v14
 - Arrow functions and function expressions are now supported
 - Reflected flags are now used to determine what kind of value is being passed to `reflect(value)`. This enables 
   differentiating between functions and classes according to their flags. For functions without RTTI, reflect() returns
