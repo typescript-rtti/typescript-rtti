@@ -14,51 +14,65 @@ const PACKAGES : Record<string, Package> = {
     razmin: {
         url: 'https://github.com/rezonant/razmin.git',
         ref: 'v1.2.0'
+    },
+    "@astronautlabs/bitstream": {
+        url: 'https://github.com/astronautlabs/bitstream.git',
+        ref: 'main'
     }
 };
 
-async function main() {
-    function section(message : string) {
-        console.log(`(###)`);
-        console.log(`(###) corpus: ${message}...`);
-        console.log(`(###)`);
+const TYPESCRIPTS = ['4.5.5', '4.5', '4', 'latest'];
+
+function run(str : string, cwd? : string) {
+    let result = shell.exec(str, { cwd: cwd ?? process.cwd(), silent: true });
+    if (result.code !== 0) {
+        console.error(`corpus: Failed to run: '${str}': exit code ${result.code}`);
+        console.error(`stdout:`);
+        console.error(result.stderr);
+        console.error();
+        console.error(`stderr:`);
+        console.error(result.stderr);
+        console.error();
+        throw new Error(`Failed to run '${str}': exit code ${result.code}`);
     }
+}
 
-    for (let pkgName of Object.keys(PACKAGES)) {
-        let pkg = PACKAGES[pkgName];
+async function main() {
+    try {
+        for (let pkgName of Object.keys(PACKAGES)) {
+            for (let tsVersion of TYPESCRIPTS) {
+                try {
+                    let pkg = PACKAGES[pkgName];
 
-        let local = `corpus.${pkgName}`;
-        section(`Removing ${pkgName}...`);
-        await promisify(rimraf)(local);
+                    let local = `corpus.${pkgName.replace(/\//g, '__')}`;
 
-        section(`${pkgName}: Cloning ${pkg.url}...`);
-        shell.exec(`git clone ${pkg.url} ${local}`);
+                    await promisify(rimraf)(local);
 
-        section(`${pkgName}: Checking out ref '${pkg.ref}'...`);
-        shell.exec(`git checkout ${pkg.ref}`, { cwd: local });
-        
-        section(`${pkgName}: NPM Install...`);
-        shell.exec(`npm install`, { cwd: local });
-        shell.exec(`npm install typescript@latest`, { cwd: local });
+                    run(`git clone ${pkg.url} ${local}`);
+                    run(`git checkout ${pkg.ref}`, local);
+                    
+                    run(`npm install`, local);
+                    run(`npm install typescript@${tsVersion}`, local);
 
-        section(`${pkgName}: Modifying tsconfig.json...`);
-        let tsconfigFileName = path.join(local, 'tsconfig.json');
-        let tsconfig = JSON.parse((await fs.readFile(tsconfigFileName)).toString());
-        tsconfig.compilerOptions.plugins = [{ transform: '../dist/transformer' }];
-        await fs.writeFile(tsconfigFileName, JSON.stringify(tsconfig, undefined, 2));
+                    let tsconfigFileName = path.join(local, 'tsconfig.json');
+                    let tsconfig = JSON.parse((await fs.readFile(tsconfigFileName)).toString());
+                    tsconfig.compilerOptions.plugins = [{ transform: '../dist/transformer' }];
+                    await fs.writeFile(tsconfigFileName, JSON.stringify(tsconfig, undefined, 2));
 
-        section(`${pkgName}: Building...`);
-        let result = shell.exec(`ttsc -b`, { cwd: local });
+                    let result = shell.exec(`ttsc -b`, { cwd: local });
+                    if (result.code !== 0) {
+                        throw new Error(`ERROR: build failed [${result.code}]`);
+                    }
 
-        if (result.code !== 0) {
-            console.log();
-            console.error(`--------------------------------------------------------`);
-            console.error(`(!!) corpus: ${pkgName}: ERROR: Received error code ${result.code}`);
-            console.log();
-            process.exit(1);
+                    console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
+                } catch (e) {
+                    throw new Error(`${pkgName} [typescript@${tsVersion}]: ${e.mesasge}`);
+                }
+            }
         }
-
-        section(`${pkgName}: Build successful.`);
+    } catch (e) {
+        console.error(`❌ ${e.message}`);
+        process.exit(1);
     }
 }
 
