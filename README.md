@@ -112,7 +112,7 @@ console.log(bClass.getMethod('baz').returnType) // A
 
 # Features
 
-- Emits metadata for the most useful elements (classes, interfaces, methods, properties, functions, related types) parsed by Typescript
+- Emits metadata for the most useful elements (classes, interfaces, methods, properties, function declarations, function expressions, arrow functions) parsed by Typescript
 - Emits metadata for abstract classes / methods
 - Ability to evaluate parameter initializers (ie to obtain default values)
 - Enables obtaining stable tokens for interfaces for dependency injection
