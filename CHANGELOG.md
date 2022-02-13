@@ -1,7 +1,22 @@
 # vNext
 - Fixes a failure when no return type inference is available on a function declaration
+- Reflected flags are now used to determine what kind of value is being passed to `reflect(value)`. This enables 
+  differentiating between functions and classes according to their flags. For functions without RTTI, reflect() returns
+  `ReflectedClass` (instead of `ReflectedFunction`) because there is no way to determine at runtime (without RTTI)
+  whether a `function` expression is a plain function or a constructor. Note that arrow functions do not have this 
+  issue as they are not constructable, and thus they have no prototype.
+- `reflect(value) now has better typed overrides to clarify what kind of value you will get back depending on what value
+  you pass in
+- You can now obtain `ReflectedMethod` directly from a method function, even without knowing what class it belongs to.
+  For instance:
+  ```typescript
+  class A {
+    foo() { }
+  }
 
-
+  expect(reflect(A.foo)).to.be.instanceOf(ReflectedMethod)
+  expect(reflect(A.foo).class).to.equal(reflect(A))
+  ```
 
 # v0.0.22
 

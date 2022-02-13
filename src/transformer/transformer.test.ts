@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
-import { F_ABSTRACT, F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
+import { F_ABSTRACT, F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { InterfaceToken } from '../common';
 import { runSimple } from '../runner.test';
 
@@ -15,6 +15,37 @@ function hasProperty(map: ts.MapLike<any>, key: string): boolean {
 const MODULE_TYPES : ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
 
 describe('RTTI: ', () => {
+    describe('function', it => {
+        it('works for functions defined in if statements', async () => {
+            let exports = await runSimple({
+                code: `
+                    export let foo = false;
+                    if (false) 
+                        function a() { return 321; }
+                    else
+                        foo = true;
+                `
+            });
+
+            expect(exports.foo).to.equal(true);
+        });
+        it('works for functions defined in if statements (2)', async () => {
+            let exports = await runSimple({
+                code: `
+                    export let foo = false;
+                    if (true) 
+                        function a() { return 321; }
+                    else
+                        foo = true;
+
+                    export let bar = a();
+                    export let func = a;
+                `
+            });
+
+            expect(exports.bar).to.equal(321);
+        });
+    });
     describe('interface', it => {
         it('emits a symbol for every exported interface', async () => {
             let exports = await runSimple({
@@ -473,6 +504,20 @@ describe('RTTI: ', () => {
         });
     });
 
+    describe('rt:h', it => {
+        it('is emitted directly on a method', async () => {
+            let exports = await runSimple({
+                code: `
+                    export class B { 
+                        foo() { }
+                    }
+                `
+            });
+    
+            let fooHost = Reflect.getMetadata('rt:h', exports.B.prototype.foo);
+            expect(fooHost()).to.equal(exports.B);
+        })
+    });
     describe('Class', it => {
         describe('rt:f', it => {
             it('identify classes', async () => {
@@ -538,6 +583,49 @@ describe('RTTI: ', () => {
                 let barFlags = Reflect.getMetadata('rt:f', exports.B.prototype, 'bar');
                 expect(fooFlags).not.to.contain(F_ABSTRACT);
                 expect(barFlags).to.contain(F_ABSTRACT);
+            });
+            it('identifies static methods', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class B { 
+                            static foo() { }
+                            bar() { }
+                        }
+                    `
+                });
+        
+                let fooFlags = Reflect.getMetadata('rt:f', exports.B, 'foo');
+                let barFlags = Reflect.getMetadata('rt:f', exports.B.prototype, 'bar');
+                expect(fooFlags).to.contain(F_STATIC);
+                expect(barFlags).not.to.contain(F_STATIC);
+            });
+            it('identifies methods directly', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class B { 
+                            foo() { }
+                        }
+                    `
+                });
+        
+                let fooFlags = Reflect.getMetadata('rt:f', exports.B.prototype.foo);
+                expect(fooFlags).to.contain(F_METHOD);
+            });
+            it('identifies static methods directly', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class B { 
+                            static foo() { }
+                            bar() { }
+                        }
+                    `
+                });
+        
+                let fooFlags = Reflect.getMetadata('rt:f', exports.B.foo);
+                let barFlags = Reflect.getMetadata('rt:f', exports.B.prototype.bar);
+                expect(fooFlags).to.contain(F_METHOD);
+                expect(fooFlags).to.contain(F_STATIC);
+                expect(barFlags).not.to.contain(F_STATIC);
             });
             it('identifies functions', async () => {
                 let exports = await runSimple({
@@ -888,24 +976,61 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
                 expect(type()).to.equal(exports.B);
             })
-            it('emits for designed function return type', async () => {
+            it('emits for designed function declaration return type', async () => {
                 let exports = await runSimple({
                     code: `
                         export class A { }
                         export class B { }
-                        export function c(hello : A, world : B): B { return world; }
+                        export function c(hello : A, world : B): B { return null; }
                     `
                 });
         
                 let type = Reflect.getMetadata('rt:t', exports.c);
                 expect(type()).to.equal(exports.B);
             })
-            it('emits for inferred function return type', async () => {
+            it('emits for inferred function declaration return type', async () => {
                 let exports = await runSimple({
                     code: `
                         export class A { }
                         export class B { }
                         export function c(hello : A, world : B) { return world; }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.c);
+                expect(type()).to.equal(exports.B);
+            })
+            it('emits for designed function expression return type', async () => {
+                let exports = await runSimple({
+                    trace: true,
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export let c = function (hello : A, world : B): B { return world; }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.c);
+                expect(type()).to.equal(exports.B);
+            })
+            it('emits for designed named function expression return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export let c = function foobar(hello : A, world : B): B { return world; }
+                    `
+                });
+        
+                let type = Reflect.getMetadata('rt:t', exports.c);
+                expect(type()).to.equal(exports.B);
+            })
+            it('emits for inferred named function expression return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export let c = function foobar (hello : A, world : B) { return world; }
                     `
                 });
         

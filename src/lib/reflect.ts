@@ -918,12 +918,33 @@ export class ReflectedFunction<T extends Function = Function> {
     private _RtParameter : RtParameter[];
     private _parameters : ReflectedFunctionParameter[];
 
+    private static reflectedFunctions = new WeakMap<object, ReflectedFunction>();
+
+    static for(func : Function): ReflectedFunction {
+        if (typeof func !== 'function')
+            throw new TypeError(`Passed value is not a function`);
+
+        let existing = this.reflectedFunctions.get(func);
+        if (!existing) {
+            this.reflectedFunctions.set(
+                func, 
+                existing = new ReflectedFunction<Function>(func)
+            );
+        }
+
+        return existing;
+    }
+
     /** 
      * Create a new ReflectedClass instance for the given type without sharing. Used during testing.
      * @internal 
      **/
     static new<FunctionT extends Function>(func : FunctionT) {
         return new ReflectedFunction<FunctionT>(func);
+    }
+
+    matchesValue(object, errors : Error[] = [], context? : string) {
+        return object === this.func;
     }
 
     /**
@@ -1051,10 +1072,21 @@ export class ReflectedFunction<T extends Function = Function> {
 /**
  * Reflection data for a class method
  */
-export class ReflectedMethod extends ReflectedMember {
+export class ReflectedMethod<T extends Function = Function> extends ReflectedMember {
     private _returnType : ReflectedTypeRef;
     private _RtParameter : RtParameter[];
     private _parameters : ReflectedMethodParameter[];
+
+    matchesValue(object, errors : Error[] = [], context? : string) {
+        return object === this.func;
+    }
+
+    get func() {
+        if (this.isStatic)
+            return this.class[this.name];
+        else
+            return this.class.prototype[this.name];
+    }
 
     /**
      * @internal
@@ -1064,6 +1096,26 @@ export class ReflectedMethod extends ReflectedMember {
             return this._RtParameter;
         
         return this._RtParameter = this.getMetadata('rt:p');
+    }
+
+    /**
+     * Retrieve the reflected method for the given method function.
+     * If the function is not a method, a TypeError is thrown.
+     * @param method 
+     */
+    static for(method : Function) {
+        if (!hasAnyFlag(method, [ Flags.F_METHOD ]))
+            throw new TypeError(`The function is not a method, or the class is not annotated with runtime type metadata`);
+        
+        if (!Reflect.hasMetadata('rt:h', method))
+            throw new TypeError(`The function is a method, but is not annotated with a host class`);
+        
+        let host = Reflect.getMetadata('rt:h', method);
+
+        if (!host)
+            throw new TypeError(`The method has a defined host, but it is null/undefined`);
+        
+        return ReflectedClass.for(host).getMethod(method.name);
     }
 
     /**
@@ -1189,6 +1241,26 @@ export class ReflectedProperty extends ReflectedMember {
     }
 }
 
+function getFlags(value): string {
+    if (!Reflect.hasMetadata('rt:f', value))
+        return '';
+
+    let flagsValue = Reflect.getMetadata('rt:f', value);
+    if (typeof flagsValue === 'string')
+        return flagsValue;
+    return '';
+}
+
+function hasAnyFlag(value, desiredFlags : string[]) {
+    let flags = getFlags(value);
+    return desiredFlags.some(x => flags.includes(x));
+}
+
+function hasAllFlags(value, desiredFlags : string[]) {
+    let flags = getFlags(value);
+    return desiredFlags.every(x => flags.includes(x));
+}
+
 /**
  * Provides access to the known runtime type metadata for a particular class 
  * or Interface value (as obtained by reify<InterfaceT>()). 
@@ -1210,11 +1282,22 @@ export class ReflectedClass<ClassT = any> {
      *                           instance's constructor will be used)
      * @returns The ReflectedClass.
      */
-    static for<ClassT>(constructorOrValue : Constructor<ClassT> | InterfaceToken | InstanceType<Constructor<ClassT>>) {
+    static for<ClassT>(constructorOrValue : Constructor<ClassT> | InterfaceToken | Function | InstanceType<Constructor<ClassT>>) {
+
+        let flags = getFlags(constructorOrValue);
+        if (flags.includes(Flags.F_INTERFACE))
+            return this.forConstructorOrInterface(<InterfaceToken>constructorOrValue);
+        else if (flags.includes(Flags.F_CLASS))
+            return this.forConstructorOrInterface(<Constructor<ClassT>>constructorOrValue);
+        else if (flags.includes(Flags.F_FUNCTION))
+            throw new TypeError(`Value is a function, use ReflectedFunction.for() or reflect(func) instead`);
+
+        // Heuristic based on shape
         if (typeof constructorOrValue === 'function' || ('name' in constructorOrValue && 'prototype' in constructorOrValue && typeof constructorOrValue.identity === 'symbol'))
             return this.forConstructorOrInterface(<Constructor<ClassT> | InterfaceToken>constructorOrValue);
-        else
-            return this.forConstructorOrInterface(<Constructor<ClassT>>constructorOrValue.constructor);
+        
+        // Assume it's an instance of a class
+        return this.forConstructorOrInterface(<Constructor<ClassT>>constructorOrValue.constructor);
     }
 
     private static reflectedClasses = new WeakMap<object, ReflectedClass>();
@@ -1229,10 +1312,6 @@ export class ReflectedClass<ClassT = any> {
 
 
     private static forConstructorOrInterface<ClassT>(constructorOrInterface : Constructor<ClassT> | InterfaceToken) {
-        let key : object = constructorOrInterface;
-        if (typeof key === 'object')
-            key = (constructorOrInterface as InterfaceToken).prototype;
-        
         let existing = this.reflectedClasses.get(constructorOrInterface);
         if (!existing) {
             this.reflectedClasses.set(
@@ -1873,10 +1952,23 @@ export function reflect<T>() : ReflectedClass<InterfaceToken<T> | Constructor<T>
  * @param value A constructor, Interface value, or an instance of a class
  * @returns The reflected class
  */
-export function reflect(value);
-export function reflect(value = NotProvided) {
+export function reflect<T>(value : Constructor<T>) : ReflectedClass<Constructor<T>>;
+export function reflect<T extends Function>(value : T) : (ReflectedFunction<T> | ReflectedMethod<T>);
+export function reflect<T>(value : T) : ReflectedClass<Constructor<T>>;
+export function reflect(value : any = NotProvided) {
     if (value === NotProvided) {
         throw new Error(`reflect<T>() can only be used when project is built with the typescript-rtti transformer`);
     }
+
+    let flags = getFlags(value);
+
+    if (flags.includes(Flags.F_FUNCTION))
+        return ReflectedFunction.for(value);
+    if (flags.includes(Flags.F_METHOD))
+        return ReflectedMethod.for(value);
+
+    if (typeof value === 'function' && !value.prototype)
+        return ReflectedFunction.for(value);
+    
     return ReflectedClass.for(value);
 }

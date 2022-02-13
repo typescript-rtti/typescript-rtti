@@ -25,16 +25,18 @@
  * - The "rt:m" metadata item represents an array of method names
  * - The "rt:SP" metadata item represents an array of static property names
  * - The "rt:Sm" metadata item represents an array of static method names
+ * - The "rt:h" metadata item represents the "host" of the element. For methods, this is the class constructor 
+ *   or interface token of the enclosing class/interface. 
  * 
  */
 
 import { F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef, functionForwardRef } from './forward-ref';
-import { metadataDecorator } from './metadata-decorator';
-import { rtHelper } from './rt-helper';
+import { decorateFunctionExpression, directMetadataDecorator, metadataDecorator } from './metadata-decorator';
+import { rtfHelper, rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode } from '../common';
+import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode, F_STATIC } from '../common';
 import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
 
 export class CompileError extends Error {}
@@ -126,16 +128,6 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts'))
                 return sourceFile;
 
-            sourceFile = ts.factory.updateSourceFile(
-                sourceFile, 
-                [ rtHelper(), ...sourceFile.statements ], 
-                sourceFile.isDeclarationFile, 
-                sourceFile.referencedFiles,
-                sourceFile.typeReferenceDirectives,
-                sourceFile.hasNoDefaultLib,
-                sourceFile.libReferenceDirectives
-            );
-    
             let importMap = new Map<string,TypeImport>();
             let classMap = new Map<ts.ClassDeclaration,ClassDetails>();
             let currentNameScope : ts.ClassDeclaration | ts.InterfaceDeclaration;
@@ -236,10 +228,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 }
             }
 
-            function collectOutboardMetadata<T = any>(callback : () => T): { node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator }[] } {
+            function collectOutboardMetadata<T = any>(callback : () => T): { 
+                node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator, direct: boolean }[] 
+            } {
                 let originalCollector = outboardMetadataCollector;
 
-                let decorators : { node : ts.Node, decorator : ts.Decorator }[] = [];
+                let decorators : { node : ts.Node, decorator : ts.Decorator, direct : boolean }[] = [];
 
                 function externalMetadataCollector<T extends ts.Node>(node : T, addedDecorators : ts.Decorator[]): T {
                     let property : string;
@@ -254,7 +248,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         property = node.name.getText();
                     }
 
-                    decorators.push(...addedDecorators.map(decorator => ({ property, node, decorator })));
+                    decorators.push(...addedDecorators.map(decorator => ({ property, node, decorator, direct: decorator['__Φdirect'] ?? false })));
                     return node;
                 };
 
@@ -730,22 +724,29 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return ts.factory.createIdentifier('Object');
             }
         
-            function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration) {
+            function extractMethodFlags(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression) {
+                if (ts.isFunctionDeclaration(method)) {
+                    let type = F_FUNCTION;
+                    return `${type}${isAsync(method.modifiers)}`;
+                }
+                
+                let type = F_METHOD;
+                let flags = `${type}${getVisibility(method.modifiers)}${isAbstract(method.modifiers)}${isAsync(method.modifiers)}`;
+                
+                if (ts.isMethodDeclaration(method) && (method.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword))
+                    flags += F_STATIC;
+                
+                return flags;
+            }
+
+            function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression) {
                 let decs : ts.Decorator[] = [];
 
                 if (emitStandardMetadata)
                     decs.push(metadataDecorator('design:type', literalNode(ts.factory.createIdentifier('Function'))));
                                 
                 decs.push(...extractParamsMetadata(method));
-
-                if (ts.isFunctionDeclaration(method)) {
-                    let type = F_FUNCTION;
-                    decs.push(metadataDecorator('rt:f', `${type}${isAsync(method.modifiers)}`));
-                } else {
-                    let type = F_METHOD;
-                    let flags = `${type}${getVisibility(method.modifiers)}${isAbstract(method.modifiers)}${isAsync(method.modifiers)}`;
-                    decs.push(metadataDecorator('rt:f', flags));
-                }
+                decs.push(metadataDecorator('rt:f', extractMethodFlags(method)));
 
                 if (method.type) {
                     decs.push(...extractTypeMetadata(method.type, 'returntype'));
@@ -800,7 +801,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         f.push(F_OPTIONAL)
 
                     let meta : RtSerialized<RtParameter> = {
-                        n: param.name.getText(),
+                        n: param.name?.getText(),
                         t: literalNode(forwardRef(serializeTypeRef(param.type, true))),
                         v: param.initializer ? literalNode(functionForwardRef(param.initializer)) : null
                     };
@@ -820,6 +821,36 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 }
                 
                 return decs;
+            }
+
+            function emitOutboardMetadata(
+                node : ts.ClassDeclaration, 
+                outboardMetadata : { node: void, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator, direct: boolean }[] }
+            ) {
+                let nodes : ts.Node[] = [];
+
+                for (let dec of outboardMetadata.decorators) {
+                    let host : ts.Expression = ts.factory.createIdentifier((node as ts.ClassDeclaration).name.text);
+                    let isStatic = false;
+
+                    if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node))
+                        isStatic = (dec.node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword);
+
+                    if (!isStatic)
+                        host = ts.factory.createPropertyAccessExpression(host, 'prototype');
+                    
+                    if (dec.direct) {
+                        host = ts.factory.createPropertyAccessExpression(host, dec.property);
+                        nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ host ]));
+                    } else {
+                        nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                            host,
+                            ts.factory.createStringLiteral(dec.property)
+                        ]));
+                    }
+                }
+
+                return nodes;
             }
         
             ////////////////////////////////////////////////////////////////////////////
@@ -1052,13 +1083,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                         return [
                             node,
-                            ...(outboardMetadata.decorators.map(dec => ts.factory.createCallExpression(dec.decorator.expression, undefined, [
-                                ts.factory.createPropertyAccessExpression(
-                                    ts.factory.createIdentifier((node as ts.ClassDeclaration).name.text), 
-                                    'prototype'
-                                ),
-                                ts.factory.createStringLiteral(dec.property)
-                            ])))
+                            ...(emitOutboardMetadata(node as ts.ClassDeclaration, outboardMetadata))
                         ]
                     });
 
@@ -1143,15 +1168,57 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             ])))
                         ]
                     });
-                } else if (ts.isFunctionDeclaration(node)) {
+                } else if (ts.isFunctionDeclaration(node) && node.body) {
+                    // Note that we check for node.body here ^^ in case of
+                    // "function a();" which will trigger an error later anyway.
+
                     let metadata = extractMethodMetadata(node);
+
+                    if (!ts.isBlock(node.parent) && !ts.isSourceFile(node.parent)) {
+                        // Care must be taken here. Take this example:
+                        //   if (true) function foo() { return 123 }
+                        //   expect(foo()).to.equal(123)
+                        //
+                        // In that case, foo() is *declared*, not an expression,
+                        // and it should be available outside the if() statement.
+                        // A corner case, but one that we shouldn't break on.
+                        // Since a function declaration in an expression becomes a 
+                        // function expression, and named function expressions have 
+                        // their own scope, we can't just emit ie: 
+                        //
+                        //   if (true) __RfΦ(function a() { }, [ ... ])
+                        //
+                        // ...because a() will no longer be in scope. 
+                        // Thankfully, since function declaration semantics match those of 
+                        // the var keyword, we can accomplish this with:
+                        //
+                        //    if (true) var a = __RfΦ(function a() { }, [ ... ])
+
+                        let expr = ts.factory.createFunctionExpression(
+                            node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, 
+                            node.type, node.body
+                        );
+
+                        expr = ts.visitEachChild(expr, visitor, context);
+
+                        return ts.factory.createVariableStatement([], [
+                            ts.factory.createVariableDeclaration(
+                                node.name.getText(), undefined, undefined, 
+                                decorateFunctionExpression(expr, metadata)
+                            )
+                        ]);
+                    }
+
                     node = ts.visitEachChild(node, visitor, context);
+
                     return [
                         node,
                         ...(metadata.map(dec => ts.factory.createCallExpression(dec.expression, undefined, [
                             ts.factory.createIdentifier(`${(node as ts.FunctionDeclaration).name.text}`)
                         ])))
                     ]
+                } else if (ts.isFunctionExpression(node)) {
+                    return decorateFunctionExpression(node, extractMethodMetadata(node));
                 } else if (ts.isMethodDeclaration(node)) {
                     if (ts.isClassDeclaration(node.parent)) {
                         if (trace)
@@ -1164,6 +1231,14 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         if (isAbstract) {
                             outboardMetadataCollector(node, metadata);
                         } else {
+                            // Also collect the flags and host reference on the concrete method itself for resolving
+                            // ReflectedMethod from a bare method function.
+
+                            outboardMetadataCollector(node, [ 
+                                directMetadataDecorator('rt:f', extractMethodFlags(node)),
+                                directMetadataDecorator('rt:h', literalNode(forwardRef(node.parent.name)))
+                            ]);
+
                             node = metadataCollector(node, metadata);
                         }
                     }
@@ -1176,6 +1251,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     }
                 }
 
+                if (node === undefined || node === null)
+                    throw new Error(`RTTI: Bugcheck: Node should not be undefined/null here`);
+                
                 return ts.visitEachChild(node, visitor, context);
             };
 
@@ -1278,6 +1356,16 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 console.error(e);
             }
 
+            sourceFile = ts.factory.updateSourceFile(
+                sourceFile, 
+                [ rtHelper(), rtfHelper(), ...sourceFile.statements ], 
+                sourceFile.isDeclarationFile, 
+                sourceFile.referencedFiles,
+                sourceFile.typeReferenceDirectives,
+                sourceFile.hasNoDefaultLib,
+                sourceFile.libReferenceDirectives
+            );
+    
             return sourceFile;
         };
     }

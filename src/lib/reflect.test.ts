@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { ReflectedClass } from "./reflect";
 import { InterfaceToken } from "../common";
 import * as flags from '../common/flags';
-import { ReflectedFunction } from "./reflect";
+import { reflect, ReflectedFunction, ReflectedMethod } from "./reflect";
 
 describe('ReflectedClass', it => {
     describe('ownMethodNames', it => {
@@ -540,4 +540,51 @@ describe('ReflectedProperty', it => {
         expect(ReflectedClass.new(B).getStaticProperty('foo').type.isClass(Number)).to.be.true;
         expect(ReflectedClass.new(B).getStaticProperty('bar').type.isClass(String)).to.be.true;
     })
+});
+
+describe('reflect(value)', it => {
+    it('returns a ReflectedClass when passing in a class', () => {
+        class A { }
+        expect(reflect(A)).to.be.an.instanceOf(ReflectedClass);
+    });
+    it('returns a ReflectedClass when passing in an instance', () => {
+        class A { }
+        let a = new A();
+        let reflClass = reflect(a);
+        expect(reflClass).to.be.an.instanceOf(ReflectedClass);
+        expect(reflClass.class).to.equal(A);
+    });
+    it('returns a ReflectedClass when passing in a bare function', () => {
+        function a() { }
+        expect(reflect(a)).to.be.an.instanceOf(ReflectedClass);
+    });
+    it('returns a ReflectedFunction when passing in a marked function', () => {
+        function a() { }
+        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}`, a);
+        expect(reflect(a)).to.be.an.instanceOf(ReflectedFunction);
+    });
+    it('returns a ReflectedMethod when passing in a method', () => {
+        class A { foo() { } }
+
+        Reflect.defineMetadata('rt:m', ['foo'], A);
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A, 'foo');
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A.prototype.foo);
+        Reflect.defineMetadata('rt:h', A, A.prototype.foo);
+
+        expect(reflect(A.prototype.foo)).to.be.an.instanceOf(ReflectedMethod);
+    });
+    it('returns a ReflectedMethod when passing in a static method', () => {
+        class A { static foo() { } }
+
+        Reflect.defineMetadata('rt:m', ['foo'], A);
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A, 'foo');
+        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_STATIC}`, A.foo);
+        Reflect.defineMetadata('rt:h', A, A.foo);
+
+        expect(reflect(A.foo)).to.be.an.instanceOf(ReflectedMethod);
+    });
+    it('returns a ReflectedFunction when passing in an arrow function', () => {
+        let a = () => {};
+        expect(reflect(a)).to.be.an.instanceOf(ReflectedFunction);
+    });
 });
