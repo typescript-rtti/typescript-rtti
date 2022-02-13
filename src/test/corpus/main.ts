@@ -48,7 +48,6 @@ async function main() {
         await fs.writeFile(tsconfigFileName, JSON.stringify(tsconfig, undefined, 2));
 
         section(`${pkgName}: Building...`);
-        console.log(`${pkgName}: ttsc -b...`);
         let result = shell.exec(`ttsc -b`, { cwd: local });
 
         if (result.code !== 0) {
