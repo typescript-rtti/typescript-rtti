@@ -1716,4 +1716,20 @@ describe('RTTI: ', () => {
             })
         });
     });
+    describe('lateral', it => {
+        it.only('does not collapse exports', async () => {
+            let exports = await runSimple({
+                code: `
+                    export interface A { }
+                    export function B() { }
+                    export class C { foo() { } }
+                `
+            })
+
+            expect(typeof exports.IΦA.identity).to.equal('symbol');
+            expect(typeof exports.B).to.equal('function');
+            expect(typeof exports.C).to.equal('function');
+            expect(typeof exports.C.prototype.foo).to.equal('function');
+        });
+    });
 });
