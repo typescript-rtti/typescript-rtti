@@ -637,7 +637,7 @@ describe('RTTI: ', () => {
                 let aFlags = Reflect.getMetadata('rt:f', exports.a);
                 expect(aFlags).to.contain(F_FUNCTION);
             })
-            it.only('identifies arrow functions', async () => {
+            it('identifies arrow functions', async () => {
                 let exports = await runSimple({
                     code: `
                         export let a = () => { }
@@ -961,7 +961,7 @@ describe('RTTI: ', () => {
                 expect(params[1].t()).to.equal(exports.B);
                 expect(params[1].n).to.equal('world');
             });
-            it.only('emits for arrow function params', async () => {
+            it('emits for arrow function params', async () => {
                 let exports = await runSimple({
                     code: `
                         export class A { }
