@@ -185,11 +185,11 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 }
             }
 
-            function collectMetadata<T = any>(callback : () => T): { node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator }[] } {
+            function collectMetadata<T = any>(callback : () => T): { node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator, direct: boolean }[] } {
                 let originalCollector = metadataCollector;
                 let originalOutboardCollector = outboardMetadataCollector;
 
-                let decorators : { node : ts.Node, decorator : ts.Decorator }[] = [];
+                let decorators : { node : ts.Node, decorator : ts.Decorator, direct : boolean }[] = [];
 
                 function externalMetadataCollector<T extends ts.Node>(node : T, addedDecorators : ts.Decorator[]): T {
                     let property : string;
@@ -204,7 +204,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         property = node.name.getText();
                     }
 
-                    decorators.push(...addedDecorators.map(decorator => ({ property, node, decorator })));
+                    decorators.push(...addedDecorators.map(decorator => ({ property, node, decorator, direct: decorator['__Φdirect'] ?? false })));
                     return node;
                 };
 
@@ -857,17 +857,25 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                     if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node))
                         isStatic = (dec.node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword);
-
+                    if (ts.isClassDeclaration(dec.node))
+                        isStatic = true;
+                    
                     if (!isStatic)
                         host = ts.factory.createPropertyAccessExpression(host, 'prototype');
                     
-                    if (dec.direct) {
-                        host = ts.factory.createPropertyAccessExpression(host, dec.property);
-                        nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ host ]));
+                    if (dec.property) {
+                        if (dec.direct) {
+                            host = ts.factory.createPropertyAccessExpression(host, dec.property);
+                            nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ host ]));
+                        } else {
+                            nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                                host,
+                                ts.factory.createStringLiteral(dec.property)
+                            ]));
+                        }
                     } else {
                         nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
-                            host,
-                            ts.factory.createStringLiteral(dec.property)
+                            host
                         ]));
                     }
                 }
@@ -1097,7 +1105,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     let className = node.name.getText();
 
                     return scope(node, () => {
-                        let outboardMetadata = collectOutboardMetadata(() => {
+                        let outboardMetadata = collectMetadata(() => {
                             try {
                                 node = ts.visitEachChild(
                                     metadataCollector(node, extractClassMetadata(<ts.ClassDeclaration>node, details)), 
