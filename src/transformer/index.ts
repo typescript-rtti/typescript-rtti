@@ -751,11 +751,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     decs.push(...extractTypeMetadata(method.type, 'returntype'));
                 } else {
                     let signature = program.getTypeChecker().getSignatureFromDeclaration(method);
-                    let returnT = typeToTypeRef(signature.getReturnType());
-                    decs.push(metadataDecorator('rt:t', literalNode(forwardRef(returnT))));
-
-                    if (emitStandardMetadata)
-                        decs.push(metadataDecorator('design:returntype', literalNode(ts.factory.createVoidZero())));
+                    if (signature) {
+                        let returnT = typeToTypeRef(signature.getReturnType());
+                        decs.push(metadataDecorator('rt:t', literalNode(forwardRef(returnT))));
+                        if (emitStandardMetadata)
+                            decs.push(metadataDecorator('design:returntype', literalNode(ts.factory.createVoidZero())));
+                    }
                 }
 
                 return decs;

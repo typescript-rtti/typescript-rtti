@@ -1,4 +1,6 @@
 # vNext
+- Fixes a failure when no return type inference is available on a function declaration
+
 
 
 # v0.0.22
