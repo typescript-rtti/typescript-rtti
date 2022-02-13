@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "./flags";
-import { F_ABSTRACT, F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
+import { F_ABSTRACT, F_ARROW_FUNCTION, F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_GENERIC, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { InterfaceToken } from '../common';
 import { runSimple } from '../runner.test';
 
@@ -637,6 +637,18 @@ describe('RTTI: ', () => {
                 let aFlags = Reflect.getMetadata('rt:f', exports.a);
                 expect(aFlags).to.contain(F_FUNCTION);
             })
+            it.only('identifies arrow functions', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export let a = () => { }
+                    `
+                });
+        
+                let aFlags = Reflect.getMetadata('rt:f', exports.a);
+                expect(aFlags).to.contain(F_FUNCTION);
+                expect(aFlags).to.contain(F_ARROW_FUNCTION);
+                expect(aFlags).not.to.contain(F_METHOD);
+            })
             it('identifies async functions', async () => {
                 let exports = await runSimple({
                     code: `
@@ -940,6 +952,21 @@ describe('RTTI: ', () => {
                         export class A { }
                         export class B { }
                         export function c(hello : A, world : B): B { return world; }
+                    `
+                });
+        
+                let params = Reflect.getMetadata('rt:p', exports.c);
+                expect(params[0].t()).to.equal(exports.A);
+                expect(params[0].n).to.equal('hello');
+                expect(params[1].t()).to.equal(exports.B);
+                expect(params[1].n).to.equal('world');
+            });
+            it.only('emits for arrow function params', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export let c = (hello : A, world : B): B => { return world; }
                     `
                 });
         

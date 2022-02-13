@@ -21,7 +21,7 @@ export function directMetadataDecorator(key : string, object : any) {
     return dec;
 }
 
-export function decorateFunctionExpression(func : ts.FunctionExpression, decorators : ts.Decorator[]) {
+export function decorateFunctionExpression(func : ts.FunctionExpression | ts.ArrowFunction, decorators : ts.Decorator[]) {
     return ts.factory.createCallExpression(
         ts.factory.createIdentifier('__RfΦ'),
         [], [

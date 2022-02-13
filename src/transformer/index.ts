@@ -36,7 +36,7 @@ import { decorateFunctionExpression, directMetadataDecorator, metadataDecorator 
 import { rtfHelper, rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode, F_STATIC } from '../common';
+import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode, F_STATIC, F_ARROW_FUNCTION } from '../common';
 import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
 
 export class CompileError extends Error {}
@@ -724,10 +724,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return ts.factory.createIdentifier('Object');
             }
         
-            function extractMethodFlags(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression) {
-                if (ts.isFunctionDeclaration(method)) {
+            function extractMethodFlags(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction) {
+                if (ts.isFunctionDeclaration(method) || ts.isArrowFunction(method)) {
                     let type = F_FUNCTION;
-                    return `${type}${isAsync(method.modifiers)}`;
+                    return `${type}${isAsync(method.modifiers)}${ts.isArrowFunction(method) ? F_ARROW_FUNCTION : ''}`;
                 }
                 
                 let type = F_METHOD;
@@ -739,7 +739,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return flags;
             }
 
-            function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression) {
+            function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction) {
                 let decs : ts.Decorator[] = [];
 
                 if (emitStandardMetadata)
@@ -1217,6 +1217,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             ts.factory.createIdentifier(`${(node as ts.FunctionDeclaration).name.text}`)
                         ])))
                     ]
+                } else if (ts.isArrowFunction(node)) {
+                    return decorateFunctionExpression(node, extractMethodMetadata(node));
                 } else if (ts.isFunctionExpression(node)) {
                     return decorateFunctionExpression(node, extractMethodMetadata(node));
                 } else if (ts.isMethodDeclaration(node)) {

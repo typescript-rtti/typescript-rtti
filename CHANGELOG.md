@@ -1,5 +1,5 @@
 # vNext
-- Fixes a failure when no return type inference is available on a function declaration
+- Arrow functions and function expressions are now supported
 - Reflected flags are now used to determine what kind of value is being passed to `reflect(value)`. This enables 
   differentiating between functions and classes according to their flags. For functions without RTTI, reflect() returns
   `ReflectedClass` (instead of `ReflectedFunction`) because there is no way to determine at runtime (without RTTI)
@@ -18,6 +18,7 @@
   expect(reflect(A.foo)).to.be.instanceOf(ReflectedMethod)
   expect(reflect(A.foo).class).to.equal(reflect(A))
   ```
+- Fixes a failure when no return type inference is available on a function declaration
 
 # v0.0.22
 
