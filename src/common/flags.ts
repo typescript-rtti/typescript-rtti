@@ -7,6 +7,7 @@ export const F_PRIVATE      = '#';
 export const F_PROTECTED    = '@';
 export const F_PROPERTY     = 'P';
 export const F_METHOD       = 'M';
+export const F_STATIC       = 'S';
 export const F_CLASS        = 'C';
 export const F_INTERFACE    = 'I';
 export const F_FUNCTION     = 'F';
