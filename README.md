@@ -12,6 +12,10 @@ A Typescript transformer to implement comprehensive runtime type information (RT
 - **Isomorphic**: works in the browser, Node.js and other runtimes (Deno?)
 - **Compatible** with existing `design:*` metadata
 
+# Requirements
+
+You must use Typescript 4.5.5 or newer for this transformer to work correctly.
+
 # Introduction
 
 ```typescript
