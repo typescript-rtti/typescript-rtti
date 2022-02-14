@@ -269,6 +269,23 @@ describe('RTTI: ', () => {
                 let type = Reflect.getMetadata('design:type', exports.C.prototype, 'method');
                 expect(type).to.equal(Function);
             });
+            it('emits Object for untyped property', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export function foo() { return t => {}; }
+                        export class A { }
+                        export class C {
+                            @foo() prop;
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let type = Reflect.getMetadata('design:type', exports.C.prototype, 'prop');
+                expect(type).to.equal(Object);
+            });
             it('emits for property', async () => {
                 let exports = await runSimple({
                     code: `
@@ -284,6 +301,28 @@ describe('RTTI: ', () => {
                 });
         
                 let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
+                expect(type).to.equal(exports.B);
+            });
+            it('emits for property in a class within a function', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export function a() {
+                            class C {
+                                property : B;
+                            }
+
+                            return C;
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let C = exports.a();
+                let type = Reflect.getMetadata('design:type', C.prototype, 'property');
                 expect(type).to.equal(exports.B);
             });
             it('emits for property of type Promise', async () => {

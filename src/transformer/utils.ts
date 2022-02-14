@@ -1,13 +1,13 @@
 import ts from 'typescript';
 
-export function getRootNameOfQualifiedName(qualifiedName : ts.QualifiedName) {
+export function getRootNameOfQualifiedName(qualifiedName : ts.QualifiedName): string {
     if (ts.isQualifiedName(qualifiedName.left))
         return getRootNameOfQualifiedName(qualifiedName.left);
     else if (ts.isIdentifier(qualifiedName.left))
         return qualifiedName.left.text;
 }
 
-export function getRootNameOfEntityName(entityName : ts.EntityName) {
+export function getRootNameOfEntityName(entityName : ts.EntityName): string {
     if (ts.isQualifiedName(entityName)) {
         return getRootNameOfQualifiedName(entityName);
     } else if (ts.isIdentifier(entityName)) {

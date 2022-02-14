@@ -5,51 +5,90 @@ export function rtHelper() {
     return factory.createVariableStatement(
         undefined,
         factory.createVariableDeclarationList(
-            [factory.createVariableDeclaration(
-                factory.createIdentifier("__RtΦ"),
+          [factory.createVariableDeclaration(
+            factory.createIdentifier("__RtΦ"),
+            undefined,
+            undefined,
+            factory.createArrowFunction(
+              undefined,
+              undefined,
+              [
+                factory.createParameterDeclaration(
+                  undefined,
+                  undefined,
+                  undefined,
+                  factory.createIdentifier("k"),
+                  undefined,
+                  undefined,
+                  undefined
+                ),
+                factory.createParameterDeclaration(
+                  undefined,
+                  undefined,
+                  undefined,
+                  factory.createIdentifier("v"),
+                  undefined,
+                  undefined,
+                  undefined
+                )
+              ],
+              undefined,
+              factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+              factory.createArrowFunction(
                 undefined,
                 undefined,
-                factory.createArrowFunction(
+                [
+                  factory.createParameterDeclaration(
                     undefined,
+                    undefined,
+                    undefined,
+                    factory.createIdentifier("t"),
+                    undefined,
+                    undefined,
+                    undefined
+                  ),
+                  factory.createParameterDeclaration(
+                    undefined,
+                    undefined,
+                    factory.createToken(ts.SyntaxKind.DotDotDotToken),
+                    factory.createIdentifier("args"),
+                    undefined,
+                    undefined,
+                    undefined
+                  )
+                ],
+                undefined,
+                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                factory.createConditionalExpression(
+                  factory.createIdentifier("t"),
+                  factory.createToken(ts.SyntaxKind.QuestionToken),
+                  factory.createCallExpression(
+                    factory.createCallExpression(
+                      factory.createPropertyAccessExpression(
+                        factory.createIdentifier("Reflect"),
+                        factory.createIdentifier("metadata")
+                      ),
+                      undefined,
+                      [
+                        factory.createIdentifier("k"),
+                        factory.createIdentifier("v")
+                      ]
+                    ),
                     undefined,
                     [
-                        factory.createParameterDeclaration(
-                            undefined,
-                            undefined,
-                            undefined,
-                            factory.createIdentifier("k"),
-                            undefined,
-                            undefined,
-                            undefined
-                        ),
-                        factory.createParameterDeclaration(
-                            undefined,
-                            undefined,
-                            undefined,
-                            factory.createIdentifier("v"),
-                            undefined,
-                            undefined,
-                            undefined
-                        )
-                    ],
-                    undefined,
-                    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                    factory.createCallExpression(
-                        factory.createPropertyAccessExpression(
-                            factory.createIdentifier("Reflect"),
-                            factory.createIdentifier("metadata")
-                        ),
-                        undefined,
-                        [
-                            factory.createIdentifier("k"),
-                            factory.createIdentifier("v")
-                        ]
-                    )
+                      factory.createIdentifier("t"),
+                      factory.createSpreadElement(factory.createIdentifier("args"))
+                    ]
+                  ),
+                  factory.createToken(ts.SyntaxKind.ColonToken),
+                  factory.createVoidExpression(factory.createNumericLiteral("0"))
                 )
-            )],
-            ts.NodeFlags.Const
+              )
+            )
+          )],
+          ts.NodeFlags.Const
         )
-    );
+      )
 }
 
 export function rtfHelper() {

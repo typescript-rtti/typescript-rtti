@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { legacyDecorator } from './legacy-decorator';
 import { serialize } from './serialize';
 
 export function metadataDecorator(key : string, object : any) {
@@ -13,6 +14,10 @@ export function metadataDecorator(key : string, object : any) {
             ]
         )
     )
+}
+
+export function legacyMetadataDecorator(key : string, object : any) {
+    return legacyDecorator(metadataDecorator(key, object));
 }
 
 export function directMetadataDecorator(key : string, object : any) {

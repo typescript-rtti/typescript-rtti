@@ -24,7 +24,6 @@ const PACKAGES : Record<string, Package> = {
     },
     "@astronautlabs/bitstream": {
         enabled: true,
-        acceptFailure: true,
         url: 'https://github.com/astronautlabs/bitstream.git',
         ref: 'main'
     }
@@ -79,7 +78,7 @@ async function main() {
                     let packageFileName = path.join(local, 'package.json');
                     let packageJson = JSON.parse((await fs.readFile(packageFileName)).toString());
                     for (let key of Object.keys(packageJson.scripts))
-                        packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/, 'ttsc');
+                        packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
                     await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
 
                     let result = shell.exec(`npm run build`, { cwd: local });

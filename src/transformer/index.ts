@@ -32,12 +32,14 @@
 
 import { F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef, functionForwardRef } from './forward-ref';
-import { decorateFunctionExpression, directMetadataDecorator, metadataDecorator } from './metadata-decorator';
+import { decorateFunctionExpression, directMetadataDecorator, legacyMetadataDecorator, metadataDecorator } from './metadata-decorator';
 import { rtfHelper, rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
 import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode, F_STATIC, F_ARROW_FUNCTION } from '../common';
 import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
+import { literalNode } from './literal-node';
+import { legacyDecorator } from './legacy-decorator';
 
 export class CompileError extends Error {}
 
@@ -117,14 +119,13 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     let emitStandardMetadata = program['rtti$emitStandardMetadata'];
 
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
-        function literalNode(node : ts.Node): LiteralSerializedNode {
-            return { $__isTSNode: true, node };
-        }
-
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
         let trace = settings?.trace ?? false;
 
         return sourceFile => {
+
+            if (trace)
+                console.log(`#### Processing ${sourceFile.fileName}`);
             if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts'))
                 return sourceFile;
 
@@ -147,6 +148,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             }
 
             function inlineMetadataCollector<T extends ts.Node>(node : T, decorators : ts.Decorator[]): T {
+                if (decorators.length === 0)
+                    return node;
+                
                 if (ts.isPropertyDeclaration(node)) {
                     return <any>ts.factory.updatePropertyDeclaration(
                         node, 
@@ -204,7 +208,14 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         property = node.name.getText();
                     }
 
-                    decorators.push(...addedDecorators.map(decorator => ({ property, node, decorator, direct: decorator['__Φdirect'] ?? false })));
+                    let legacyDecorators = addedDecorators.filter(decorator => decorator['__Φlegacy']);
+                    let nonLegacyDecorators = addedDecorators.filter(decorator => !decorator['__Φlegacy']);
+
+                    decorators.push(...nonLegacyDecorators.map(decorator => ({ property, node, decorator, direct: decorator['__Φdirect'] ?? false })));
+
+                    if (legacyDecorator.length > 0)
+                        node = inlineMetadataCollector(node, legacyDecorators);
+                    
                     return node;
                 };
 
@@ -298,7 +309,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
             function serializeTypeRef(typeNode : ts.Node, extended): ts.Expression {
                 if (!typeNode)
-                    return ts.factory.createVoidZero();
+                    return ts.factory.createIdentifier('Object');
                 
                 let expr = serializeBaseTypeRef(typeNode, extended);
 
@@ -322,7 +333,6 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 if (!typeNode)
                     return ts.factory.createVoidZero();
                 
-
                 if (ts.isTypeReferenceNode(typeNode)) {
                     const resolver = context['getEmitResolver']();
                     const kind : TypeReferenceSerializationKind = resolver.getTypeReferenceSerializationKind(typeNode.typeName, currentNameScope || currentLexicalScope);
@@ -340,6 +350,15 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         return ts.factory.createIdentifier('Object');
 
                     let type = program.getTypeChecker().getTypeFromTypeNode(typeNode); 
+                    let isInterface = type.isClassOrInterface() && !type.isClass();
+                    let typeSymbol = type.getSymbol();
+
+                    // Interfaces can shadow classes. Sometimes we think it's an interface, but really it should 
+                    // be a class
+
+                    if (isInterface && typeSymbol && typeSymbol.valueDeclaration) {
+                        isInterface = false;
+                    }
 
                     if (type.isIntersection() || type.isUnion())
                         return ts.factory.createIdentifier('Object');
@@ -349,6 +368,10 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                     if (context.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
                         let origName = getRootNameOfEntityName(typeNode.typeName);
+
+                        if (isInterface)
+                            origName = `IΦ${origName}`;
+                        
                         let impo = importMap.get(origName);
                         
                         if (ts.isIdentifier(typeNode.typeName)) {
@@ -607,7 +630,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             
             function extractPropertyMetadata(property : ts.PropertyDeclaration | ts.PropertySignature) {
                 return [
-                    ...extractTypeMetadata(property.type, 'type'),
+                    ...extractTypeMetadata(property.type, 'type', ts.isPropertyDeclaration(property)),
                     metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(property.modifiers)}${isReadOnly(property.modifiers)}`)
                 ];
             }
@@ -732,7 +755,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return serialize(type.value);
                 } else if ((type.flags & ts.TypeFlags.Object) !== 0) {
                     if (type.isClass()) {
-                        return ts.factory.createIdentifier(type.symbol.name);
+                        return ts.factory.createIdentifier(`${type.symbol.name}`);
                     } else if (type.isClassOrInterface()) {
                         return ts.factory.createIdentifier(`IΦ${type.symbol.name}`);
                     }
@@ -764,21 +787,21 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction) {
                 let decs : ts.Decorator[] = [];
 
-                if (emitStandardMetadata)
-                    decs.push(metadataDecorator('design:type', literalNode(ts.factory.createIdentifier('Function'))));
+                if (emitStandardMetadata && ts.isMethodDeclaration(method))
+                    decs.push(legacyMetadataDecorator('design:type', literalNode(ts.factory.createIdentifier('Function'))));
                                 
                 decs.push(...extractParamsMetadata(method));
                 decs.push(metadataDecorator('rt:f', extractMethodFlags(method)));
 
                 if (method.type) {
-                    decs.push(...extractTypeMetadata(method.type, 'returntype'));
+                    decs.push(...extractTypeMetadata(method.type, 'returntype', ts.isMethodDeclaration(method)));
                 } else {
                     let signature = program.getTypeChecker().getSignatureFromDeclaration(method);
                     if (signature) {
                         let returnT = typeToTypeRef(signature.getReturnType());
                         decs.push(metadataDecorator('rt:t', literalNode(forwardRef(returnT))));
-                        if (emitStandardMetadata)
-                            decs.push(metadataDecorator('design:returntype', literalNode(ts.factory.createVoidZero())));
+                        if (emitStandardMetadata && ts.isMethodDeclaration(method))
+                            decs.push(legacyMetadataDecorator('design:returntype', literalNode(ts.factory.createVoidZero())));
                     }
                 }
 
@@ -787,11 +810,11 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             
             //////////////////////////////////////////////////////////
 
-            function extractTypeMetadata(type : ts.TypeNode, standardName : string) {
+            function extractTypeMetadata(type : ts.TypeNode, standardName : string, allowStandardMetadata = true) {
                 let decs : ts.Decorator[] = [];
                 decs.push(metadataDecorator('rt:t', literalNode(forwardRef(serializeTypeRef(type, true)))));
-                if (emitStandardMetadata)
-                    decs.push(metadataDecorator(`design:${standardName}`, literalNode(serializeTypeRef(type, false))));
+                if (emitStandardMetadata && allowStandardMetadata)
+                    decs.push(legacyMetadataDecorator(`design:${standardName}`, literalNode(serializeTypeRef(type, false))));
                 return decs;
             }
 
@@ -835,24 +858,27 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 }
 
                 decs.push(metadataDecorator('rt:p', serializedParamMeta));
-                if (emitStandardMetadata) {
-                    decs.push(metadataDecorator('design:paramtypes', standardParamTypes.map(t => {
-                        
-                        return literalNode(t);
-                    })));
-                }
+                if (emitStandardMetadata && (ts.isMethodDeclaration(method) || ts.isConstructorDeclaration(method)))
+                    decs.push(metadataDecorator('design:paramtypes', standardParamTypes.map(t => literalNode(t))));
                 
                 return decs;
             }
 
-            function emitOutboardMetadata(
-                node : ts.ClassDeclaration, 
-                outboardMetadata : { node: void, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator, direct: boolean }[] }
+            function emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
+                node : NodeT, 
+                outboardMetadata : { node: NodeT, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator, direct: boolean }[] }
             ) {
                 let nodes : ts.Node[] = [];
-
+                let elementName = node.name.text;
                 for (let dec of outboardMetadata.decorators) {
-                    let host : ts.Expression = ts.factory.createIdentifier((node as ts.ClassDeclaration).name.text);
+                    
+                    let host : ts.Expression = ts.factory.createIdentifier(elementName);
+    
+                    if (ts.isInterfaceDeclaration(node)) {
+                        let interfaceName = `IΦ${node.name.text}`;
+                        host = ts.factory.createIdentifier(interfaceName);
+                    }
+    
                     let isStatic = false;
 
                     if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node))
@@ -866,17 +892,17 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if (dec.property) {
                         if (dec.direct) {
                             host = ts.factory.createPropertyAccessExpression(host, dec.property);
-                            nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ host ]));
+                            nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ host ])));
                         } else {
-                            nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                            nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
                                 host,
                                 ts.factory.createStringLiteral(dec.property)
-                            ]));
+                            ])));
                         }
                     } else {
-                        nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                        nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
                             host
-                        ]));
+                        ])));
                     }
                 }
 
@@ -1111,11 +1137,14 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                     metadataCollector(node, extractClassMetadata(<ts.ClassDeclaration>node, details)), 
                                     visitor, context
                                 );
+                                return <ts.ClassDeclaration>node;
                             } catch (e) {
                                 console.error(`RTTI: During outboard metadata collection for class ${className}: ${e.message}`);
                                 throw e;
                             }
                         });
+
+                        if (trace) console.log(` - ${outboardMetadata.decorators.length} outboard decorators`);
 
                         return [
                             node,
@@ -1185,11 +1214,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     
                     let details = interfaceAnalyzer(node);
                     let interfaceName = node.name.getText();
+                    let interfaceDecl = node;
                     
                     return scope(node, () => {
                         let result = collectMetadata(() => {
                             try {
-                                return ts.visitEachChild(node, visitor, context)
+                                return <ts.InterfaceDeclaration>ts.visitEachChild(node, visitor, context)
                             } catch (e) {
                                 console.error(`RTTI: During metadata collection for interface ${interfaceName}: ${e.message}`);
                                 throw e;
@@ -1202,6 +1232,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                 .map(decorator => ts.factory.createCallExpression(decorator.expression, undefined, [
                                     ts.factory.createIdentifier(`IΦ${(node as ts.InterfaceDeclaration).name.text}`)
                                 ])),
+                            ...emitOutboardMetadata(interfaceDecl, result),
                             ...(result.decorators.map(dec => ts.factory.createCallExpression(dec.decorator.expression, undefined, [
                                 ts.factory.createPropertyAccessExpression(
                                     ts.factory.createIdentifier(`IΦ${(node as ts.InterfaceDeclaration).name.text}`), 
@@ -1272,9 +1303,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         ])))
                     ]
                 } else if (ts.isArrowFunction(node)) {
-                    return decorateFunctionExpression(node, extractMethodMetadata(node));
+                    return decorateFunctionExpression(ts.visitEachChild(node, visitor, context), extractMethodMetadata(node));
                 } else if (ts.isFunctionExpression(node)) {
-                    return decorateFunctionExpression(node, extractMethodMetadata(node));
+                    return decorateFunctionExpression(ts.visitEachChild(node, visitor, context), extractMethodMetadata(node));
                 } else if (ts.isMethodDeclaration(node)) {
                     if (ts.isClassDeclaration(node.parent)) {
                         if (trace)
