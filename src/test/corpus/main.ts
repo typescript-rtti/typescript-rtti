@@ -90,9 +90,7 @@ async function main() {
                         throw new Error(`ERROR: build failed [${result.code}]`);
                     }
 
-                    result = shell.exec(`npm test`, { cwd: local });
-                    if (result.code !== 0)
-                        throw new Error(`ERROR: tests failed [${result.code}]`);
+                    run(`npm test`, local);
 
                     console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
                 } catch (e) {
