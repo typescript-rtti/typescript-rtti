@@ -31,8 +31,8 @@
   "scripts": {
     "clean": "rimraf dist dist.esm",
     "build": "npm run clean && npm run build:cjs && npm run build:esm",
-    "build:cjs": "tsc",
-    "build:esm": "tsc -p ./tsconfig.esm.json",
+    "build:cjs": "tsc -b",
+    "build:esm": "tsc -b ./tsconfig.esm.json",
     "test": "npm run build && node --experimental-loader ./test-module-resolver.mjs dist/test",
     "test:corpus": "npm run build && node ./dist/test/corpus/main",
     "prepublishOnly": "npm test && npm run test:corpus"
