@@ -1,14 +1,40 @@
 import ts from 'typescript';
 
+// const __RtΦ = (k, v) => (t, ...a) => t && Reflect.metadata ? Reflect.metadata(k, v)(t, ...a) : void 0;
 export function rtHelper() {
     const factory = ts.factory;
     return factory.createVariableStatement(
-        undefined,
-        factory.createVariableDeclarationList(
-          [factory.createVariableDeclaration(
-            factory.createIdentifier("__RtΦ"),
+      undefined,
+      factory.createVariableDeclarationList(
+        [factory.createVariableDeclaration(
+          factory.createIdentifier("__RtΦ"),
+          undefined,
+          undefined,
+          factory.createArrowFunction(
             undefined,
             undefined,
+            [
+              factory.createParameterDeclaration(
+                undefined,
+                undefined,
+                undefined,
+                factory.createIdentifier("k"),
+                undefined,
+                undefined,
+                undefined
+              ),
+              factory.createParameterDeclaration(
+                undefined,
+                undefined,
+                undefined,
+                factory.createIdentifier("v"),
+                undefined,
+                undefined,
+                undefined
+              )
+            ],
+            undefined,
+            factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
             factory.createArrowFunction(
               undefined,
               undefined,
@@ -17,7 +43,7 @@ export function rtHelper() {
                   undefined,
                   undefined,
                   undefined,
-                  factory.createIdentifier("k"),
+                  factory.createIdentifier("t"),
                   undefined,
                   undefined,
                   undefined
@@ -25,8 +51,8 @@ export function rtHelper() {
                 factory.createParameterDeclaration(
                   undefined,
                   undefined,
-                  undefined,
-                  factory.createIdentifier("v"),
+                  factory.createToken(ts.SyntaxKind.DotDotDotToken),
+                  factory.createIdentifier("a"),
                   undefined,
                   undefined,
                   undefined
@@ -34,61 +60,43 @@ export function rtHelper() {
               ],
               undefined,
               factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-              factory.createArrowFunction(
-                undefined,
-                undefined,
-                [
-                  factory.createParameterDeclaration(
-                    undefined,
-                    undefined,
-                    undefined,
-                    factory.createIdentifier("t"),
-                    undefined,
-                    undefined,
-                    undefined
-                  ),
-                  factory.createParameterDeclaration(
-                    undefined,
-                    undefined,
-                    factory.createToken(ts.SyntaxKind.DotDotDotToken),
-                    factory.createIdentifier("args"),
-                    undefined,
-                    undefined,
-                    undefined
-                  )
-                ],
-                undefined,
-                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                factory.createConditionalExpression(
+              factory.createConditionalExpression(
+                factory.createBinaryExpression(
                   factory.createIdentifier("t"),
-                  factory.createToken(ts.SyntaxKind.QuestionToken),
+                  factory.createToken(ts.SyntaxKind.AmpersandAmpersandToken),
+                  factory.createPropertyAccessExpression(
+                    factory.createIdentifier("Reflect"),
+                    factory.createIdentifier("metadata")
+                  )
+                ),
+                factory.createToken(ts.SyntaxKind.QuestionToken),
+                factory.createCallExpression(
                   factory.createCallExpression(
-                    factory.createCallExpression(
-                      factory.createPropertyAccessExpression(
-                        factory.createIdentifier("Reflect"),
-                        factory.createIdentifier("metadata")
-                      ),
-                      undefined,
-                      [
-                        factory.createIdentifier("k"),
-                        factory.createIdentifier("v")
-                      ]
+                    factory.createPropertyAccessExpression(
+                      factory.createIdentifier("Reflect"),
+                      factory.createIdentifier("metadata")
                     ),
                     undefined,
                     [
-                      factory.createIdentifier("t"),
-                      factory.createSpreadElement(factory.createIdentifier("args"))
+                      factory.createIdentifier("k"),
+                      factory.createIdentifier("v")
                     ]
                   ),
-                  factory.createToken(ts.SyntaxKind.ColonToken),
-                  factory.createVoidExpression(factory.createNumericLiteral("0"))
-                )
+                  undefined,
+                  [
+                    factory.createIdentifier("t"),
+                    factory.createSpreadElement(factory.createIdentifier("a"))
+                  ]
+                ),
+                factory.createToken(ts.SyntaxKind.ColonToken),
+                factory.createVoidExpression(factory.createNumericLiteral("0"))
               )
             )
-          )],
-          ts.NodeFlags.Const
-        )
+          )
+        )],
+        ts.NodeFlags.Const
       )
+    )
 }
 
 export function rtfHelper() {
