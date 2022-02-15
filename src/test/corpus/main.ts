@@ -54,7 +54,7 @@ const PACKAGES : Record<string, Package> = {
 /**
  * What Typescript versions should be tested (git tags)
  */
-const TYPESCRIPTS = ['4.5.5', '4.5', '4', 'latest'];
+const TYPESCRIPTS = ['4.5.5', '4', 'latest', 'next', 'beta', 'rc', 'insiders'];
 
 function run(str : string, cwd? : string) {
     let result = shell.exec(str, { cwd: cwd ?? process.cwd(), silent: true });
