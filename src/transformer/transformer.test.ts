@@ -14,40 +14,54 @@ function hasProperty(map: ts.MapLike<any>, key: string): boolean {
 
 const MODULE_TYPES : ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
 
-describe('RTTI: ', () => {
-    describe('function', it => {
-        it('works for functions defined in if statements', async () => {
-            let exports = await runSimple({
-                code: `
-                    export let foo = false;
-                    if (false) 
-                        function a() { return 321; }
-                    else
-                        foo = true;
-                `
-            });
-
-            expect(exports.foo).to.equal(true);
+describe('Sanity', it => {
+    it('when function declarations appear in if statements', async () => {
+        let exports = await runSimple({
+            code: `
+                export let foo = false;
+                if (false) 
+                    function a() { return 321; }
+                else
+                    foo = true;
+            `
         });
-        it('works for functions defined in if statements (2)', async () => {
-            let exports = await runSimple({
-                code: `
-                    export let foo = false;
-                    if (true) 
-                        function a() { return 321; }
-                    else
-                        foo = true;
 
-                    export let bar = a();
-                    export let func = a;
-                `
-            });
-
-            expect(exports.bar).to.equal(321);
-        });
+        expect(exports.foo).to.equal(true);
     });
-    describe('interface', it => {
-        it('emits a symbol for every exported interface', async () => {
+    it('when function declarations appear in if statements (2)', async () => {
+        let exports = await runSimple({
+            code: `
+                export let foo = false;
+                if (true) 
+                    function a() { return 321; }
+                else
+                    foo = true;
+
+                export let bar = a();
+                export let func = a;
+            `
+        });
+
+        expect(exports.bar).to.equal(321);
+    });
+    it('prevails, do not collapse exports', async () => {
+        let exports = await runSimple({
+            code: `
+                export interface A { }
+                export function B() { }
+                export class C { foo() { } }
+            `
+        })
+
+        expect(typeof exports.IΦA.identity).to.equal('symbol');
+        expect(typeof exports.B).to.equal('function');
+        expect(typeof exports.C).to.equal('function');
+        expect(typeof exports.C.prototype.foo).to.equal('function');
+    });
+});
+describe('RTTI: ', () => {
+    describe('Interface tokens', it => {
+        it('are emitted for exported interfaces', async () => {
             let exports = await runSimple({
                 code: `
                     export interface Foo { }
@@ -57,7 +71,7 @@ describe('RTTI: ', () => {
             expect(typeof exports.IΦFoo).to.equal('object');
             expect(typeof exports.IΦFoo.identity).to.equal('symbol');
         });
-        it('emits no symbol for non-exported interface', async () => {
+        it('are emitted for non-exported interfaces', async () => {
             let exports = await runSimple({
                 code: `
                     interface Foo { }
@@ -65,7 +79,7 @@ describe('RTTI: ', () => {
             });
             expect(exports.IΦFoo).not.to.exist;
         });
-        it('\'s symbol has type metadata', async () => {
+        it('collect type metadata', async () => {
             let exports = await runSimple({
                 code: `
                     export interface Foo { 
@@ -84,69 +98,6 @@ describe('RTTI: ', () => {
             expect(Reflect.getMetadata('rt:P', exports.IΦFoo)).to.eql(['field', 'blah']);
             expect(Reflect.getMetadata('rt:m', exports.IΦFoo)).to.eql(['method']);
         });
-    });
-    describe('reify<T>()', it => {
-        it('will resolve to the interface symbol generated in the same file', async () => {
-            let exports = await runSimple({
-                code: `
-                    import { reify } from 'typescript-rtti';
-                    export interface Foo { }
-                    export const ReifiedFoo = reify<Foo>();
-                `,
-                modules: {
-                    "typescript-rtti": { reify: a => a }
-                }
-            });
-
-            let identity = exports.IΦFoo.identity;
-
-            expect(typeof identity).to.equal('symbol');
-            expect(exports.IΦFoo).to.eql({ name: 'Foo', prototype: {}, identity });
-            expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
-        })
-        for (let moduleType of MODULE_TYPES) {
-            if (moduleType !== 'esm') continue;
-            describe(` [${moduleType}]`, it => {
-                it('will resolve to the interface symbol generated in another file', async () => {
-                    let FooSym = "$$FOO";
-                    let IΦFoo = { name: 'Foo', prototype: {}, identity: FooSym };
-
-                    let exports = await runSimple({
-                        moduleType: moduleType,
-                        code: `
-                            import { reify } from 'typescript-rtti';
-                            import { Foo } from "another";
-                            export const ReifiedFoo = reify<Foo>();
-                        `,
-                        modules: {
-                            "typescript-rtti": { reify: a => a, reflect: a => a },
-                            "another": {
-                                IΦFoo
-                            }
-                        }
-                    });
-                    expect(exports.ReifiedFoo).to.eql(IΦFoo);
-                })
-                it('will not choke if the imported interface has no type metadata', async () => {
-                    let exports = await runSimple({
-                        moduleType: moduleType,
-                        code: `
-                            import { reify } from 'typescript-rtti';
-                            import { Foo } from "another2";
-                            export const ReifiedFoo = reify<Foo>();
-                        `,
-                        modules: {
-                            "typescript-rtti": { 
-                                reify: () => {}
-                            },
-                            "another2": {}
-                        }
-                    });
-
-                    expect(exports.ReifiedFoo).to.equal(undefined);
-                });
-            });
-        }
     });
     describe('Imports', it => {
         for (let moduleType of MODULE_TYPES) {
@@ -1771,20 +1722,70 @@ describe('RTTI: ', () => {
             })
         });
     });
-    describe('lateral', it => {
-        it('does not collapse exports', async () => {
+});
+
+describe('API transformations', it => {
+    describe(': reify<T>()', it => {
+        it('will resolve to the interface symbol generated in the same file', async () => {
             let exports = await runSimple({
                 code: `
-                    export interface A { }
-                    export function B() { }
-                    export class C { foo() { } }
-                `
-            })
+                    import { reify } from 'typescript-rtti';
+                    export interface Foo { }
+                    export const ReifiedFoo = reify<Foo>();
+                `,
+                modules: {
+                    "typescript-rtti": { reify: a => a }
+                }
+            });
 
-            expect(typeof exports.IΦA.identity).to.equal('symbol');
-            expect(typeof exports.B).to.equal('function');
-            expect(typeof exports.C).to.equal('function');
-            expect(typeof exports.C.prototype.foo).to.equal('function');
-        });
+            let identity = exports.IΦFoo.identity;
+
+            expect(typeof identity).to.equal('symbol');
+            expect(exports.IΦFoo).to.eql({ name: 'Foo', prototype: {}, identity });
+            expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
+        })
+        for (let moduleType of MODULE_TYPES) {
+            if (moduleType !== 'esm') continue;
+            describe(` [${moduleType}]`, it => {
+                it('will resolve to the interface symbol generated in another file', async () => {
+                    let FooSym = "$$FOO";
+                    let IΦFoo = { name: 'Foo', prototype: {}, identity: FooSym };
+
+                    let exports = await runSimple({
+                        moduleType: moduleType,
+                        code: `
+                            import { reify } from 'typescript-rtti';
+                            import { Foo } from "another";
+                            export const ReifiedFoo = reify<Foo>();
+                        `,
+                        modules: {
+                            "typescript-rtti": { reify: a => a, reflect: a => a },
+                            "another": {
+                                IΦFoo
+                            }
+                        }
+                    });
+                    expect(exports.ReifiedFoo).to.eql(IΦFoo);
+                })
+                it('will not choke if the imported interface has no type metadata', async () => {
+                    let exports = await runSimple({
+                        moduleType: moduleType,
+                        code: `
+                            import { reify } from 'typescript-rtti';
+                            import { Foo } from "another2";
+                            export const ReifiedFoo = reify<Foo>();
+                        `,
+                        modules: {
+                            "typescript-rtti": { 
+                                reify: () => {}
+                            },
+                            "another2": {}
+                        }
+                    });
+
+                    expect(exports.ReifiedFoo).to.equal(undefined);
+                });
+            });
+        }
     });
 });
