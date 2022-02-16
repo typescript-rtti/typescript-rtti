@@ -44,9 +44,9 @@ const PACKAGES : Record<string, Package> = {
         commands: [ 'npm install tslib@latest', 'lerna bootstrap', 'lerna link', 'npm test' ]
     },
     "rezonant/typescript-rtti": {
-        enabled: false, // this is aspirational
+        enabled: true, // 🎉
         url: 'https://github.com/rezonant/typescript-rtti.git',
-        ref: 'main',
+        ref: 'eec152929c840a13fdbbfd2f13bf524067c8d379',
         commands: [ 'npm run build', 'npm test' ]
     }
 };
