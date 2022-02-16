@@ -1,11 +1,15 @@
-# vNext
+# v0.1.0
 - Minimum Typescript version is now 4.5.5
 - Minimum Node.js version is now v14
-- Fixes an issue where forward references in interface methods caused build failures with emitDecoratorMetadata compatibility
-- Fixes numerous corner case build issues discovered through corpus testing
-- Fixes issues where metadata was not emitted for elements within function expressions and arrow functions
-- Fixes issues with emitDecoratorMetadata compatibility producing different results from the standard implementation
-- Fixes issues where metadata definition statements were emitted as expressions (ie without semicolons) leading to incorrect JS output
+- The test suite now builds `razmin`, `@astronautlabs/bitstream`, and `typescript-rtti` (itself) using its own transformer and the test suites of those libraries successfully pass (corpus testing). Additional libraries are on the roadmap for being included in the test corpus including `@alterior-mvc/alterior` and `@astronautlabs/jwt`. Accepting PRs for additional libraries to include in the test suite.
+- Found and fixed as part of corpus testing: 
+    - Removed emitting of `design:*` metadata where Typescript does not emit it to better match semantics and fix compilation issues
+    - forward references in interface methods caused build failures with emitDecoratorMetadata compatibility
+    - numerous corner case build issues discovered through corpus testing
+    - metadata was not emitted for elements within function expressions and arrow functions
+    - emitDecoratorMetadata compatibility producing different results from the standard implementation
+    - metadata definition statements were emitted as expressions (ie without semicolons) leading to incorrect JS output
+- Transformer is now considered stable for build with any codebase. Please file an issue if you receive a compilation failure.
 
 # v0.0.23
 - Arrow functions and function expressions are now supported
