@@ -22,3 +22,5 @@ dist.esm/**/*.test.d.ts
 
 test-esrequire.js
 test-module-resolver.mjs
+
+corpus.*/
