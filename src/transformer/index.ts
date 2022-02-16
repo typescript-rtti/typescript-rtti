@@ -213,8 +213,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                     decorators.push(...nonLegacyDecorators.map(decorator => ({ property, node, decorator, direct: decorator['__Φdirect'] ?? false })));
 
-                    if (legacyDecorator.length > 0)
+                    // Only apply legacy decorators (inline) when there are other 
+                    // decorators to match TS' own semantics
+
+                    if (node.decorators?.length > 0 && legacyDecorator.length > 0) {
                         node = inlineMetadataCollector(node, legacyDecorators);
+                    }
                     
                     return node;
                 };
@@ -630,7 +634,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             
             function extractPropertyMetadata(property : ts.PropertyDeclaration | ts.PropertySignature) {
                 return [
-                    ...extractTypeMetadata(property.type, 'type', ts.isPropertyDeclaration(property)),
+                    ...extractTypeMetadata(property.type, 'type', ts.isPropertyDeclaration(property) && property.decorators?.length > 0),
                     metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(property.modifiers)}${isReadOnly(property.modifiers)}`)
                 ];
             }
@@ -787,20 +791,20 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             function extractMethodMetadata(method : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction) {
                 let decs : ts.Decorator[] = [];
 
-                if (emitStandardMetadata && ts.isMethodDeclaration(method))
+                if (emitStandardMetadata && ts.isMethodDeclaration(method) && method.decorators?.length > 0)
                     decs.push(legacyMetadataDecorator('design:type', literalNode(ts.factory.createIdentifier('Function'))));
                                 
                 decs.push(...extractParamsMetadata(method));
                 decs.push(metadataDecorator('rt:f', extractMethodFlags(method)));
 
                 if (method.type) {
-                    decs.push(...extractTypeMetadata(method.type, 'returntype', ts.isMethodDeclaration(method)));
+                    decs.push(...extractTypeMetadata(method.type, 'returntype', ts.isMethodDeclaration(method) && method.decorators?.length > 0));
                 } else {
                     let signature = program.getTypeChecker().getSignatureFromDeclaration(method);
                     if (signature) {
                         let returnT = typeToTypeRef(signature.getReturnType());
                         decs.push(metadataDecorator('rt:t', literalNode(forwardRef(returnT))));
-                        if (emitStandardMetadata && ts.isMethodDeclaration(method))
+                        if (emitStandardMetadata && ts.isMethodDeclaration(method) && method.decorators?.length > 0)
                             decs.push(legacyMetadataDecorator('design:returntype', literalNode(ts.factory.createVoidZero())));
                     }
                 }
@@ -858,7 +862,14 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 }
 
                 decs.push(metadataDecorator('rt:p', serializedParamMeta));
-                if (emitStandardMetadata && (ts.isMethodDeclaration(method) || ts.isConstructorDeclaration(method)))
+
+                let eligibleForLegacyDecorators = (ts.isMethodDeclaration(method) || ts.isConstructorDeclaration(method));
+                let isDecorated = method.decorators?.length > 0;
+                if (ts.isConstructorDeclaration(method)) {
+                    isDecorated = method.parent.decorators?.length > 0;
+                }
+
+                if (emitStandardMetadata && eligibleForLegacyDecorators && isDecorated)
                     decs.push(metadataDecorator('design:paramtypes', standardParamTypes.map(t => literalNode(t))));
                 
                 return decs;
@@ -1298,9 +1309,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                     return [
                         node,
-                        ...(metadata.map(dec => ts.factory.createCallExpression(dec.expression, undefined, [
+                        ...(metadata.map(dec => ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.expression, undefined, [
                             ts.factory.createIdentifier(`${(node as ts.FunctionDeclaration).name.text}`)
-                        ])))
+                        ]))))
                     ]
                 } else if (ts.isArrowFunction(node)) {
                     return decorateFunctionExpression(ts.visitEachChild(node, visitor, context), extractMethodMetadata(node));

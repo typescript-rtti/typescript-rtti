@@ -255,10 +255,12 @@ describe('RTTI: ', () => {
             it('emits for method', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
+                        
                         export class A { }
                         export class B { }
                         export class C {
-                            method(parm : A, parm2 : B) { }
+                            @noop() method(parm : A, parm2 : B) { }
                         }
                     `, 
                     compilerOptions: { 
@@ -289,10 +291,11 @@ describe('RTTI: ', () => {
             it('emits for property', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
                         export class A { }
                         export class B { }
                         export class C {
-                            property : B;
+                            @noop() property : B;
                         }
                     `, 
                     compilerOptions: { 
@@ -306,11 +309,12 @@ describe('RTTI: ', () => {
             it('emits for property in a class within a function', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
                         export class A { }
                         export class B { }
                         export function a() {
                             class C {
-                                property : B;
+                                @noop() property : B;
                             }
 
                             return C;
@@ -328,10 +332,12 @@ describe('RTTI: ', () => {
             it('emits for property of type Promise', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
+
                         export class A { }
                         export class B { }
                         export class C {
-                            property : Promise<B>;
+                            @noop() property : Promise<B>;
                         }
                     `, 
                     compilerOptions: { 
@@ -347,9 +353,11 @@ describe('RTTI: ', () => {
             it('emits for ctor params', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
+
                         export class A { }
                         export class B { }
-                        export class C {
+                        @noop() export class C {
                             constructor(hello : A, world : B) { }
                         }
                     `, 
@@ -364,10 +372,12 @@ describe('RTTI: ', () => {
             it('emits for method params', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
+                        
                         export class A { }
                         export class B { }
                         export class C {
-                            method(parm : A, parm2 : B) { }
+                            @noop() method(parm : A, parm2 : B) { }
                         }
                     `, 
                     compilerOptions: { 
@@ -381,10 +391,12 @@ describe('RTTI: ', () => {
             it('emits expected intrinsic types', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
+
                         export class A { }
                         export class B { }
                         export class C {
-                            method(a : string, b : number, c : boolean, d : Function, e : RegExp) { }
+                            @noop() method(a : string, b : number, c : boolean, d : Function, e : RegExp) { }
                         }
                     `, 
                     compilerOptions: { 
@@ -406,10 +418,12 @@ describe('RTTI: ', () => {
             it('emits the designed type on a method', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
+
                         export class A { }
                         export class B { }
                         export class C {
-                            method(parm : A, parm2 : B): B { return null; }
+                            @noop() method(parm : A, parm2 : B): B { return null; }
                         }
                     `, 
                     compilerOptions: { 
@@ -423,10 +437,12 @@ describe('RTTI: ', () => {
             it('emits void 0 on a method returning nothing', async () => {
                 let exports = await runSimple({
                     code: `
+                        function noop() { return (t, ...a) => {} };
+
                         export class A { }
                         export class B { }
                         export class C {
-                            method(parm : A, parm2 : B) { }
+                            @noop() method(parm : A, parm2 : B) { }
                         }
                     `, 
                     compilerOptions: { 
