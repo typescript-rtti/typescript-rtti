@@ -71,6 +71,8 @@ let foo = function (id : number, username : string, protected favoriteColor? : n
 expect(reflect(foo).getParameter('favoriteColor').type.is('union')).to.be.true;
 ```
 
+More examples:
+
 ```typescript
 // your code
 import { reflect } from 'typescript-rtti';
