@@ -8,6 +8,8 @@
 A Typescript transformer to implement comprehensive runtime type information (RTTI).
 
 - **Comprehensive**: supports emission for a large amount of Typescript concepts
+- **Well tested**: 70% coverage total (59% on `reflect`, 86% on transformer). Test suite includes multiple complex 
+  codebases to ensure correct compilation
 - **Modern**: supports both ES modules and CommonJS (ES5 - ES2020)
 - **Isomorphic**: works in the browser, Node.js and other runtimes (Deno?)
 - **Compatible** with existing `design:*` metadata
