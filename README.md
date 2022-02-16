@@ -71,32 +71,6 @@ let foo = function (id : number, username : string, protected favoriteColor? : n
 expect(reflect(foo).getParameter('favoriteColor').type.is('union')).to.be.true;
 ```
 
-
-# Usage
-
-> **Using Webpack?**  
-> See [awesome-typescript-loader](https://github.com/s-panferov/awesome-typescript-loader)
-
-```
-npm install typescript-rtti
-npm install ttypescript -D
-```
-
-```jsonc
-// tsconfig.json
-"compilerOptions": {
-    "plugins": [{ "transform": "typescript-rtti/dist/transformer" }]
-}
-```
-
-```jsonc
-// package.json
-{
-    "scripts": {
-        "build": "ttsc -b"
-    }
-}
-```
 ```typescript
 // your code
 import { reflect } from 'typescript-rtti';
@@ -133,6 +107,42 @@ console.log(bClass.getMethod('baz').returnType) // A
 
 // ...These are just a few of the facts you can introspect at runtime
 ```
+
+# Set up
+```
+npm install typescript-rtti
+npm install ttypescript -D
+```
+
+```jsonc
+// tsconfig.json
+"compilerOptions": {
+    "plugins": [{ "transform": "typescript-rtti/dist/transformer" }]
+}
+```
+This is all that's needed to configure rtti in a typescript project. 
+
+# Usage
+
+## ttypescript
+
+```jsonc
+// package.json
+{
+    "scripts": {
+        "build": "ttsc -b"
+    }
+}
+```
+
+## **ts-node**
+You can use ts-node, just pass `-C ttypescript` to make sure ts-node uses typescript compiler which respects compiler transforms.
+
+## **Webpack**  
+ See [awesome-typescript-loader](https://github.com/s-panferov/awesome-typescript-loader)
+
+## **Jest**
+See https://github.com/rezonant/typescript-rtti-jest for a sample repo with jest setup.
 
 # Features
 
