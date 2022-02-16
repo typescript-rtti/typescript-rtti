@@ -3,3 +3,5 @@ dist/
 dist.esm/
 debug.log
 corpus.*/
+coverage/
+.nyc_output/

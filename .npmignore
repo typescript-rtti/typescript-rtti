@@ -24,3 +24,5 @@ test-esrequire.js
 test-module-resolver.mjs
 
 corpus.*/
+
+.nycrc
