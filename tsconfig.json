@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
 		"experimentalDecorators": true,
-		"target": "ES2017",
+		"target": "ES2016",
 		"sourceMap": true,
 		"declarationMap": true,
 		"outDir": "./dist",
