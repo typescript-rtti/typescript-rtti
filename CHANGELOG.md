@@ -1,3 +1,7 @@
+# v0.1.2
+- Fixes an issue where `null` was used instead of `undefined` on the forward reference arrow functions. This could cause
+  problems when using typescript-rtti in concert with other transformers (for instance, when using `ts-jest`)
+
 # v0.1.0
 - Minimum Typescript version is now 4.5.5
 - Minimum Node.js version is now v14
