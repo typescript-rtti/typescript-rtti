@@ -1210,14 +1210,16 @@ export class ReflectedProperty extends ReflectedMember {
         if (this._type !== undefined)
             return this._type;
 
-        let typeResolver = this.getMetadata('rt:t');
-        if (!typeResolver && this.hasMetadata('design:type')) {
+        let typeResolver : () => any;
+        if (this.hasMetadata('rt:t')) {
+            typeResolver = this.getMetadata('rt:t');
+        } else if (this.hasMetadata('design:type')) {
             let designType = this.getMetadata('design:type');
             typeResolver = () => designType;
         }
 
         if (!typeResolver)
-            return ReflectedTypeRef.createUnknown();
+            return this._type = ReflectedTypeRef.createUnknown();
 
         return this._type = ReflectedTypeRef.createFromRtRef(typeResolver());
     }
