@@ -32,7 +32,7 @@ const PACKAGES : Record<string, Package> = {
         commands: [ 'npm run build', 'npm test' ]
     },
     "@astronautlabs/jwt": {
-        enabled: true,
+        enabled: false,
         url: 'https://github.com/astronautlabs/jwt.git',
         ref: 'v1.0.1',
         commands: [ 'npm run build', 'npm test' ]
