@@ -3,7 +3,7 @@
 [![CircleCI](https://circleci.com/gh/rezonant/typescript-rtti/tree/main.svg?style=shield)](https://circleci.com/gh/rezonant/typescript-rtti/tree/main)
 
 > **NOTE**
-> This software is _beta quality_, semver 0.0.x
+> This software is _beta quality_, semver 0.0.x. Transformer: Expect all codebases to build and operate the same as when the transformer is not present. Reflection API:  API is stable, expect only rare breaking changes on the way to major-stable semver.
 
 A Typescript transformer to implement comprehensive runtime type information (RTTI).
 
