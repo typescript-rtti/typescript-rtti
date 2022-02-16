@@ -544,6 +544,9 @@ describe('ReflectedProperty', it => {
             static foo = 123;
             static bar;
         }
+        undecorate(B);
+        undecorate(B, 'foo');
+        undecorate(B, 'bar');
         Reflect.defineMetadata('design:type', Number, B, 'foo');
         Reflect.defineMetadata('design:type', String, B, 'bar');
         expect(ReflectedClass.new(B).getStaticProperty('foo').type.isClass(Number)).to.be.true;
