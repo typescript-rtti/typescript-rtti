@@ -5,6 +5,18 @@ import { InterfaceToken } from "../common";
 import * as flags from '../common/flags';
 import { reflect, ReflectedFunction, ReflectedMethod } from "./reflect";
 
+
+/**
+ * Remove all metadata from the given object [+property key]. This is 
+ * useful to ensure that any transformers used to compile the tests do not
+ * interfere with the library tests themselves.
+ * @param target 
+ * @param propertyKey 
+ */
+function undecorate(target : any, propertyKey? : string) {
+    Reflect.getMetadataKeys(target, propertyKey).forEach(k => Reflect.deleteMetadata(k, target, propertyKey));
+}
+
 describe('ReflectedClass', it => {
     describe('ownMethodNames', it => {
         it('includes only the own methods', () => {
@@ -41,16 +53,8 @@ describe('ReflectedClass', it => {
             expect(ReflectedClass.new(B).ownPropertyNames).to.eql(['bar']);
         })
         it('works on interfaces', () => {
-
-            interface A {
-                foo : string;
-            }
             const IΦA = { name: 'A', prototype: {}, identity: Symbol('A') };
             Reflect.defineMetadata('rt:P', ['foo'], IΦA);
-
-            interface B extends A {
-                bar : string;
-            }
             const IΦB = { name: 'B', prototype: {}, identity: Symbol('B') };
             Reflect.defineMetadata('rt:P', ['bar'], IΦB);
 
@@ -77,7 +81,8 @@ describe('ReflectedClass', it => {
     it('can reflect constructor parameters from design:paramtypes', () => {
         class A {
             constructor(a, b, c) { }
-        }
+        }; undecorate(A);
+
         Reflect.defineMetadata('design:paramtypes', [String, Number, String], A);
         let refClass = ReflectedClass.new(A);
 
@@ -196,7 +201,7 @@ describe('ReflectedMethod', it => {
     it('reflects method return types using design:returntype', () => {
         class B {
             foo() { }
-        }
+        }; undecorate(B.prototype, 'foo');
 
         Reflect.defineMetadata('design:returntype', String, B.prototype, 'foo');
         let refClass = ReflectedClass.new(B);
@@ -293,8 +298,12 @@ describe('ReflectedMethod', it => {
         class B {
             static foo() { } 
             static bar() { }
-        }
-
+        }; 
+        
+        undecorate(B);
+        undecorate(B, 'foo');
+        undecorate(B, 'bar');
+        
         Reflect.defineMetadata('design:returntype', RegExp, B, 'foo');
         expect(ReflectedClass.new(B).getStaticMethod('foo').returnType.isClass(RegExp)).to.be.true;
     })
@@ -556,6 +565,7 @@ describe('reflect(value)', it => {
     });
     it('returns a ReflectedClass when passing in a bare function', () => {
         function a() { }
+        undecorate(a);
         expect(reflect(a)).to.be.an.instanceOf(ReflectedClass);
     });
     it('returns a ReflectedFunction when passing in a marked function', () => {
