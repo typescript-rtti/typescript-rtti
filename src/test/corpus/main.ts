@@ -56,7 +56,7 @@ const PACKAGES : Record<string, Package> = {
         yarn: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: '1.0.0',
-        commands: [ 'npm run -- test -- --runInBand --no-cache --ci ' ]
+        commands: [ 'npm run -- test --runInBand --no-cache --ci ' ]
     }
 };
 
