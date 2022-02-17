@@ -21,7 +21,7 @@ commands:
           key: v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
       - run: npm test
       - run: npm test # ensure coverage is written
-      - run: npm run test:corpus
+      - run: npm run test:corpus:trace
       - store_artifacts:
           path: coverage
 jobs:
