@@ -1,3 +1,7 @@
+# vNext
+- Fixes an issue where the value of `emitDecoratorMetadata` was lost and reset to `false` when run within `ts-jest`
+- Properly emits for inferred async return types 
+
 # v0.1.3
 - Fixes an additional case where `null` was used instead of `undefined` when generating typescript AST elements
 

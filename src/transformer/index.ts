@@ -109,18 +109,25 @@ interface ClassDetails {
 
 const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program : ts.Program) => {
 
-    if (typeof program['rtti$emitStandardMetadata'] === 'undefined') {
-        let emitDecoratorMetadata = program.getCompilerOptions().emitDecoratorMetadata;
-        program['rtti$emitStandardMetadata'] = emitDecoratorMetadata;
-        program.getCompilerOptions().emitDecoratorMetadata = false;
+    let compilerOptions = program.getCompilerOptions();
+
+    if (typeof compilerOptions['rtti$emitStandardMetadata'] === 'undefined') {
+        let emitDecoratorMetadata = compilerOptions.emitDecoratorMetadata;
+        compilerOptions['rtti$emitStandardMetadata'] = emitDecoratorMetadata;
+        compilerOptions.emitDecoratorMetadata = false;
+
+        if (globalThis.RTTI_TRACE)
+            console.log(`RTTI: emitDecoratorMetadata=${emitDecoratorMetadata}`);
     }
 
 
-    let emitStandardMetadata = program['rtti$emitStandardMetadata'];
+    let emitStandardMetadata = compilerOptions['rtti$emitStandardMetadata'];
 
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
-        let trace = settings?.trace ?? false;
+        let trace = settings?.trace ?? true;
+
+        globalThis.RTTI_TRACE = trace;
 
         return sourceFile => {
 
@@ -734,7 +741,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return details;
             }
 
-            function typeToTypeRef(type : ts.Type): ts.Expression {
+            function typeToTypeRef(type : ts.Type, extended : boolean = true): ts.Expression {
                 if ((type.flags & ts.TypeFlags.String) !== 0) {
                     return ts.factory.createIdentifier('String');
                 } else if ((type.flags & ts.TypeFlags.Number) !== 0) {
@@ -758,10 +765,35 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 } else if (type.isLiteral()) {
                     return serialize(type.value);
                 } else if ((type.flags & ts.TypeFlags.Object) !== 0) {
-                    if (type.isClass()) {
-                        return ts.factory.createIdentifier(`${type.symbol.name}`);
-                    } else if (type.isClassOrInterface()) {
-                        return ts.factory.createIdentifier(`IΦ${type.symbol.name}`);
+                    let objectType = <ts.ObjectType>type;
+                    let typeParams : ts.Type[] = type['resolvedTypeArguments'];
+
+                    if ((type.symbol.flags & ts.SymbolFlags.Function) !== 0) {
+                        return ts.factory.createIdentifier(`Function`);
+                    } else if (type.isClass() || type.symbol.valueDeclaration) {
+                        let typeExpr : ts.Expression = ts.factory.createIdentifier(`${type.symbol.name}`);
+                        
+                        if (typeParams && extended) {
+                            // generic
+                            typeExpr = serialize({
+                                TΦ: T_GENERIC, 
+                                t: literalNode(typeExpr),
+                                p: typeParams.map(x => literalNode(typeToTypeRef(x)))
+                            })
+                        }
+                        return typeExpr;
+                    } else if (type.isClassOrInterface()) { 
+                        let typeExpr : ts.Expression = ts.factory.createIdentifier(`IΦ${type.symbol.name}`);
+
+                        if (typeParams && extended) {
+                            // generic
+                            typeExpr = serialize({
+                                TΦ: T_GENERIC, 
+                                t: literalNode(typeExpr),
+                                p: typeParams.map(x => literalNode(typeToTypeRef(x)))
+                            })
+                        }
+                        return typeExpr; 
                     }
 
                     return ts.factory.createIdentifier('Object');
@@ -802,10 +834,15 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 } else {
                     let signature = program.getTypeChecker().getSignatureFromDeclaration(method);
                     if (signature) {
-                        let returnT = typeToTypeRef(signature.getReturnType());
-                        decs.push(metadataDecorator('rt:t', literalNode(forwardRef(returnT))));
-                        if (emitStandardMetadata && ts.isMethodDeclaration(method) && method.decorators?.length > 0)
-                            decs.push(legacyMetadataDecorator('design:returntype', literalNode(ts.factory.createVoidZero())));
+                        decs.push(metadataDecorator('rt:t', literalNode(
+                            forwardRef(typeToTypeRef(signature.getReturnType()))
+                        )));
+
+                        if (emitStandardMetadata && ts.isMethodDeclaration(method) && method.decorators?.length > 0) {
+                            decs.push(legacyMetadataDecorator('design:returntype', literalNode(
+                                typeToTypeRef(signature.getReturnType(), false)))
+                            );
+                        }
                     }
                 }
 

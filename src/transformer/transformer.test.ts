@@ -385,6 +385,28 @@ describe('RTTI: ', () => {
                 let params = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
                 expect(params).to.equal(exports.B);
             });
+            it('emits for bare inferred Promise return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        function noop() { return (t, ...a) => {} };
+                        
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            @noop() async method(hello : A, world : B) { 
+                                return 123; 
+                            }
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
+
+                expect(type).to.equal(Promise);
+            })
             it('emits void 0 on a method returning nothing', async () => {
                 let exports = await runSimple({
                     code: `
@@ -1616,6 +1638,26 @@ describe('RTTI: ', () => {
                 expect(type.TΦ).to.equal(T_GENERIC);
                 expect(type.t).to.equal(Promise);
                 expect(type.p).to.eql([ String ]);
+            })
+            it('emits for bare inferred Promise return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            async method(hello : A, world : B) { 
+                                return 123; 
+                            }
+                        }
+                    `
+                });
+        
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_GENERIC);
+                expect(type.t).to.equal(Promise);
+                expect(type.p).to.eql([ Number ]);
             })
             it('emits for union as type parameter', async () => {
                 let exports = await runSimple({
