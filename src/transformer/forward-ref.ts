@@ -26,7 +26,7 @@ export function functionForwardRef(expr : ts.Expression) {
     if (!expr)
         throw new Error(`Cannot make forwardRef without an expression`);
     return ts.factory.createFunctionExpression(
-        [], undefined, '', [], [], null,
+        [], undefined, '', [], [], undefined,
         ts.factory.createBlock([
             ts.factory.createReturnStatement(expr)
         ])
