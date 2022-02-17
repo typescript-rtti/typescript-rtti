@@ -38,7 +38,7 @@ const PACKAGES : Record<string, Package> = {
         ref: 'v1.0.1',
         commands: [ 'npm run build', 'npm test' ]
     },
-    "alterior": {
+    "alterior-mvc/alterior": {
         enabled: false,
         url: 'https://github.com/alterior-mvc/alterior.git',
         ref: '1e6e462dc50bdbe045281cae50b7c3fd21c16b82',
@@ -50,11 +50,11 @@ const PACKAGES : Record<string, Package> = {
         ref: 'eec152929c840a13fdbbfd2f13bf524067c8d379',
         commands: [ 'npm run build', 'npm test' ]
     },
-    "decapi": {
+    "capaj/decapi": {
         enabled: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: '1.0.0',
-        commands: [ 'npm test' ]
+        commands: [ 'npm run test -- --runInBand --no-cache --ci ' ]
     }
 };
 
