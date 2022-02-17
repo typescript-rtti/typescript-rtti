@@ -115,17 +115,17 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
         let emitDecoratorMetadata = compilerOptions.emitDecoratorMetadata;
         compilerOptions['rtti$emitStandardMetadata'] = emitDecoratorMetadata;
         compilerOptions.emitDecoratorMetadata = false;
-
-        if (globalThis.RTTI_TRACE)
-            console.log(`RTTI: emitDecoratorMetadata=${emitDecoratorMetadata}`);
     }
 
 
     let emitStandardMetadata = compilerOptions['rtti$emitStandardMetadata'];
 
+    if (globalThis.RTTI_TRACE)
+        console.log(`RTTI: Entering program [emitDecoratorMetadata=${emitStandardMetadata}]`);
+    
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
-        let trace = settings?.trace ?? false;
+        let trace = settings?.trace ?? true;
 
         globalThis.RTTI_TRACE = trace;
 
@@ -168,6 +168,25 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         node.type,
                         node.initializer
                     );
+                } else if (ts.isGetAccessor(node)) {
+                    return <any>ts.factory.updateGetAccessorDeclaration(
+                        node,
+                        [ ...(node.decorators || []), ...decorators ],
+                        node.modifiers,
+                        node.name,
+                        node.parameters,
+                        node.type, 
+                        node.body
+                    );
+                } else if (ts.isSetAccessor(node)) {
+                    return <any>ts.factory.updateSetAccessorDeclaration(
+                        node,
+                        [ ...(node.decorators || []), ...decorators ],
+                        node.modifiers,
+                        node.name,
+                        node.parameters,
+                        node.body
+                    );
                 } else if (ts.isMethodDeclaration(node)) {
                     return <any>ts.factory.updateMethodDeclaration(
                         node,
@@ -207,7 +226,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                     if (ts.isMethodDeclaration(node)) {
                         property = node.name.getText();
-                    } else if (ts.isPropertyDeclaration(node)) {
+                    } else if (ts.isPropertyDeclaration(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)) {
                         property = node.name.getText();
                     } else if (ts.isMethodSignature(node)) {
                         property = node.name.getText();
@@ -262,7 +281,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                     if (ts.isMethodDeclaration(node)) {
                         property = node.name.getText();
-                    } else if (ts.isPropertyDeclaration(node)) {
+                    } else if (ts.isPropertyDeclaration(node) || ts.isSetAccessor(node) || ts.isGetAccessor(node)) {
                         property = node.name.getText();
                     } else if (ts.isMethodSignature(node)) {
                         property = node.name.getText();
@@ -639,9 +658,18 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return decs;
             }
             
-            function extractPropertyMetadata(property : ts.PropertyDeclaration | ts.PropertySignature) {
+            function extractPropertyMetadata(property : ts.PropertyDeclaration | ts.PropertySignature | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration) {
+                let type : ts.TypeNode = property.type;
+                if (!type && ts.isSetAccessor(property) && property.parameters.length > 0) {
+                    type = property.parameters[0].type;
+                }
+
                 return [
-                    ...extractTypeMetadata(property.type, 'type', ts.isPropertyDeclaration(property) && property.decorators?.length > 0),
+                    ...extractTypeMetadata(
+                        type, 'type', 
+                        (ts.isPropertyDeclaration(property) || ts.isGetAccessor(property) || ts.isSetAccessor(property)) 
+                            && property.decorators?.length > 0
+                    ),
                     metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(property.modifiers)}${isReadOnly(property.modifiers)}`)
                 ];
             }
@@ -655,18 +683,35 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     staticPropertyNames: []
                 };
 
+                function addItem(list : string[], prop : string) {
+                    if (!list.includes(prop))
+                        list.push(prop);
+                }
+
                 const visitor = function(node : ts.Node) {
                     if (ts.isPropertyDeclaration(node)) {
                         if ((node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword)) {
-                            details.staticMethodNames.push(node.name.getText());
+                            addItem(details.staticPropertyNames, node.name.getText());
                         } else {
-                            details.staticPropertyNames.push(node.name.getText());
+                            addItem(details.propertyNames, node.name.getText());
+                        }
+                    } else if (ts.isGetAccessor(node)) {
+                        if ((node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword)) {
+                            addItem(details.staticPropertyNames, node.name.getText());
+                        } else {
+                            addItem(details.propertyNames, node.name.getText());
+                        }
+                    } else if (ts.isSetAccessor(node)) {
+                        if ((node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword)) {
+                            addItem(details.staticPropertyNames, node.name.getText());
+                        } else {
+                            addItem(details.propertyNames, node.name.getText());
                         }
                     } else if (ts.isMethodDeclaration(node)) {
                         if ((node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword)) {
-                            details.staticMethodNames.push(node.name.getText());
+                            addItem(details.staticMethodNames, node.name.getText());
                         } else {
-                            details.methodNames.push(node.name.getText())
+                            addItem(details.methodNames, node.name.getText())
                         }
                     } else if (ts.isConstructorDeclaration(node)) {
                         for (let param of node.parameters) {
@@ -681,7 +726,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                             ;
 
                             if (isProperty)
-                                details.propertyNames.push(param.name.getText());
+                                addItem(details.propertyNames, param.name.getText());
                         }
                     } else {
                         try {
@@ -930,7 +975,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     
                     let isStatic = false;
 
-                    if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node))
+                    if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node) || ts.isGetAccessor(dec.node) || ts.isSetAccessor(dec.node))
                         isStatic = (dec.node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword);
                     if (ts.isClassDeclaration(dec.node))
                         isStatic = true;
@@ -1025,12 +1070,23 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 }
                  
                 if (ts.isPropertyDeclaration(node)) {
-                    if (trace)
-                        console.log(`Decorating class property ${node.parent.name.text}#${node.name.getText()}`);
-
-                    if (ts.isClassDeclaration(node.parent))
+                    if (ts.isClassDeclaration(node.parent)) {
+                        if (trace)
+                            console.log(`Decorating class property ${node.parent.name.text}#${node.name.getText()}`);
                         node = metadataCollector(node, extractPropertyMetadata(node));
-                    
+                    }
+                } else if (ts.isGetAccessor(node)) {
+                    if (ts.isClassDeclaration(node.parent)) {
+                        if (trace)
+                            console.log(`Decorating class property getter ${node.parent.name.text}#${node.name.getText()}`);
+                        node = metadataCollector(node, extractPropertyMetadata(node));
+                    }
+                } else if (ts.isSetAccessor(node)) {
+                    if (ts.isClassDeclaration(node.parent)) {
+                        if (trace)
+                            console.log(`Decorating class property getter ${node.parent.name.text}#${node.name.getText()}`);
+                        node = metadataCollector(node, extractPropertyMetadata(node));
+                    }
                 } else if (ts.isPropertySignature(node)) {
                     if (trace)
                         console.log(`Decorating interface property ${(node.parent as ts.InterfaceDeclaration).name.text}#${node.name.getText()}`);

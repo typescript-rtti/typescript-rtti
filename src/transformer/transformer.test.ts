@@ -46,7 +46,6 @@ describe('Sanity', it => {
     });
     it('when unnamed function expressions appear in property assignments', async () => {
         let exports = await runSimple({
-            trace: true,
             code: `
                 export let foo = { bar: () => 123 };
             `
@@ -56,7 +55,6 @@ describe('Sanity', it => {
     });
     it('when arrow functions appear in property assignments', async () => {
         let exports = await runSimple({
-            trace: true,
             code: `
                 export let foo = { bar: () => 123 };
             `
@@ -297,6 +295,25 @@ describe('RTTI: ', () => {
                 });
         
                 let C = exports.a();
+                let type = Reflect.getMetadata('design:type', C.prototype, 'property');
+                expect(type).to.equal(exports.B);
+            });
+            it('emits for property getter in a class', async () => {
+                let exports = await runSimple({
+                    code: `
+                        function noop() { return (t, ...a) => {} };
+                        export class A { }
+                        export class B { }
+                        export class C {
+                            @noop() get property : B { return null; }
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let C = exports.C;
                 let type = Reflect.getMetadata('design:type', C.prototype, 'property');
                 expect(type).to.equal(exports.B);
             });
@@ -1037,6 +1054,36 @@ describe('RTTI: ', () => {
             });
         });
         describe('rt:t', it => {
+            it('emits for a property getter', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class B {}
+                        export class C {
+                            get property(): B { return null; }
+                        }
+                    `
+                });
+
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'property');
+                let type = typeResolver();
+
+                expect(type).to.equal(exports.B);
+            });
+            it('emits for a property setter', async () => {
+                let exports = await runSimple({
+                    code: `
+                        export class B {}
+                        export class C {
+                            set property(b : B) { }
+                        }
+                    `
+                });
+
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'property');
+                let type = typeResolver();
+
+                expect(type).to.equal(exports.B);
+            });
             it('emits for implicit Date return type', async () => {
                 let exports = await runSimple({
                     code: `
@@ -1676,7 +1723,6 @@ describe('RTTI: ', () => {
             })
             it('emits for bare inferred Promise return type', async () => {
                 let exports = await runSimple({
-                    trace: true,
                     code: `
                         export class A { }
                         export class B { }

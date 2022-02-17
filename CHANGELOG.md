@@ -4,6 +4,7 @@
 - Fix: the name of function expressions assigned to property and variable declarations are now retained when they are 
   annotated.
 - Fixed handling of inferred generic types
+- Added missing handling for property get/set accessors
 
 # v0.1.3
 - Fixes an additional case where `null` was used instead of `undefined` when generating typescript AST elements
