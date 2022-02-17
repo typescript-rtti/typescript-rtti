@@ -1,3 +1,6 @@
+# v0.1.3
+- Fixes an additional case where `null` was used instead of `undefined` when generating typescript AST elements
+
 # v0.1.2
 - Fixes an issue where `null` was used instead of `undefined` on the forward reference arrow functions. This could cause
   problems when using typescript-rtti in concert with other transformers (for instance, when using `ts-jest`)
