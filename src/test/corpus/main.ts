@@ -93,13 +93,23 @@ function trace(message : string, context? : string) {
 }
 
 async function modify<T = any>(filename : string, modifier : (t : T) => void) {
-    try {
-        let jsonString = (await fs.readFile(filename)).toString();
-        let obj = JSON.parse(stripJsonComments(jsonString));
-        modifier(obj);
-        await fs.writeFile(filename, JSON.stringify(obj, undefined, 2));
-    } catch (e) {
-        throw new Error(`Could not transform '${filename}': ${e.message}`);
+
+    if (filename.endsWith('.js')) {
+        let config = require(filename);
+        modifier(config);
+        await fs.writeFile(filename, `module.exports = ${JSON.stringify(config, undefined, 2)};`)
+    } else if (filename.endsWith('.json')) {
+
+        try {
+            let jsonString = (await fs.readFile(filename)).toString();
+            let obj = JSON.parse(stripJsonComments(jsonString));
+            modifier(obj);
+            await fs.writeFile(filename, JSON.stringify(obj, undefined, 2));
+        } catch (e) {
+            throw new Error(`Could not transform '${filename}': ${e.message}`);
+        }
+    } else {
+        throw new Error(`Unsupported format for '${filename}'`);
     }
 }
 
