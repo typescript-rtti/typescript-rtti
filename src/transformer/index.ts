@@ -125,7 +125,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
-        let trace = settings?.trace ?? true;
+        let trace = settings?.trace ?? false;
 
         globalThis.RTTI_TRACE = trace;
 
