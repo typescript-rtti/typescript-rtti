@@ -54,7 +54,7 @@ const PACKAGES : Record<string, Package> = {
         commands: [ 'npm run build', 'npm test' ]
     },
     "capaj/decapi": {
-        enabled: true,
+        enabled: false,
         yarn: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: '1.0.0',
