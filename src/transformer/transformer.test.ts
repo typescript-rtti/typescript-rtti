@@ -44,6 +44,26 @@ describe('Sanity', it => {
 
         expect(exports.bar).to.equal(321);
     });
+    it('when unnamed function expressions appear in property assignments', async () => {
+        let exports = await runSimple({
+            trace: true,
+            code: `
+                export let foo = { bar: () => 123 };
+            `
+        });
+
+        expect(exports.foo.bar.name).to.equal('bar');
+    });
+    it('when arrow functions appear in property assignments', async () => {
+        let exports = await runSimple({
+            trace: true,
+            code: `
+                export let foo = { bar: () => 123 };
+            `
+        });
+
+        expect(exports.foo.bar.name).to.equal('bar');
+    });
     it('prevails, do not collapse exports', async () => {
         let exports = await runSimple({
             code: `
@@ -1017,6 +1037,21 @@ describe('RTTI: ', () => {
             });
         });
         describe('rt:t', it => {
+            it('emits for implicit Date return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        let d = new Date();
+                        export class C {
+                            method() { return d; }
+                        }
+                    `
+                });
+
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                let type = typeResolver();
+
+                expect(type).to.equal(Date);
+            });
             it('emits for designed class return type', async () => {
                 let exports = await runSimple({
                     code: `
@@ -1641,6 +1676,7 @@ describe('RTTI: ', () => {
             })
             it('emits for bare inferred Promise return type', async () => {
                 let exports = await runSimple({
+                    trace: true,
                     code: `
                         export class A { }
                         export class B { }

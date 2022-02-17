@@ -125,7 +125,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
-        let trace = settings?.trace ?? true;
+        let trace = settings?.trace ?? false;
 
         globalThis.RTTI_TRACE = trace;
 
@@ -741,7 +741,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return details;
             }
 
-            function typeToTypeRef(type : ts.Type, extended : boolean = true): ts.Expression {
+            function typeToTypeRef(type : ts.Type, extended : boolean = true): ts.Expression {                
                 if ((type.flags & ts.TypeFlags.String) !== 0) {
                     return ts.factory.createIdentifier('String');
                 } else if ((type.flags & ts.TypeFlags.Number) !== 0) {
@@ -766,34 +766,35 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     return serialize(type.value);
                 } else if ((type.flags & ts.TypeFlags.Object) !== 0) {
                     let objectType = <ts.ObjectType>type;
-                    let typeParams : ts.Type[] = type['resolvedTypeArguments'];
+
+                    if ((objectType.objectFlags & ts.ObjectFlags.Reference) !== 0) {
+                        let typeRef = <ts.TypeReference>type;
+
+                        if (typeRef.target !== typeRef) {
+                            if (extended) {
+                                // generic
+                                return serialize({
+                                    TΦ: T_GENERIC, 
+                                    t: literalNode(typeToTypeRef(typeRef.target)),
+                                    p: (typeRef.typeArguments ?? []).map(x => literalNode(typeToTypeRef(x)))
+                                })
+                            } else {
+                                return typeToTypeRef(typeRef.target);
+                            }
+                        }
+                    }
+
+                    if (type.symbol.name === '__object') {
+                        // TODO: anonymous object type, not yet supported
+                        return ts.factory.createIdentifier('Object');
+                    }
 
                     if ((type.symbol.flags & ts.SymbolFlags.Function) !== 0) {
                         return ts.factory.createIdentifier(`Function`);
-                    } else if (type.isClass() || type.symbol.valueDeclaration) {
-                        let typeExpr : ts.Expression = ts.factory.createIdentifier(`${type.symbol.name}`);
-                        
-                        if (typeParams && extended) {
-                            // generic
-                            typeExpr = serialize({
-                                TΦ: T_GENERIC, 
-                                t: literalNode(typeExpr),
-                                p: typeParams.map(x => literalNode(typeToTypeRef(x)))
-                            })
-                        }
-                        return typeExpr;
                     } else if (type.isClassOrInterface()) { 
-                        let typeExpr : ts.Expression = ts.factory.createIdentifier(`IΦ${type.symbol.name}`);
-
-                        if (typeParams && extended) {
-                            // generic
-                            typeExpr = serialize({
-                                TΦ: T_GENERIC, 
-                                t: literalNode(typeExpr),
-                                p: typeParams.map(x => literalNode(typeToTypeRef(x)))
-                            })
-                        }
-                        return typeExpr; 
+                        let reifiedType = <boolean>type.isClass() || type.symbol.name === 'Promise' || !!type.symbol.valueDeclaration;
+                        let symbolName = reifiedType ? type.symbol.name : `IΦ${type.symbol.name}`;
+                        return ts.factory.createIdentifier(symbolName);
                     }
 
                     return ts.factory.createIdentifier('Object');

@@ -27,11 +27,23 @@ export function directMetadataDecorator(key : string, object : any) {
 }
 
 export function decorateFunctionExpression(func : ts.FunctionExpression | ts.ArrowFunction, decorators : ts.Decorator[]) {
+    let name = '';
+
+    if (func.parent) {
+        // In JS, anonymous unnamed functions inherit the name of the property they are being assigned to.
+        // Because we are inserting __RfΦ, this property will be lost unless we specifically patch the function's
+        // name.
+        if (ts.isPropertyAssignment(func.parent) || ts.isVariableDeclaration(func.parent)) {
+            name = func.parent.name.getText();
+        }
+    }
+
     return ts.factory.createCallExpression(
         ts.factory.createIdentifier('__RfΦ'),
         [], [
             func,
-            ts.factory.createArrayLiteralExpression(decorators.map(d => d.expression))
+            ts.factory.createArrayLiteralExpression(decorators.map(d => d.expression)),
+            ts.factory.createStringLiteral(name)
         ]
     )
 }
