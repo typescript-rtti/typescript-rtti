@@ -5,3 +5,4 @@ debug.log
 corpus.*/
 coverage/
 .nyc_output/
+*.tsbuildinfo
