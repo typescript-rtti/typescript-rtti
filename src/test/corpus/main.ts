@@ -51,9 +51,9 @@ const PACKAGES : Record<string, Package> = {
         commands: [ 'npm run build', 'npm test' ]
     },
     "decapi": {
-        enabled: false,
+        enabled: true,
         url: 'https://github.com/capaj/decapi.git',
-        ref: 'rtti-wip',
+        ref: '1.0.0',
         commands: [ 'npm test' ]
     }
 };
@@ -68,7 +68,7 @@ const TYPESCRIPTS = [
 
 function run(str : string, cwd? : string, context? : string) {
     if (globalThis.CORPUS_VERBOSE) {
-        console.log(`corpus${context ? `: ${context}` : ``}: RUN: ${str} [in ${cwd ? `${cwd}` : '<root>'}]`);
+        console.log(`corpus${context ? `: ${context}` : ``}: RUN: ${str}`);
     }
     let result = shell.exec(str, { cwd: cwd ?? process.cwd(), silent: true });
     if (result.code !== 0) {
@@ -109,7 +109,7 @@ async function main(args : string[]) {
                     let context = `${pkgName} [typescript@${tsVersion}]`;
                     let local = `corpus.${pkgName.replace(/\//g, '__')}`;
 
-                    trace(`RUN: rm -Rf ${local}`);
+                    trace(`RUN: rm -Rf ${local}`, context);
                     await promisify(rimraf)(local);
 
                     run(`git clone ${pkg.url} ${local}`, undefined, context);
