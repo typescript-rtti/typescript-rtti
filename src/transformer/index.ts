@@ -376,6 +376,11 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         }
                     }
 
+                    if (kind === TypeReferenceSerializationKind.StringLikeType)
+                        return ts.factory.createIdentifier('String');
+                    if (kind === TypeReferenceSerializationKind.NumberLikeType)
+                        return ts.factory.createIdentifier('Number');
+                    
                     if (kind !== TypeReferenceSerializationKind.Unknown && kind !== TypeReferenceSerializationKind.TypeWithConstructSignatureAndValue)
                         return ts.factory.createIdentifier('Object');
 
@@ -395,6 +400,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                     if (type.isTypeParameter())
                         return ts.factory.createIdentifier('Object');
+
 
                     if (context.getCompilerOptions().module === ts.ModuleKind.CommonJS) {
                         let origName = getRootNameOfEntityName(typeNode.typeName);

@@ -221,6 +221,7 @@ describe('RTTI: ', () => {
 
     describe('emitDecoratorMetadata=true: ', () => {
         describe('design:type', it => {
+            
             it('emits for method', async () => {
                 let exports = await runSimple({
                     code: `
@@ -403,6 +404,69 @@ describe('RTTI: ', () => {
             });
         });
         describe('design:returntype', it => {
+            it('emits for string-like enum return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        function noop() { return (t, ...a) => {} };
+                        
+                        export enum Foo { 
+                            one = 'one',
+                            two = 'two'
+                        }
+                        export class C {
+                            @noop() method(): Foo { return Foo.one; }
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
+                expect(type).to.equal(String);
+            });
+            it('emits for number-like enum return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        function noop() { return (t, ...a) => {} };
+                        
+                        export enum Foo { 
+                            one = 1,
+                            two = 2
+                        }
+                        export class C {
+                            @noop() method(): Foo { return Foo.one; }
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
+                expect(type).to.equal(Number);
+            });
+            it('emits for object-like enum return type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        function noop() { return (t, ...a) => {} };
+                        
+                        export enum Foo { 
+                            one = 'one',
+                            two = 2
+                        }
+                        export class C {
+                            @noop() method(): Foo { return Foo.one; }
+                        }
+                    `, 
+                    compilerOptions: { 
+                        emitDecoratorMetadata: true 
+                    }
+                });
+        
+                let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
+                expect(type).to.equal(Object);
+            });
             it('emits the designed type on a method', async () => {
                 let exports = await runSimple({
                     code: `
