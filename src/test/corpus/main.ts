@@ -9,6 +9,7 @@ import { Stats } from 'fs';
 interface Package {
     enabled : boolean;
     only? : boolean;
+    yarn? : boolean;
     acceptFailure? : boolean;
     url : string;
     ref : string;
@@ -52,6 +53,7 @@ const PACKAGES : Record<string, Package> = {
     },
     "capaj/decapi": {
         enabled: true,
+        yarn: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: '1.0.0',
         commands: [ 'npm run -- test -- --runInBand --no-cache --ci ' ]
@@ -118,8 +120,12 @@ async function main(args : string[]) {
                     // forced to allow for codebases that have not yet updated to
                     // npm@7 peer deps
 
-                    run(`npm install --force`, local, context);
-                    run(`npm install typescript@${tsVersion} --force`, local, context);
+                    if (pkg.yarn) {
+                        run(`yarn`, local, context);
+                    } else {
+                        run(`npm install --force`, local, context);
+                        run(`npm install typescript@${tsVersion} --force`, local, context);
+                    }
 
                     trace(`Transforming project-level tsconfig.json...`, context);
                     try {
