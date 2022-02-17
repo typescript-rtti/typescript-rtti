@@ -121,7 +121,7 @@ async function main(args : string[]) {
                     run(`npm install --force`, local, context);
                     run(`npm install typescript@${tsVersion} --force`, local, context);
 
-                    trace(`Transforming project-level tsconfig.json...`);
+                    trace(`Transforming project-level tsconfig.json...`, context);
                     try {
                         let tsconfigFileName = path.join(local, 'tsconfig.json');
                         let jsonString = (await fs.readFile(tsconfigFileName)).toString();
@@ -132,7 +132,7 @@ async function main(args : string[]) {
                         throw new Error(`Could not transform tsconfig.json: ${e.message}`);
                     }
 
-                    trace(`Transforming project-level package.json...`);
+                    trace(`Transforming project-level package.json...`, context);
                     // Patch package.json to call ttsc instead of tsc
                     try {
                         let packageFileName = path.join(local, 'package.json');
@@ -157,7 +157,7 @@ async function main(args : string[]) {
                     if (stat && stat.isDirectory()) {
                         let packages = await fs.readdir(pkgDir);
                         for (let pkg of packages) {
-                            trace(`Transforming package.json for subpackage '${pkg}'...`);
+                            trace(`Transforming package.json for subpackage '${pkg}'...`, context);
                             try {
                                 let stat = await fs.stat(path.join(pkgDir, pkg));
                                 if (stat.isDirectory()) {
