@@ -1,10 +1,12 @@
 import * as fs from 'fs/promises';
+import * as fst from 'fs';
 import * as path from 'path';
 import stripJsonComments from 'strip-json-comments';
 import * as shell from 'shelljs';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
 import { Stats } from 'fs';
+import ts from 'typescript';
 
 interface Package {
     enabled : boolean;
@@ -90,6 +92,45 @@ function trace(message : string, context? : string) {
         console.log(`corpus${context ? `: ${context}` : ``}: ${message}`);
 }
 
+async function modify<T = any>(filename : string, modifier : (t : T) => void) {
+    try {
+        let jsonString = (await fs.readFile(filename)).toString();
+        let obj = JSON.parse(stripJsonComments(jsonString));
+        modifier(obj);
+        await fs.writeFile(filename, JSON.stringify(obj, undefined, 2));
+    } catch (e) {
+        throw new Error(`Could not transform '${filename}': ${e.message}`);
+    }
+}
+
+async function fileExists(file : string) {
+    let stat : fst.Stats;
+    try {
+        stat = await fs.stat(file);
+    } catch (e) {
+        stat = null;
+    }
+
+    if (!stat)
+        return false;
+    
+    return stat.isFile();
+}
+
+async function dirExists(file : string) {
+    let stat : fst.Stats;
+    try {
+        stat = await fs.stat(file);
+    } catch (e) {
+        stat = null;
+    }
+
+    if (!stat)
+        return false;
+    
+    return stat.isDirectory();
+}
+
 async function main(args : string[]) {
     let hasTrace = args.some(x => x === '--trace');
     globalThis.CORPUS_VERBOSE = hasTrace;
@@ -128,39 +169,39 @@ async function main(args : string[]) {
                     }
 
                     trace(`Transforming project-level tsconfig.json...`, context);
-                    try {
-                        let tsconfigFileName = path.join(local, 'tsconfig.json');
-                        let jsonString = (await fs.readFile(tsconfigFileName)).toString();
-                        let tsconfig = JSON.parse(stripJsonComments(jsonString));
-                        tsconfig.compilerOptions.plugins = [{ transform: path.join(__dirname, '..', '..', 'transformer') }];
-                        await fs.writeFile(tsconfigFileName, JSON.stringify(tsconfig, undefined, 2));
-                    } catch (e) {
-                        throw new Error(`Could not transform tsconfig.json: ${e.message}`);
-                    }
+                    await modify<{ compilerOptions : ts.CompilerOptions }>(path.join(local, 'tsconfig.json'), config => {
+                        (config.compilerOptions as any).plugins = [{ transform: path.join(__dirname, '..', '..', 'transformer') }];
+                    });
 
                     trace(`Transforming project-level package.json...`, context);
-                    // Patch package.json to call ttsc instead of tsc
-                    try {
-                        let packageFileName = path.join(local, 'package.json');
-                        let packageJson = JSON.parse(stripJsonComments((await fs.readFile(packageFileName)).toString()));
-                        for (let key of Object.keys(packageJson.scripts))
-                            packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
-                        await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
-                    } catch (e) {
-                        throw new Error(`Could not patch package.json to use ttsc instead of tsc: ${e.message}`);
+                    await modify(path.join(local, 'package.json'), pkg => {
+                        for (let key of Object.keys(pkg.scripts))
+                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
+
+                    });
+
+                    trace(`Transforming project-level package.json...`, context);
+                    await modify(path.join(local, 'package.json'), pkg => {
+                        for (let key of Object.keys(pkg.scripts))
+                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
+
+                    });
+                    
+                    if (await fileExists(path.join(local, 'jest.config.js'))) {
+                        trace(`Transforming jest config...`, context)
+                        await modify(path.join(local, 'jest.config.js'), jestConfig => {
+                            jestConfig.globals ??= {};
+                            jestConfig.globals['ts-jest'] ??= {};
+                            jestConfig.globals['ts-jest'].compiler = 'ttypescript';
+                        });
                     }
-                    // Patch all package package.jsons
+
+                    // Patch all subpackage package.jsons
 
                     let pkgDir = path.join(local, 'packages');
                     let stat : Stats;
                     
-                    try {
-                        stat = await fs.stat(pkgDir);
-                    } catch (e) {
-                        stat = null;
-                    }
-
-                    if (stat && stat.isDirectory()) {
+                    if (await dirExists(pkgDir)) {
                         let packages = await fs.readdir(pkgDir);
                         for (let pkg of packages) {
                             trace(`Transforming package.json for subpackage '${pkg}'...`, context);
@@ -168,11 +209,10 @@ async function main(args : string[]) {
                                 let stat = await fs.stat(path.join(pkgDir, pkg));
                                 if (stat.isDirectory()) {
                                     // Patch package.json to call ttsc instead of tsc
-                                    let packageFileName = path.join(pkgDir, pkg, 'package.json');
-                                    let packageJson = JSON.parse(stripJsonComments((await fs.readFile(packageFileName)).toString()));
-                                    for (let key of Object.keys(packageJson.scripts))
-                                        packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
-                                    await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
+                                    modify(path.join(pkgDir, pkg, 'package.json'), pkg => {
+                                        for (let key of Object.keys(pkg.scripts))
+                                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
+                                    });
                                 }
                             } catch (e) {
                                 throw new Error(`Could not patch package.json in subpackage '${pkg}': ${e.message}`);
