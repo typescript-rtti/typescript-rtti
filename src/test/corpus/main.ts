@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-
+import stripJsonComments from 'strip-json-comments';
 import * as shell from 'shelljs';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
@@ -8,6 +8,7 @@ import { Stats } from 'fs';
 
 interface Package {
     enabled : boolean;
+    only? : boolean;
     acceptFailure? : boolean;
     url : string;
     ref : string;
@@ -48,6 +49,12 @@ const PACKAGES : Record<string, Package> = {
         url: 'https://github.com/rezonant/typescript-rtti.git',
         ref: 'eec152929c840a13fdbbfd2f13bf524067c8d379',
         commands: [ 'npm run build', 'npm test' ]
+    },
+    "decapi": {
+        enabled: false,
+        url: 'https://github.com/capaj/decapi.git',
+        ref: 'rtti-wip',
+        commands: [ 'npm test' ]
     }
 };
 
@@ -59,7 +66,10 @@ const TYPESCRIPTS = [
     //'4', 'latest', 'next', 'beta', 'rc', 'insiders'
 ];
 
-function run(str : string, cwd? : string) {
+function run(str : string, cwd? : string, context? : string) {
+    if (globalThis.CORPUS_VERBOSE) {
+        console.log(`corpus${context ? `: ${context}` : ``}: RUN: ${str} [in ${cwd ? `${cwd}` : '<root>'}]`);
+    }
     let result = shell.exec(str, { cwd: cwd ?? process.cwd(), silent: true });
     if (result.code !== 0) {
         console.error(`corpus: Failed to run: '${str}': exit code ${result.code}`);
@@ -73,39 +83,66 @@ function run(str : string, cwd? : string) {
     }
 }
 
-async function main() {
+function trace(message : string, context? : string) {
+    if (globalThis.CORPUS_VERBOSE)
+        console.log(`corpus${context ? `: ${context}` : ``}: ${message}`);
+}
+
+async function main(args : string[]) {
+    let hasTrace = args.some(x => x === '--trace');
+    globalThis.CORPUS_VERBOSE = hasTrace;
+
     try {
+        let hasOnly = Object.values(PACKAGES).some(x => x.only === true);
+
         for (let pkgName of Object.keys(PACKAGES)) {
             let pkg = PACKAGES[pkgName];
 
             if (!pkg.enabled)
                 continue;
+            
+            if (hasOnly && !pkg.only)
+                continue;
 
             for (let tsVersion of TYPESCRIPTS) {
                 try {
-
+                    let context = `${pkgName} [typescript@${tsVersion}]`;
                     let local = `corpus.${pkgName.replace(/\//g, '__')}`;
 
+                    trace(`RUN: rm -Rf ${local}`);
                     await promisify(rimraf)(local);
 
-                    run(`git clone ${pkg.url} ${local}`);
-                    run(`git checkout ${pkg.ref}`, local);
+                    run(`git clone ${pkg.url} ${local}`, undefined, context);
+                    run(`git checkout ${pkg.ref}`, local, context);
                     
-                    run(`npm install`, local);
-                    run(`npm install typescript@${tsVersion}`, local);
+                    // forced to allow for codebases that have not yet updated to
+                    // npm@7 peer deps
 
-                    let tsconfigFileName = path.join(local, 'tsconfig.json');
-                    let tsconfig = JSON.parse((await fs.readFile(tsconfigFileName)).toString());
-                    tsconfig.compilerOptions.plugins = [{ transform: path.join(__dirname, '..', '..', 'transformer') }];
-                    await fs.writeFile(tsconfigFileName, JSON.stringify(tsconfig, undefined, 2));
+                    run(`npm install --force`, local, context);
+                    run(`npm install typescript@${tsVersion} --force`, local, context);
 
+                    trace(`Transforming project-level tsconfig.json...`);
+                    try {
+                        let tsconfigFileName = path.join(local, 'tsconfig.json');
+                        let jsonString = (await fs.readFile(tsconfigFileName)).toString();
+                        let tsconfig = JSON.parse(stripJsonComments(jsonString));
+                        tsconfig.compilerOptions.plugins = [{ transform: path.join(__dirname, '..', '..', 'transformer') }];
+                        await fs.writeFile(tsconfigFileName, JSON.stringify(tsconfig, undefined, 2));
+                    } catch (e) {
+                        throw new Error(`Could not transform tsconfig.json: ${e.message}`);
+                    }
+
+                    trace(`Transforming project-level package.json...`);
                     // Patch package.json to call ttsc instead of tsc
-                    let packageFileName = path.join(local, 'package.json');
-                    let packageJson = JSON.parse((await fs.readFile(packageFileName)).toString());
-                    for (let key of Object.keys(packageJson.scripts))
-                        packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
-                    await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
-
+                    try {
+                        let packageFileName = path.join(local, 'package.json');
+                        let packageJson = JSON.parse(stripJsonComments((await fs.readFile(packageFileName)).toString()));
+                        for (let key of Object.keys(packageJson.scripts))
+                            packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
+                        await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
+                    } catch (e) {
+                        throw new Error(`Could not patch package.json to use ttsc instead of tsc: ${e.message}`);
+                    }
                     // Patch all package package.jsons
 
                     let pkgDir = path.join(local, 'packages');
@@ -120,20 +157,25 @@ async function main() {
                     if (stat && stat.isDirectory()) {
                         let packages = await fs.readdir(pkgDir);
                         for (let pkg of packages) {
-                            let stat = await fs.stat(path.join(pkgDir, pkg));
-                            if (stat.isDirectory()) {
-                                // Patch package.json to call ttsc instead of tsc
-                                let packageFileName = path.join(pkgDir, pkg, 'package.json');
-                                let packageJson = JSON.parse((await fs.readFile(packageFileName)).toString());
-                                for (let key of Object.keys(packageJson.scripts))
-                                    packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
-                                await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
+                            trace(`Transforming package.json for subpackage '${pkg}'...`);
+                            try {
+                                let stat = await fs.stat(path.join(pkgDir, pkg));
+                                if (stat.isDirectory()) {
+                                    // Patch package.json to call ttsc instead of tsc
+                                    let packageFileName = path.join(pkgDir, pkg, 'package.json');
+                                    let packageJson = JSON.parse(stripJsonComments((await fs.readFile(packageFileName)).toString()));
+                                    for (let key of Object.keys(packageJson.scripts))
+                                        packageJson.scripts[key] = (packageJson.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
+                                    await fs.writeFile(packageFileName, JSON.stringify(packageJson, undefined, 2));
+                                }
+                            } catch (e) {
+                                throw new Error(`Could not patch package.json in subpackage '${pkg}': ${e.message}`);
                             }
                         }
                     }
 
                     for (let command of pkg.commands) {
-                        run(command, local);
+                        run(command, local, context);
                     }
 
                     console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
@@ -148,4 +190,4 @@ async function main() {
     }
 }
 
-main();
+main(process.argv.slice(2));
