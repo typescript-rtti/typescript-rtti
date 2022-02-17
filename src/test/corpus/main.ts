@@ -194,8 +194,14 @@ async function main(args : string[]) {
 
                     trace(`Transforming project-level package.json...`, context);
                     await modify(path.join(local, 'package.json'), pkg => {
-                        for (let key of Object.keys(pkg.scripts))
-                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
+                        for (let key of Object.keys(pkg.scripts)) {
+                            let command = (pkg.scripts[key] ?? '');
+                            
+                            command = command.replace(/\btsc\b/g, 'ttsc');
+                            command = command.replace(/\brm -rf\b/ig, 'rimraf');
+
+                            pkg.scripts[key] = command;
+                        }
 
                     });
                     
