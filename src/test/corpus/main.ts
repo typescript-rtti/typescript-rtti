@@ -71,10 +71,15 @@ const TYPESCRIPTS = [
 ];
 
 function run(str : string, cwd? : string, context? : string) {
+    let startedAt = Date.now();
+
     if (globalThis.CORPUS_VERBOSE) {
         console.log(`corpus${context ? `: ${context}` : ``}: RUN: ${str}`);
     }
+
     let result = shell.exec(str, { cwd: cwd ?? process.cwd(), silent: true });
+    let runtime = (Date.now() - startedAt) / 1000.0;
+
     if (result.code !== 0) {
         console.error(`corpus: Failed to run: '${str}': exit code ${result.code}`);
         console.error(`stdout:`);
@@ -83,7 +88,11 @@ function run(str : string, cwd? : string, context? : string) {
         console.error(`stderr:`);
         console.error(result.stderr);
         console.error();
-        throw new Error(`Failed to run '${str}': exit code ${result.code}`);
+        throw new Error(`Failed to run '${str}': exit code ${result.code} after ${runtime} seconds`);
+    }
+
+    if (globalThis.CORPUS_VERBOSE) {
+        console.log(`corpus${context ? `: ${context}` : ``}: FINISHED: ${str} after ${runtime} seconds`);
     }
 }
 
@@ -95,7 +104,7 @@ function trace(message : string, context? : string) {
 async function modify<T = any>(filename : string, modifier : (t : T) => void) {
 
     if (filename.endsWith('.js')) {
-        let config = require(filename);
+        let config = require(path.resolve(process.cwd(), filename));
         modifier(config);
         await fs.writeFile(filename, `module.exports = ${JSON.stringify(config, undefined, 2)};`)
     } else if (filename.endsWith('.json')) {
@@ -181,13 +190,6 @@ async function main(args : string[]) {
                     trace(`Transforming project-level tsconfig.json...`, context);
                     await modify<{ compilerOptions : ts.CompilerOptions }>(path.join(local, 'tsconfig.json'), config => {
                         (config.compilerOptions as any).plugins = [{ transform: path.join(__dirname, '..', '..', 'transformer') }];
-                    });
-
-                    trace(`Transforming project-level package.json...`, context);
-                    await modify(path.join(local, 'package.json'), pkg => {
-                        for (let key of Object.keys(pkg.scripts))
-                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
-
                     });
 
                     trace(`Transforming project-level package.json...`, context);
