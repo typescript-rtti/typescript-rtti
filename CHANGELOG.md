@@ -5,8 +5,9 @@
   annotated.
 - Fixed handling of inferred generic types
 - Added missing handling for property get/set accessors
-- String-like and number-like return types (enums mainly) now emit the appropriate type for design:returntype
-
+- String-like and number-like return types (enums mainly) now emit the appropriate type for `design:returntype`
+- Fixed an issue where `this` parameters were included in parameter lists unintentionally, including in 
+  `design:paramtypes`
 # v0.1.3
 - Fixes an additional case where `null` was used instead of `undefined` when generating typescript AST elements
 

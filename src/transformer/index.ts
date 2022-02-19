@@ -917,9 +917,11 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 let serializedParamMeta : any[] = [];
 
                 for (let param of method.parameters) {
+                    if (param.name.getText() === 'this')
+                        continue;
+                    
                     let expr = serializeTypeRef(param.type, false);
                     standardParamTypes.push(expr);
-
                     let f : string[] = [];
 
                     if (param.modifiers) {
