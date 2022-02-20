@@ -36,10 +36,11 @@ import { decorateFunctionExpression, directMetadataDecorator, legacyMetadataDeco
 import { rtfHelper, rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
-import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode, F_STATIC, F_ARROW_FUNCTION } from '../common';
-import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName } from './utils';
+import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, LiteralSerializedNode, F_STATIC, F_ARROW_FUNCTION, T_MAPPED, T_UNDEFINED, T_NULL, T_TRUE, T_FALSE } from '../common';
+import { cloneEntityNameAsExpr, dottedNameToExpr, entityNameToString, getRootNameOfEntityName, hasAnyFlag, hasFlag, isFlagType, serializeEntityNameAsExpression, serializeEntityNameAsExpressionFallback } from './utils';
 import { literalNode } from './literal-node';
 import { legacyDecorator } from './legacy-decorator';
+import { AnonymousType, MappedType } from './ts-internal-types';
 
 export class CompileError extends Error {}
 
@@ -130,7 +131,6 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
         globalThis.RTTI_TRACE = trace;
 
         return sourceFile => {
-
             if (trace)
                 console.log(`#### Processing ${sourceFile.fileName}`);
             if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts'))
@@ -337,7 +337,20 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 }
             }
 
-            function serializeTypeRef(typeNode : ts.Node, extended): ts.Expression {
+            function serializeTypeRef(typeNode : ts.TypeNode, extended): ts.Expression {
+                
+                let type = program.getTypeChecker().getTypeFromTypeNode(typeNode);
+
+                if (!type)
+                    throw new Error(`Cannot get type of type node: ${typeNode.getText()}`);
+
+                if (type) {
+                    if (extended)
+                        return typeToTypeRef(type);
+                    else
+                        return typeToTypeRefLegacy(type);
+                }
+                
                 if (!typeNode)
                     return ts.factory.createIdentifier('Object');
                 
@@ -792,7 +805,67 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 return details;
             }
 
-            function typeToTypeRef(type : ts.Type, extended : boolean = true): ts.Expression {                
+            function typeToTypeRefLegacy(type : ts.Type): ts.Expression {
+                if (!type)
+                    return ts.factory.createIdentifier('Object');
+                
+                if (hasFlag(type.flags, ts.TypeFlags.StringLike)) {
+                    return ts.factory.createIdentifier('String');
+                } else if (hasFlag(type.flags, ts.TypeFlags.NumberLike)) {
+                    return ts.factory.createIdentifier('Number');
+                } else if (hasFlag(type.flags, ts.TypeFlags.BooleanLike)) { 
+                    return ts.factory.createIdentifier('Boolean');
+                } else if (hasAnyFlag(type.flags, [ts.TypeFlags.Void, ts.TypeFlags.Undefined, ts.TypeFlags.Null])) {
+                    return ts.factory.createVoidZero();
+                } else if (hasFlag(type.flags, ts.TypeFlags.BigIntLike)) {
+                    return ts.factory.createIdentifier('BigInt');
+                } else if (isFlagType<ts.ObjectType>(type, ts.TypeFlags.Object)) {
+                    if (hasFlag(type.objectFlags, ts.ObjectFlags.Reference)) {
+                        let typeRef = <ts.TypeReference>type;
+                        if (typeRef.target !== typeRef) {
+                            if ((typeRef.target.objectFlags & ts.ObjectFlags.Tuple) !== 0)
+                                return ts.factory.createIdentifier('Array');
+                            
+                            if (typeRef.target.symbol.name === 'Array' && typeRef.typeArguments.length === 1)
+                                return ts.factory.createIdentifier('Array');
+
+                            return typeToTypeRefLegacy(typeRef.target);
+                        }
+                    }
+
+                    if (hasFlag(type.objectFlags, ts.ObjectFlags.Anonymous)) {
+                        let anonymousType = <AnonymousType>type;
+                        if (anonymousType.getCallSignatures().length > 0)
+                            return ts.factory.createIdentifier(`Function`);
+                        return ts.factory.createIdentifier('Object');
+
+                    } else if (type.isClassOrInterface()) { 
+                        let reifiedType = <boolean>type.isClass() || type.symbol.name === 'Promise' || !!type.symbol.valueDeclaration;
+                        if (reifiedType)
+                            return ts.factory.createIdentifier(type.symbol.name);
+                    }
+
+                    return ts.factory.createIdentifier('Object');
+                } else if (isFlagType(type, ts.TypeFlags.EnumLike)) {
+                    let types : ts.Type[] = type['types'];
+                    if (types && types.length > 0) {
+                        if (types.every(x => hasFlag(x.flags, ts.TypeFlags.StringLike)))
+                            return ts.factory.createIdentifier('String');
+                        else if (types.every(x => hasFlag(x.flags, ts.TypeFlags.NumberLike)))
+                            return ts.factory.createIdentifier('Number');
+                        else if (types.every(x => hasFlag(x.flags, ts.TypeFlags.BigIntLike)))
+                            return ts.factory.createIdentifier('BigInt');
+                    }
+                }
+
+                // No idea
+                return ts.factory.createIdentifier('Object');
+            }
+
+            function typeToTypeRef(type : ts.Type): ts.Expression {
+                if (!type)
+                    return ts.factory.createIdentifier('Object');
+                
                 if ((type.flags & ts.TypeFlags.String) !== 0) {
                     return ts.factory.createIdentifier('String');
                 } else if ((type.flags & ts.TypeFlags.Number) !== 0) {
@@ -800,37 +873,100 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 } else if ((type.flags & ts.TypeFlags.Boolean) !== 0) { 
                     return ts.factory.createIdentifier('Boolean');
                 } else if ((type.flags & ts.TypeFlags.Void) !== 0) {
-                    return ts.factory.createVoidZero();
+                    return serialize({ TΦ: T_VOID });
                 } else if ((type.flags & ts.TypeFlags.BigInt) !== 0) {
                     return ts.factory.createIdentifier('BigInt');
                 } else if (type.isUnion()) {
                     return serialize({
                         TΦ: T_UNION,
-                        t: type.types.map(x => literalNode(typeToTypeRef(x)))
+                        t: type.types.map(x => literalNode(typeToTypeRef(x))).reverse()
                     });
                 } else if (type.isIntersection()) {
                     return serialize({
                         TΦ: T_INTERSECTION,
-                        t: type.types.map(x => literalNode(typeToTypeRef(x)))
+                        t: type.types.map(x => literalNode(typeToTypeRef(x))).reverse()
                     });
-                } else if (type.isLiteral()) {
+                } else if (hasFlag(type.flags, ts.TypeFlags.Null)) {
+                    return serialize({ TΦ: T_NULL });
+                } else if (hasFlag(type.flags, ts.TypeFlags.Undefined)) {
+                    return serialize({ TΦ: T_UNDEFINED });
+                } else if (hasFlag(type.flags, ts.TypeFlags.Unknown)) {
+                    return serialize({ TΦ: T_UNKNOWN });
+                } else if (hasFlag(type.flags, ts.TypeFlags.Any)) {
+                    return serialize({ TΦ: T_ANY });
+                } else if (isFlagType<ts.LiteralType>(type, ts.TypeFlags.Literal)) {
+                    if (type['intrinsicName'] === 'true')
+                        return serialize({ TΦ: T_TRUE });
+                    else if (type['intrinsicName'] === 'false')
+                        return serialize({ TΦ: T_FALSE });
                     return serialize(type.value);
+                } else if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
+                    if (type['isThisType'])
+                        return serialize({ TΦ: T_THIS });
+                    
+                    // TODO
+                    return ts.factory.createIdentifier('Object'); 
                 } else if ((type.flags & ts.TypeFlags.Object) !== 0) {
                     let objectType = <ts.ObjectType>type;
+                    let isMapped = hasFlag(objectType.objectFlags, ts.ObjectFlags.Mapped);
+                    let isInstantiated = hasFlag(objectType.objectFlags, ts.ObjectFlags.Instantiated);
 
-                    if ((objectType.objectFlags & ts.ObjectFlags.Reference) !== 0) {
+                    if (isMapped) {
+                        if (isInstantiated) {
+                            let typeRef = <MappedType>type;
+                            return serialize({
+                                TΦ: T_MAPPED,
+                                t: literalNode(typeToTypeRef(typeRef.typeParameter)),
+                                p: typeRef.aliasTypeArguments.map(t => literalNode(typeToTypeRef(t)))
+                            });
+                        }
+                    } else if ((objectType.objectFlags & ts.ObjectFlags.Reference) !== 0) {
                         let typeRef = <ts.TypeReference>type;
 
                         if (typeRef.target !== typeRef) {
-                            if (extended) {
-                                // generic
+                            if ((typeRef.target.objectFlags & ts.ObjectFlags.Tuple) !== 0) {
+                                let tupleTypeRef = <ts.TupleTypeReference>typeRef;
+                                let tupleType = tupleTypeRef.target;
+
+                                return serialize({
+                                    TΦ: T_TUPLE,
+                                    e: typeRef.typeArguments.map((e, i) => {
+                                        if (tupleType.labeledElementDeclarations) {
+                                            return { 
+                                                n: tupleType.labeledElementDeclarations[i].name.getText(),
+                                                t: literalNode(typeToTypeRef(e))
+                                            }
+                                        } else {
+                                            return {
+                                                t: literalNode(typeToTypeRef(e))
+                                            }
+                                        }
+                                    })
+                                })
+                            }
+
+                            if (!typeRef.symbol)
+                                debugger;
+                                
+                            if (!typeRef.target.symbol)
+                                debugger;
+                            
+                            if (typeRef.target.symbol.name === 'Array' && typeRef.typeArguments.length === 1) {
+                                return serialize({
+                                    TΦ: T_ARRAY, 
+                                    e: literalNode(typeToTypeRef(typeRef.typeArguments[0]))
+                                })
+                            }
+
+                            try {
                                 return serialize({
                                     TΦ: T_GENERIC, 
                                     t: literalNode(typeToTypeRef(typeRef.target)),
                                     p: (typeRef.typeArguments ?? []).map(x => literalNode(typeToTypeRef(x)))
                                 })
-                            } else {
-                                return typeToTypeRef(typeRef.target);
+                            } catch (e) {
+                                console.error(`RTTI: Error while serializing type '${typeRef.symbol.name}': ${e.message}`);
+                                throw e;
                             }
                         }
                     }
@@ -843,14 +979,104 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if ((type.symbol.flags & ts.SymbolFlags.Function) !== 0) {
                         return ts.factory.createIdentifier(`Function`);
                     } else if (type.isClassOrInterface()) { 
+                        let isCommonJS = program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
                         let reifiedType = <boolean>type.isClass() || type.symbol.name === 'Promise' || !!type.symbol.valueDeclaration;
-                        let symbolName = reifiedType ? type.symbol.name : `IΦ${type.symbol.name}`;
-                        return ts.factory.createIdentifier(symbolName);
+                        
+                        // Acquire the list of parent symbols. This will be used for detecting imports.
+
+                        let parents : ts.Symbol[] = [];
+                        let parent : ts.Symbol = type.symbol['parent'];
+                        
+                        while (parent) {
+                            parents.push(parent);
+                            parent = parent['parent'];
+                        }
+
+                        let expr : ts.Identifier | ts.PropertyAccessExpression;
+
+                        if (reifiedType) {
+                            let entityName = program.getTypeChecker().symbolToEntityName(type.symbol, ts.SymbolFlags.Class, undefined, undefined);
+                            expr = serializeEntityNameAsExpression(entityName, currentLexicalScope);
+                        } else {
+                            let symbolName = `IΦ${type.symbol.name}`;
+                            expr = ts.factory.createIdentifier(symbolName); // TODO: qualified names
+                        }
+
+                        // If this symbol is imported, we need to handle it specially.
+
+                        if (parents.length > 0 && parents[0].name.startsWith('"')) {
+                            // This is imported
+                            
+                            let importName : string;
+                            if (parents.length > 1) {
+                                importName = parents[1].name
+                            } else {
+                                importName = type.symbol.name;
+                            }
+
+                            let modulePath = JSON.parse(parents[0].name);
+                            
+                            if (parents.length === 1 && type.symbol.name === 'default') {
+                                // Default export 
+
+                                if (isCommonJS) {
+                                    return ts.factory.createPropertyAccessExpression(
+                                        ts.factory.createCallExpression(
+                                            ts.factory.createIdentifier('require'),
+                                            [], [
+                                                ts.factory.createStringLiteral(modulePath)
+                                            ]
+                                        ), 'default')
+                                } else {
+                                    
+                                    let impo = importMap.get(`*default:${modulePath}`);
+                                    if (!impo) {
+                                        importMap.set(`*default:${modulePath}`, impo = {
+                                            importDeclaration: undefined,
+                                            isDefault: true,
+                                            isNamespace: false,
+                                            localName: `LΦ_${freeImportReference++}`,
+                                            modulePath: modulePath,
+                                            name: `*default:${modulePath}`,
+                                            refName: '',
+                                            referenced: true
+                                        })
+                                    }
+                                    
+                                    return ts.factory.createIdentifier(impo.localName);
+                                }
+                            } else {
+                                if (isCommonJS) {
+                                    return propertyPrepend(
+                                        ts.factory.createCallExpression(
+                                            ts.factory.createIdentifier('require'),
+                                            [], [ ts.factory.createStringLiteral(modulePath) ]
+                                        ), expr
+                                    );
+                                } else {
+                                    let impo = importMap.get(`*:${modulePath}`);
+                                    if (!impo) {
+                                        importMap.set(`*:${modulePath}`, impo = {
+                                            importDeclaration: undefined,
+                                            isDefault: false,
+                                            isNamespace: true,
+                                            localName: `LΦ_${freeImportReference++}`,
+                                            modulePath: modulePath,
+                                            name: `*:${modulePath}`,
+                                            refName: '',
+                                            referenced: true
+                                        })
+                                    }
+                                    
+                                    return propertyPrepend(ts.factory.createIdentifier(impo.localName), expr);
+                                }
+                            }
+                        }
+
+                        return expr;
                     }
 
                     return ts.factory.createIdentifier('Object');
-                } else if ((type.flags & ts.TypeFlags.Any) !== 0) {
-                    return serialize({ TΦ: T_ANY });
                 }
 
                 // No idea
@@ -892,7 +1118,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
                         if (emitStandardMetadata && ts.isMethodDeclaration(method) && method.decorators?.length > 0) {
                             decs.push(legacyMetadataDecorator('design:returntype', literalNode(
-                                typeToTypeRef(signature.getReturnType(), false)))
+                                typeToTypeRefLegacy(signature.getReturnType())))
                             );
                         }
                     }
@@ -1457,8 +1683,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 try {
                     return ts.visitEachChild(node, visitor, context);
                 } catch (e) {
-                    console.error(`RTTI: Failed while processing node '${node.getText()}' in ${node.getSourceFile().fileName}:`);
-                    console.error(e);
+                    //console.error(`RTTI: Failed while processing node '${node.getText()}' in ${node.getSourceFile().fileName}:`);
+                    //console.error(e);
 
                     throw e;
                 }
@@ -1493,6 +1719,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     if (isCommonJS && !impo.isNamespace && !impo.isDefault)
                         continue;
                        
+                    if (trace)
+                        console.log(`RTTI: Generating owned import for '${impo.modulePath}'`);
+
                     let ownedImpo : ts.ImportDeclaration;
 
                     if (impo.isDefault) {
@@ -1503,9 +1732,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                 false, ts.factory.createIdentifier(impo.localName),
                                 undefined
                             ),
-                            ts.factory.createStringLiteral(
-                                (<ts.StringLiteral>impo.importDeclaration.moduleSpecifier).text
-                            )
+                            ts.factory.createStringLiteral(impo.modulePath)
                         );
                     } else {
                         ownedImpo = ts.factory.createImportDeclaration(
@@ -1526,9 +1753,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                         ]
                                     )
                             ),
-                            ts.factory.createStringLiteral(
-                                (<ts.StringLiteral>impo.importDeclaration.moduleSpecifier).text
-                            )
+                            ts.factory.createStringLiteral(impo.modulePath)
                         );
                     }
 

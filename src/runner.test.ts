@@ -13,39 +13,17 @@ export interface RunInvocation {
     trace? : boolean;
 }
 
-function transpilerHost(sourceFile : ts.SourceFile, write : (output : string) => void) {
-    return <ts.CompilerHost>{
-        getSourceFile: (fileName) => {
-            if (fileName === "module.ts")
-                return sourceFile;
-        
-            let libLoc = path.resolve(__dirname, '../node_modules/typescript/lib', fileName);
-            let stat = fs.statSync(libLoc);
+function normalizeFilename(filename : string, extension? : string) {
+    if (extension && !filename.endsWith(`.${extension}`))
+        filename = `${filename}.${extension}`;
 
-            if (!stat.isFile())
-                return;
-            
-            let buf = fs.readFileSync(libLoc);
+    if (!filename.includes('/'))
+        filename = `./${filename}`;
 
-            return ts.createSourceFile("module.ts", buf.toString('utf-8'), ts.ScriptTarget.Latest);            
-        },
-        writeFile: (name, text) => {
-            if (!name.endsWith(".map"))
-                write(text);
-        },
-        getDefaultLibFileName: () => "lib.d.ts",
-        useCaseSensitiveFileNames: () => false,
-        getCanonicalFileName: fileName => fileName,
-        getCurrentDirectory: () => "",
-        getNewLine: () => "\n",
-        fileExists: (fileName): boolean => fileName === "module.ts",
-        readFile: () => "",
-        directoryExists: () => true,
-        getDirectories: () => []
-    };
+    return filename;
 }
 
-export function compile(invocation : RunInvocation): string {
+export function compile(invocation : RunInvocation): Record<string,string> {
     let options : ts.CompilerOptions = {
         ...ts.getDefaultCompilerOptions(),
         ...<ts.CompilerOptions>{
@@ -62,15 +40,89 @@ export function compile(invocation : RunInvocation): string {
         ...invocation.compilerOptions || {},
     };
     
+    let inputs : Record<string,ts.SourceFile> = {
+        './main.ts': ts.createSourceFile('./main.ts', invocation.code, options.target!)
+    };
+
+    let otherFiles = Object.keys(invocation?.modules ?? {}).filter(x => x.endsWith('.ts'));
+    for (let otherFile of otherFiles) {
+        inputs[otherFile] = ts.createSourceFile(otherFile, invocation.modules[otherFile], options.target!);
+    }
+
+    let outputs : Record<string,string> = {};
+
     if (invocation.moduleType) {
         if (invocation.moduleType === 'esm') 
             options.module = ts.ModuleKind.ES2020;
     }
+    
+    const program = ts.createProgram(Object.keys(inputs), options, {
+        getSourceFile: (fileName : string) => {
+            fileName = normalizeFilename(fileName, 'ts');
+            
+            if (invocation.trace) {
+                console.log(`Test: Typescript requests to open '${fileName}'...`);
+            }
 
-    const sourceFile = ts.createSourceFile("module.ts", invocation.code, options.target!);
-    let outputText: string | undefined;
-    const compilerHost = transpilerHost(sourceFile, output => outputText = output);
-    const program = ts.createProgram(["module.ts"], options, compilerHost);
+            if (inputs[fileName])
+                return inputs[fileName];
+    
+            // libs
+
+            let libLoc = path.resolve(__dirname, '../node_modules/typescript/lib', fileName);
+            try {
+                let stat = fs.statSync(libLoc);
+
+                if (!stat.isFile())
+                    return;
+            } catch (e) {
+                return;
+            }
+
+            let buf = fs.readFileSync(libLoc);
+
+            return ts.createSourceFile(libLoc, buf.toString('utf-8'), ts.ScriptTarget.Latest);
+        },
+        writeFile: (filename : string, text : string) => {
+            if (invocation.trace) {
+                console.log(`Test: Emitting '${filename}'...`);
+            }
+
+            filename = normalizeFilename(filename, 'js');
+            outputs[filename] = text;
+        },
+        getDefaultLibFileName: () => "lib.d.ts",
+        useCaseSensitiveFileNames: () => false,
+        getCanonicalFileName: fileName => fileName,
+        getCurrentDirectory: () => "",
+        getNewLine: () => "\n",
+        fileExists: (fileName : string): boolean => {
+            let exists = false;
+            fileName = normalizeFilename(fileName, 'ts');
+
+            if (!!inputs[fileName] || !!invocation?.modules?.[fileName]) {
+                exists = true;
+            } else {
+                let libLoc = path.resolve(__dirname, '../node_modules/typescript/lib', fileName);
+                try {
+                    let stat = fs.statSync(libLoc);
+
+                    if (stat.isFile())
+                        exists = true;
+                } catch (e) {
+                    exists = false;
+                }
+            }
+
+            if (invocation.trace) {
+                console.log(`Test: Typescript checked if file exists: '${fileName}' => ${exists}`);
+            }
+            return exists;
+        },
+        readFile: () => "",
+        directoryExists: () => true,
+        getDirectories: () => []
+    });
 
     let optionsDiags = program.getOptionsDiagnostics();
     let syntacticDiags = program.getSyntacticDiagnostics();
@@ -90,18 +142,42 @@ export function compile(invocation : RunInvocation): string {
         ] : []
     });
 
-    if (outputText === undefined) {
+    if (outputs['./main.js'] === undefined) {
         if (program.getOptionsDiagnostics().length > 0) {
             console.dir(program.getOptionsDiagnostics());
         } else {
-            console.dir(program.getSyntacticDiagnostics(sourceFile));
+            console.error(`Diagnostics for './main.ts':`);
+            console.dir(program.getSyntacticDiagnostics(inputs['./main.ts']));
         }
 
-        throw new Error(`Failed to compile test code: '${invocation.code}'`);
+        throw new Error(`Failed to compile test code: '${invocation.code}'. Code was emitted for: ${JSON.stringify(Object.keys(outputs))}`);
     }
 
-    return outputText;
+    return outputs;
 }
+
+interface Module {
+    exports : any;
+    filename : string;
+    code? : string;
+}
+
+function runCommonJS(module : Module, $require) {
+    try {
+        eval(`(
+            function(module, exports, require){
+                ${module.code}
+            }
+        )`)(module, module.exports, $require);
+    } catch (e) {
+        throw new Error(`Failed to compile '${module.filename}': ${e.message}`);
+    }
+    return module;
+}
+
+// function esRequire(moduleSpecifier : string) {
+//     return eval(`import(${JSON.stringify(moduleSpecifier)})`);
+// }
 
 /**
  * Compile the given code using Typescript and typescript-rtti transformer plugin and return the 
@@ -111,43 +187,61 @@ export function compile(invocation : RunInvocation): string {
  * @returns 
  */
 export async function runSimple(invocation : RunInvocation) {
-    let outputText = compile(invocation);
+    let outputs = compile(invocation);
 
     if (invocation.trace) {
         console.log(`========================`);
-        console.log(outputText);
+        for (let filename of Object.keys(outputs)) {
+            console.log(`  ${filename}:`);
+            console.log(`    ${outputs[filename].replace(/\r?\n/g, `\n    `)}`);
+        }
         console.log(`========================`);
     }
 
+    let outputText = outputs['./main.js'];
+
     let exports : Record<string,any> = {};
-    let rq = (moduleName : string) => {
-        if (!invocation.modules)
-            throw new Error(`(RTTI Test) Cannot find module '${moduleName}'`);
-            
-        let symbols = invocation.modules[moduleName];
-
-        if (!symbols)
-            throw new Error(`(RTTI Test) Cannot find module '${moduleName}'`);
-
-        return symbols;
-    };
+    let modules : Record<string, Module> = {};
 
     if (invocation.moduleType === 'esm') {
 
-        global['moduleOverrides'] = invocation.modules;
+        global['moduleOverrides'] = { ...outputs, ...invocation.modules };
 
-        exports = await esRequire(
-            `data:text/javascript;base64,${Buffer.from(`
-                ${outputText}
-            `).toString('base64')}`
-        );
+        if (invocation.trace) {
+            console.log(`RTTI Test: executing code under test...`);
+        }
+        exports = await esRequire(`./main.js`);
     } else {
-        let func = eval(`(
-            function(exports, require){
-                ${outputText}
+        let $require = (moduleName : string) => {
+            let fileName = moduleName;
+            
+            fileName = normalizeFilename(fileName, 'js');
+
+            if (outputs[fileName]) {
+                if (modules[fileName])
+                    return modules[fileName].exports;
+                
+                return modules[fileName] ?? runCommonJS(modules[fileName] = { 
+                    exports: {}, code: outputs[fileName],
+                    filename: fileName
+                }, $require).exports;
             }
-        )`);
-        func(exports, rq);
+    
+            let symbols = invocation.modules?.[moduleName];
+    
+            if (!symbols) {
+                throw new Error(
+                    `(RTTI Test) Cannot find module '${moduleName}' [aka '${fileName}']. ` 
+                    + `Compilation outputs are: ${JSON.stringify(Object.keys(outputs))}, ` 
+                    + `JSON modules are: ${JSON.stringify(Object.keys(invocation.modules)
+                                                                .filter(x => !x.endsWith('.ts')))}`
+                );
+            }
+
+            return symbols;
+        };
+    
+        return $require('./main.js');
     }
 
     return exports;
