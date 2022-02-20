@@ -1,209 +1,210 @@
 import ts from 'typescript';
 
-// const __RtΦ = (k, v) => (t, ...a) => t && Reflect.metadata ? Reflect.metadata(k, v)(t, ...a) : void 0;
+/*
+  const __RΦ = {
+      m: (k, v) => (t, ...a) => t && Reflect.metadata ? Reflect.metadata(k, v)(t, ...a) : void 0,
+      f: (f, d, n) => (d.forEach(d => d(f)), Object.defineProperty(f, 'name', { value: n, writable: false }), f)
+  };
+*/
+
 export function rtHelper() {
-    const factory = ts.factory;
-    return factory.createVariableStatement(
-      undefined,
-      factory.createVariableDeclarationList(
-        [factory.createVariableDeclaration(
-          factory.createIdentifier("__RtΦ"),
-          undefined,
-          undefined,
-          factory.createArrowFunction(
-            undefined,
-            undefined,
-            [
-              factory.createParameterDeclaration(
+  const factory = ts.factory;
+  return factory.createVariableStatement(
+    undefined,
+    factory.createVariableDeclarationList(
+      [factory.createVariableDeclaration(
+        factory.createIdentifier("__RΦ"),
+        undefined,
+        undefined,
+        factory.createObjectLiteralExpression(
+          [
+            factory.createPropertyAssignment(
+              factory.createIdentifier("m"),
+              factory.createArrowFunction(
                 undefined,
                 undefined,
-                undefined,
-                factory.createIdentifier("k"),
-                undefined,
-                undefined,
-                undefined
-              ),
-              factory.createParameterDeclaration(
-                undefined,
-                undefined,
-                undefined,
-                factory.createIdentifier("v"),
-                undefined,
-                undefined,
-                undefined
-              )
-            ],
-            undefined,
-            factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-            factory.createArrowFunction(
-              undefined,
-              undefined,
-              [
-                factory.createParameterDeclaration(
-                  undefined,
-                  undefined,
-                  undefined,
-                  factory.createIdentifier("t"),
-                  undefined,
-                  undefined,
-                  undefined
-                ),
-                factory.createParameterDeclaration(
-                  undefined,
-                  undefined,
-                  factory.createToken(ts.SyntaxKind.DotDotDotToken),
-                  factory.createIdentifier("a"),
-                  undefined,
-                  undefined,
-                  undefined
-                )
-              ],
-              undefined,
-              factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-              factory.createConditionalExpression(
-                factory.createBinaryExpression(
-                  factory.createIdentifier("t"),
-                  factory.createToken(ts.SyntaxKind.AmpersandAmpersandToken),
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier("Reflect"),
-                    factory.createIdentifier("metadata")
-                  )
-                ),
-                factory.createToken(ts.SyntaxKind.QuestionToken),
-                factory.createCallExpression(
-                  factory.createCallExpression(
-                    factory.createPropertyAccessExpression(
-                      factory.createIdentifier("Reflect"),
-                      factory.createIdentifier("metadata")
-                    ),
+                [
+                  factory.createParameterDeclaration(
                     undefined,
-                    [
-                      factory.createIdentifier("k"),
-                      factory.createIdentifier("v")
-                    ]
+                    undefined,
+                    undefined,
+                    factory.createIdentifier("k"),
+                    undefined,
+                    undefined,
+                    undefined
                   ),
+                  factory.createParameterDeclaration(
+                    undefined,
+                    undefined,
+                    undefined,
+                    factory.createIdentifier("v"),
+                    undefined,
+                    undefined,
+                    undefined
+                  )
+                ],
+                undefined,
+                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                factory.createArrowFunction(
+                  undefined,
                   undefined,
                   [
-                    factory.createIdentifier("t"),
-                    factory.createSpreadElement(factory.createIdentifier("a"))
-                  ]
-                ),
-                factory.createToken(ts.SyntaxKind.ColonToken),
-                factory.createVoidExpression(factory.createNumericLiteral("0"))
-              )
-            )
-          )
-        )],
-        ts.NodeFlags.Const
-      )
-    )
-}
-
-// const __RfΦ = (f, d, n) => (d.forEach(d => d(f)), Object.defineProperty(f, 'name', { value: n, writable: false }), f);
-export function rtfHelper() {
-    const factory = ts.factory;
-    return factory.createVariableStatement(
-      undefined,
-      factory.createVariableDeclarationList(
-        [factory.createVariableDeclaration(
-          factory.createIdentifier("__RfΦ"),
-          undefined,
-          undefined,
-          factory.createArrowFunction(
-            undefined,
-            undefined,
-            [
-              factory.createParameterDeclaration(
-                undefined,
-                undefined,
-                undefined,
-                factory.createIdentifier("f"),
-                undefined,
-                undefined,
-                undefined
-              ),
-              factory.createParameterDeclaration(
-                undefined,
-                undefined,
-                undefined,
-                factory.createIdentifier("d"),
-                undefined,
-                undefined,
-                undefined
-              ),
-              factory.createParameterDeclaration(
-                undefined,
-                undefined,
-                undefined,
-                factory.createIdentifier("n"),
-                undefined,
-                undefined,
-                undefined
-              )
-            ],
-            undefined,
-            factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-            factory.createParenthesizedExpression(factory.createBinaryExpression(
-              factory.createBinaryExpression(
-                factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier("d"),
-                    factory.createIdentifier("forEach")
-                  ),
-                  undefined,
-                  [factory.createArrowFunction(
-                    undefined,
-                    undefined,
-                    [factory.createParameterDeclaration(
+                    factory.createParameterDeclaration(
                       undefined,
                       undefined,
                       undefined,
-                      factory.createIdentifier("d"),
+                      factory.createIdentifier("t"),
                       undefined,
                       undefined,
                       undefined
-                    )],
-                    undefined,
-                    factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                    factory.createCallExpression(
-                      factory.createIdentifier("d"),
+                    ),
+                    factory.createParameterDeclaration(
                       undefined,
-                      [factory.createIdentifier("f")]
+                      undefined,
+                      factory.createToken(ts.SyntaxKind.DotDotDotToken),
+                      factory.createIdentifier("a"),
+                      undefined,
+                      undefined,
+                      undefined
                     )
-                  )]
-                ),
-                factory.createToken(ts.SyntaxKind.CommaToken),
-                factory.createCallExpression(
-                  factory.createPropertyAccessExpression(
-                    factory.createIdentifier("Object"),
-                    factory.createIdentifier("defineProperty")
-                  ),
+                  ],
                   undefined,
-                  [
-                    factory.createIdentifier("f"),
-                    factory.createStringLiteral("name"),
-                    factory.createObjectLiteralExpression(
-                      [
-                        factory.createPropertyAssignment(
-                          factory.createIdentifier("value"),
-                          factory.createIdentifier("n")
+                  factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                  factory.createConditionalExpression(
+                    factory.createBinaryExpression(
+                      factory.createIdentifier("t"),
+                      factory.createToken(ts.SyntaxKind.AmpersandAmpersandToken),
+                      factory.createPropertyAccessExpression(
+                        factory.createIdentifier("Reflect"),
+                        factory.createIdentifier("metadata")
+                      )
+                    ),
+                    factory.createToken(ts.SyntaxKind.QuestionToken),
+                    factory.createCallExpression(
+                      factory.createCallExpression(
+                        factory.createPropertyAccessExpression(
+                          factory.createIdentifier("Reflect"),
+                          factory.createIdentifier("metadata")
                         ),
-                        factory.createPropertyAssignment(
-                          factory.createIdentifier("writable"),
-                          factory.createFalse()
-                        )
-                      ],
-                      false
-                    )
-                  ]
+                        undefined,
+                        [
+                          factory.createIdentifier("k"),
+                          factory.createIdentifier("v")
+                        ]
+                      ),
+                      undefined,
+                      [
+                        factory.createIdentifier("t"),
+                        factory.createSpreadElement(factory.createIdentifier("a"))
+                      ]
+                    ),
+                    factory.createToken(ts.SyntaxKind.ColonToken),
+                    factory.createVoidExpression(factory.createNumericLiteral("0"))
+                  )
                 )
-              ),
-              factory.createToken(ts.SyntaxKind.CommaToken),
-              factory.createIdentifier("f")
-            ))
-          )
-        )],
-        ts.NodeFlags.Const
-      )
+              )
+            ),
+            factory.createPropertyAssignment(
+              factory.createIdentifier("f"),
+              factory.createArrowFunction(
+                undefined,
+                undefined,
+                [
+                  factory.createParameterDeclaration(
+                    undefined,
+                    undefined,
+                    undefined,
+                    factory.createIdentifier("f"),
+                    undefined,
+                    undefined,
+                    undefined
+                  ),
+                  factory.createParameterDeclaration(
+                    undefined,
+                    undefined,
+                    undefined,
+                    factory.createIdentifier("d"),
+                    undefined,
+                    undefined,
+                    undefined
+                  ),
+                  factory.createParameterDeclaration(
+                    undefined,
+                    undefined,
+                    undefined,
+                    factory.createIdentifier("n"),
+                    undefined,
+                    undefined,
+                    undefined
+                  )
+                ],
+                undefined,
+                factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                factory.createParenthesizedExpression(factory.createBinaryExpression(
+                  factory.createBinaryExpression(
+                    factory.createCallExpression(
+                      factory.createPropertyAccessExpression(
+                        factory.createIdentifier("d"),
+                        factory.createIdentifier("forEach")
+                      ),
+                      undefined,
+                      [factory.createArrowFunction(
+                        undefined,
+                        undefined,
+                        [factory.createParameterDeclaration(
+                          undefined,
+                          undefined,
+                          undefined,
+                          factory.createIdentifier("d"),
+                          undefined,
+                          undefined,
+                          undefined
+                        )],
+                        undefined,
+                        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                        factory.createCallExpression(
+                          factory.createIdentifier("d"),
+                          undefined,
+                          [factory.createIdentifier("f")]
+                        )
+                      )]
+                    ),
+                    factory.createToken(ts.SyntaxKind.CommaToken),
+                    factory.createCallExpression(
+                      factory.createPropertyAccessExpression(
+                        factory.createIdentifier("Object"),
+                        factory.createIdentifier("defineProperty")
+                      ),
+                      undefined,
+                      [
+                        factory.createIdentifier("f"),
+                        factory.createStringLiteral("name"),
+                        factory.createObjectLiteralExpression(
+                          [
+                            factory.createPropertyAssignment(
+                              factory.createIdentifier("value"),
+                              factory.createIdentifier("n")
+                            ),
+                            factory.createPropertyAssignment(
+                              factory.createIdentifier("writable"),
+                              factory.createFalse()
+                            )
+                          ],
+                          false
+                        )
+                      ]
+                    )
+                  ),
+                  factory.createToken(ts.SyntaxKind.CommaToken),
+                  factory.createIdentifier("f")
+                ))
+              )
+            )
+          ],
+          true
+        )
+      )],
+      ts.NodeFlags.Const
     )
+  )
 }

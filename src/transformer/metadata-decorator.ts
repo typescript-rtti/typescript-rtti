@@ -3,11 +3,10 @@ import { legacyDecorator } from './legacy-decorator';
 import { serialize } from './serialize';
 
 export function metadataDecorator(key : string, object : any) {
-    let metadataFuncExpr : ts.Expression = ts.factory.createIdentifier('__RtΦ');
-
     return ts.factory.createDecorator(
         ts.factory.createCallExpression(
-            metadataFuncExpr, [],
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('__RΦ'), 'm'), 
+            [],
             [
                 ts.factory.createStringLiteral(key),
                 serialize(object)
@@ -31,7 +30,7 @@ export function decorateFunctionExpression(func : ts.FunctionExpression | ts.Arr
 
     if (func.parent) {
         // In JS, anonymous unnamed functions inherit the name of the property they are being assigned to.
-        // Because we are inserting __RfΦ, this property will be lost unless we specifically patch the function's
+        // Because we are inserting __RΦ.f(), this property will be lost unless we specifically patch the function's
         // name.
         if (ts.isPropertyAssignment(func.parent) || ts.isVariableDeclaration(func.parent)) {
             name = func.parent.name.getText();
@@ -39,7 +38,10 @@ export function decorateFunctionExpression(func : ts.FunctionExpression | ts.Arr
     }
 
     return ts.factory.createCallExpression(
-        ts.factory.createIdentifier('__RfΦ'),
+        ts.factory.createPropertyAccessExpression(
+            ts.factory.createIdentifier('__RΦ'),
+            'f'
+        ),
         [], [
             func,
             ts.factory.createArrayLiteralExpression(decorators.map(d => d.expression)),

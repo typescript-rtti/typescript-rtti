@@ -33,7 +33,7 @@
 import { F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef, functionForwardRef } from './forward-ref';
 import { decorateFunctionExpression, directMetadataDecorator, legacyMetadataDecorator, metadataDecorator } from './metadata-decorator';
-import { rtfHelper, rtHelper } from './rt-helper';
+import { rtHelper } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
 import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, F_STATIC, F_ARROW_FUNCTION, T_MAPPED, T_UNDEFINED, T_NULL, T_TRUE, T_FALSE } from '../common';
@@ -1578,7 +1578,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
             sourceFile = ts.factory.updateSourceFile(
                 sourceFile, 
-                [ rtHelper(), rtfHelper(), ...sourceFile.statements ], 
+                [ rtHelper(), ...sourceFile.statements ], 
                 sourceFile.isDeclarationFile, 
                 sourceFile.referencedFiles,
                 sourceFile.typeReferenceDirectives,
