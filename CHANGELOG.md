@@ -8,6 +8,12 @@
 - String-like and number-like return types (enums mainly) now emit the appropriate type for `design:returntype`
 - Fixed an issue where `this` parameters were included in parameter lists unintentionally, including in 
   `design:paramtypes`
+- Revised emit to create a `__RΦ` object containing the metadata and function annotation helpers instead of `__RtΦ` and `__RfΦ` respectively
+- **Enabled emitting of recursive types**  
+  This was done by revising emit to use the `__RΦ` object as a central store of type information for the current file, with the element-level metadata accessing this metadata as needed. 
+  NOTE: **This change is backwards compatible**  
+  - As a side effect of this change, the total byte size of emitted metadata should be heavily reduced, with files containing many identical type references seeing the largest benefits.
+
 # v0.1.3
 - Fixes an additional case where `null` was used instead of `undefined` when generating typescript AST elements
 

@@ -1832,8 +1832,7 @@ describe('RTTI: ', () => {
                 expect(type.p[0].t).to.include.all.members([ String, Number ]);
             })
 
-            it.skip('emits for infinite generic', async () => {
-                
+            it('emits for infinite generic', async () => {
                 let exports = await runSimple({
                     code: `
                         type A = number | B<A>;
@@ -1850,9 +1849,12 @@ describe('RTTI: ', () => {
                 let type = typeResolver();
 
                 expect(type.TΦ).to.equal(T_UNION);
-                expect(type.t[0]).to.equal(Number);
-                expect(type.t[1].TΦ).to.equal(T_GENERIC);
-                expect(type.t[1].p[0]).to.equal(type);
+
+                expect(type.t).to.include.all.members([ Number ]);
+                let generic = type.t.find(x => x.TΦ === T_GENERIC);
+
+                expect(generic).to.exist;
+                expect(generic.p[0]).to.equal(type);
             })
         });
         describe('rt:i', it => {

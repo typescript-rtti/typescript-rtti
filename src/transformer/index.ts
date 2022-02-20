@@ -33,7 +33,7 @@
 import { F_CLASS, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef, functionForwardRef } from './forward-ref';
 import { decorateFunctionExpression, directMetadataDecorator, legacyMetadataDecorator, metadataDecorator } from './metadata-decorator';
-import { rtHelper } from './rt-helper';
+import { rtStore } from './rt-helper';
 import { serialize } from './serialize';
 import * as ts from 'typescript';
 import { T_ANY, T_ARRAY, T_INTERSECTION, T_THIS, T_TUPLE, T_UNION, T_UNKNOWN, T_GENERIC, T_VOID, F_FUNCTION, F_INTERFACE, RtSerialized, RtParameter, F_STATIC, F_ARROW_FUNCTION, T_MAPPED, T_UNDEFINED, T_NULL, T_TRUE, T_FALSE } from '../common';
@@ -136,6 +136,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts'))
                 return sourceFile;
 
+            let typeMap = new Map<number, ts.Expression>();
             let importMap = new Map<string,TypeImport>();
             let classMap = new Map<ts.ClassDeclaration,ClassDetails>();
             let currentNameScope : ts.ClassDeclaration | ts.InterfaceDeclaration;
@@ -650,6 +651,37 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             }
 
             function typeToTypeRef(type : ts.Type): ts.Expression {
+                if (!type['id'])
+                    throw new Error(`Type does not have an ID!`);
+
+                if (!typeMap.has(type['id'])) {
+                    typeMap.set(type['id'], null);
+                    let expr = typeToTypeRefExpression(type);
+                    let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
+
+                    typeMap.set(type['id'], serialize({
+                        [propName]: literalNode(ts.factory.createArrowFunction(
+                            [], [], [
+                                ts.factory.createParameterDeclaration(
+                                    [], [], undefined, 't', undefined, undefined, 
+                                    undefined
+                                )
+                            ], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expr
+                        ))
+                    }));
+                }
+
+                return ts.factory.createCallExpression(
+                    ts.factory.createPropertyAccessExpression(
+                        ts.factory.createIdentifier(`__RΦ`),
+                        'a'
+                    ), [], [
+                        ts.factory.createNumericLiteral(type['id'])
+                    ]
+                )
+            }
+
+            function typeToTypeRefExpression(type : ts.Type): ts.Expression {
                 if (!type)
                     return ts.factory.createIdentifier('Object');
                 
@@ -1578,7 +1610,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
             sourceFile = ts.factory.updateSourceFile(
                 sourceFile, 
-                [ rtHelper(), ...sourceFile.statements ], 
+                [ rtStore(typeMap), ...sourceFile.statements ], 
                 sourceFile.isDeclarationFile, 
                 sourceFile.referencedFiles,
                 sourceFile.typeReferenceDirectives,
