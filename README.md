@@ -1,6 +1,6 @@
-# typescript-rtti
+# ![typescript-rtti](logo-long.svg)
 [![Version](https://img.shields.io/npm/v/typescript-rtti.svg)](https://www.npmjs.com/package/typescript-rtti)
-[![CircleCI](https://circleci.com/gh/rezonant/typescript-rtti/tree/main.svg?style=shield)](https://circleci.com/gh/rezonant/typescript-rtti/tree/main)
+[![CircleCI](https://circleci.com/gh/typescript-rtti/typescript-rtti/tree/main.svg?style=shield)](https://circleci.com/gh/typescript-rtti/typescript-rtti/tree/main)
 
 > **NOTE**
 > This software is _beta quality_, semver 0.0.x. Transformer: Expect all codebases to build and operate the same as when the transformer is not present. Reflection API:  API is stable, expect only rare breaking changes on the way to major-stable semver.
