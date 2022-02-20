@@ -9,7 +9,8 @@
             "request": "launch",
             "name": "Launch Program",
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
+                "node_modules/zone.js/**"
             ],
             "program": "${workspaceFolder}\\dist\\test.js",
             "preLaunchTask": "tsc: build - tsconfig.json",
