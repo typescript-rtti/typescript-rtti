@@ -1824,6 +1824,29 @@ describe('RTTI: ', () => {
                 expect(type.t).to.equal(exports.A);
                 expect(type.p).to.eql([ { TΦ: T_UNION, t: [ Number, String ] } ]);
             })
+
+            it.skip('emits for infinite generic', async () => {
+                
+                let exports = await runSimple({
+                    code: `
+                        type A = number | B<A>;
+                        interface B<T> { }
+                        export class C { 
+                            foo() {
+                                return <A>null;
+                            }
+                        }
+                    `
+                });
+        
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_UNION);
+                expect(type.t[0]).to.equal(Number);
+                expect(type.t[1].TΦ).to.equal(T_GENERIC);
+                expect(type.t[1].p[0]).to.equal(type);
+            })
         });
         describe('rt:i', it => {
             it('emits for local interfaces implemented by a class', async () => {
