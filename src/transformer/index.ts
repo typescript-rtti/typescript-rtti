@@ -1387,13 +1387,13 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         // function expression, and named function expressions have 
                         // their own scope, we can't just emit ie: 
                         //
-                        //   if (true) __RfΦ(function a() { }, [ ... ])
+                        //   if (true) __RΦ.f(function a() { }, [ ... ])
                         //
                         // ...because a() will no longer be in scope. 
                         // Thankfully, since function declaration semantics match those of 
                         // the var keyword, we can accomplish this with:
                         //
-                        //    if (true) var a = __RfΦ(function a() { }, [ ... ])
+                        //    if (true) var a = __RΦ.f(function a() { }, [ ... ])
 
                         let expr = ts.factory.createFunctionExpression(
                             node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, 

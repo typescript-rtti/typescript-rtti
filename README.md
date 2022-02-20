@@ -203,12 +203,14 @@ export class B {
 
 // output
 
-const __RtΦ = (k, v) => Reflect.metadata(k, v);
+const __RΦ = {
+    m: (k, v) => Reflect.metadata(k, v)
+};
 //...
 B = __decorate([
-    __RtΦ("rt:P", ["a"]),
-    __RtΦ("rt:p", [{ n: "a", t: () => A, f: "R" }]),
-    __RtΦ("rt:f", "C$")
+    __RΦ.m("rt:P", ["a"]),
+    __RΦ.m("rt:p", [{ n: "a", t: () => A, f: "R" }]),
+    __RΦ.m("rt:f", "C$")
 ], B);
 ```
 
@@ -236,23 +238,23 @@ export class A {
 
 //...
 __decorate([
-    __RtΦ("rt:p", [{ n: "shape", t: () => ShapeΦ, f: "?" }]),
-    __RtΦ("rt:f", "M$"),
-    __RtΦ("rt:t", () => ShapeΦ)
+    __RΦ.m("rt:p", [{ n: "shape", t: () => ShapeΦ, f: "?" }]),
+    __RΦ.m("rt:f", "M$"),
+    __RΦ.m("rt:t", () => ShapeΦ)
 ], A.prototype, "takeShape", null);
 __decorate([
-    __RtΦ("rt:p", [{ n: "myArray", t: () => [String] }]),
-    __RtΦ("rt:f", "M$"),
-    __RtΦ("rt:t", () => Number)
+    __RΦ.m("rt:p", [{ n: "myArray", t: () => [String] }]),
+    __RΦ.m("rt:f", "M$"),
+    __RΦ.m("rt:t", () => Number)
 ], A.prototype, "haveAnArray", null);
 __decorate([
-    __RtΦ("rt:p", [{ n: "blank", t: () => void 0 }, { n: "aString", t: () => String }, { n: "aNumber", t: () => Number }, { n: "aBool", t: () => Boolean }, { n: "aFunc", t: () => Function }]),
-    __RtΦ("rt:f", "M$"),
-    __RtΦ("rt:t", () => String)
+    __RΦ.m("rt:p", [{ n: "blank", t: () => void 0 }, { n: "aString", t: () => String }, { n: "aNumber", t: () => Number }, { n: "aBool", t: () => Boolean }, { n: "aFunc", t: () => Function }]),
+    __RΦ.m("rt:f", "M$"),
+    __RΦ.m("rt:t", () => String)
 ], A.prototype, "naturalTypes", null);
 A = __decorate([
-    __RtΦ("rt:m", ["takeShape", "haveAnArray", "naturalTypes"]),
-    __RtΦ("rt:f", "C$")
+    __RΦ.m("rt:m", ["takeShape", "haveAnArray", "naturalTypes"]),
+    __RΦ.m("rt:f", "C$")
 ], A);
 ```
 
