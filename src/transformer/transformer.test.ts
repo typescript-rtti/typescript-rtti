@@ -1118,8 +1118,9 @@ describe('RTTI: ', () => {
             });
         });
         describe('rt:t', it => {
-            it.only('emits for a promise type', async () => {
+            it('emits for a promise type', async () => {
                 let exports = await runSimple({
+                    trace: true,
                     code: `
                         export class B {
                             async floatNullable(): Promise<number | null> { 
@@ -1133,6 +1134,37 @@ describe('RTTI: ', () => {
                 let type = typeResolver();
 
                 expect(type.TΦ).to.equal(T_GENERIC);
+            });
+
+            it.only('emits for a nullable promise type when strictNullChecks is enabled', async () => {
+                let exports = await runSimple({
+                    trace: true,
+                    compilerOptions: {
+                        strictNullChecks: true
+                    },
+                    code: `
+                        export class B {
+                            async floatNullable(): Promise<number | null> { 
+                                return 10
+                            }
+                        }
+                    `
+                });
+
+                let typeResolver = Reflect.getMetadata('rt:t', exports.B.prototype, 'floatNullable');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_GENERIC);
+                expect(type.p[0].TΦ).to.equal(T_UNION);
+
+                let types : any[] = type.p[0].t;
+                expect(types.length).to.equal(2);
+
+                let nullT = types.find(x => x.TΦ === T_NULL);
+                let numberT = types.find(x => x === Number);
+
+                expect(nullT).to.exist;
+                expect(numberT).to.exist;
             });
 
             it('emits for a property getter', async () => {
