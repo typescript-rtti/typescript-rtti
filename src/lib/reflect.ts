@@ -501,7 +501,7 @@ export class ReflectedUnknownRef extends ReflectedTypeRef<RtUnknownType> {
 
 @ReflectedTypeRef.Kind('any')
 export class ReflectedAnyRef extends ReflectedTypeRef<RtAnyType> {
-    get kind() { return 'unknown' as const; }
+    get kind() { return 'any' as const; }
     toString() { return `any`; }
 
     matchesValue(value: any, errors?: Error[], context?: string): boolean {

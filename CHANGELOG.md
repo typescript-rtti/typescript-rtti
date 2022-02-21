@@ -1,3 +1,6 @@
+# vNext
+- Fixes an issue where `RtAnyRef#kind` reported `unknown` instead of `any`
+
 # v0.2.0
 - Fixes an issue where the value of `emitDecoratorMetadata` was lost and reset to `false` when run within `ts-jest`
 - Properly emits for inferred async return types 
