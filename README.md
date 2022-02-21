@@ -123,6 +123,7 @@ npm install ttypescript -D
 ```jsonc
 // tsconfig.json
 "compilerOptions": {
+    "strictNullChecks": true,// this is recommended, but not necessary. TS type inference works even in non strict mode, but it can be less precise.
     "plugins": [{ "transform": "typescript-rtti/dist/transformer" }]
 }
 ```
