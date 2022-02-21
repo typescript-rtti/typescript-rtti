@@ -1136,7 +1136,7 @@ describe('RTTI: ', () => {
                 expect(type.TΦ).to.equal(T_GENERIC);
             });
 
-            it.only('emits for a nullable promise type when strictNullChecks is enabled', async () => {
+            it('emits for a nullable promise type when strictNullChecks is enabled', async () => {
                 let exports = await runSimple({
                     trace: true,
                     compilerOptions: {
