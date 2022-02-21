@@ -1,4 +1,4 @@
-# vNext
+# v0.2.0
 - Fixes an issue where the value of `emitDecoratorMetadata` was lost and reset to `false` when run within `ts-jest`
 - Properly emits for inferred async return types 
 - Fix: the name of function expressions assigned to property and variable declarations are now retained when they are 
