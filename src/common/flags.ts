@@ -1,4 +1,4 @@
-import ts from "typescript";
+import type * as ts from "typescript";
 
 export const F_READONLY       = 'R';
 export const F_ABSTRACT       = 'A';
