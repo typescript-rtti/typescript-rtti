@@ -1118,6 +1118,23 @@ describe('RTTI: ', () => {
             });
         });
         describe('rt:t', it => {
+            it.skip('emits for a promise type', async () => {
+                let exports = await runSimple({
+                    code: `
+                        class B {
+                            async floatNullable(): Promise<number | null> { 
+                                return 10
+                            }
+                        }
+                    `
+                });
+
+                let typeResolver = Reflect.getMetadata('rt:t', exports.B.prototype, 'property');
+                let type = typeResolver();
+
+                expect(type.TΦ).to.equal(T_GENERIC);
+            });
+
             it('emits for a property getter', async () => {
                 let exports = await runSimple({
                     code: `
