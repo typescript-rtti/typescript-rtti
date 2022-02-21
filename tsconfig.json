@@ -23,7 +23,7 @@
     "include": [ "./src/**/*.ts" ],
     "typedocOptions": {
 		"mode": "file",
-		"out": "../../docs/di",
+		"out": "docs",
 		"target": "ES5",
 		"excludeExternals": true,
 		"excludePrivate": true,

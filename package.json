@@ -36,7 +36,8 @@
     "test": "npm run build && nyc node --experimental-loader ./test-module-resolver.mjs dist/test",
     "test:corpus": "npm run build && node ./dist/test/corpus/main",
     "test:corpus:trace": "npm run -- test:corpus -- --trace",
-    "prepublishOnly": "npm test && npm run test:corpus"
+    "prepublishOnly": "npm test && npm run test:corpus",
+    "docs": "typedoc ."
   },
   "author": "William Lahti",
   "license": "MIT",
