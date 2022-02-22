@@ -267,3 +267,12 @@ A = __decorate([
 The phi symbol is used on generated identifiers to prevent collisions and add a bit of difficulty for users trying to 
 use the metadata directly. Due to the way metadata generation works it cannot be done using private Symbols, but the 
 metadata generated should (to the end developer) be considered private.
+
+# Troubleshooting / FAQ
+
+## Q: Looks like it doesn't emit `number | null` as expected, I'm getting `Number`!
+Typescript's `strictNullChecks` setting is the cause. When you have it disabled (default), `number | null`
+automatically collapses to `number`. When you have it enabled, `number | null` is emitted correctly when using 
+`typescript-rtti`. We are [investigating](https://github.com/typescript-rtti/typescript-rtti/issues/19) how to enable
+observing `number | null` without requiring `strictNullChecks` to be available, but the current behavior matches 
+what _Typescript_ sees.
