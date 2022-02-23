@@ -4,7 +4,9 @@ import { runSimple } from "../../runner.test";
 describe('Generic transience', it => {
     it.skip('marks functions which reflect upon generic type parameters', () => {
         runSimple({
-            trace: true,
+            compilerOptions: {
+                declaration: true
+            },
             code: `
                 import { reflect } from 'typescript-rtti';
 

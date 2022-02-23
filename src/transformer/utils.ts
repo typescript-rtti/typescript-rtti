@@ -157,10 +157,21 @@ export function dottedNameToExpr(dottedName : string) : ts.Identifier | ts.Prope
     ;
 }
 
-
-
-
-
-
-
-
+export function propertyPrepend(expr : ts.Expression, propAccess : ts.PropertyAccessExpression | ts.Identifier) {
+    if (ts.isIdentifier(propAccess)) {
+        return ts.factory.createPropertyAccessExpression(expr, propAccess);
+    } else if (ts.isPropertyAccessExpression(propAccess.expression)) {
+        return ts.factory.createPropertyAccessExpression(propertyPrepend(expr, propAccess.expression), propAccess.name);
+    } else if (ts.isIdentifier(propAccess.expression)) {
+        return ts.factory.createPropertyAccessExpression( 
+            ts.factory.createPropertyAccessExpression(
+                expr,
+                propAccess.expression
+            ),
+            propAccess.name
+        );
+    } else {
+        console.dir(propAccess);
+        throw new Error(`Unsupported expression type '${ts.SyntaxKind[propAccess.kind]}'`);
+    }
+}
