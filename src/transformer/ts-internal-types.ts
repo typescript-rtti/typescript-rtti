@@ -36,3 +36,45 @@ export interface MappedType extends AnonymousType {
     resolvedApparentType?: ts.Type;
     containsError?: boolean;
 }
+
+export enum TypeReferenceSerializationKind {
+    // The TypeReferenceNode could not be resolved.
+    // The type name should be emitted using a safe fallback.
+    Unknown,
+
+    // The TypeReferenceNode resolves to a type with a constructor
+    // function that can be reached at runtime (e.g. a `class`
+    // declaration or a `var` declaration for the static side
+    // of a type, such as the global `Promise` type in lib.d.ts).
+    TypeWithConstructSignatureAndValue,
+
+    // The TypeReferenceNode resolves to a Void-like, Nullable, or Never type.
+    VoidNullableOrNeverType,
+
+    // The TypeReferenceNode resolves to a Number-like type.
+    NumberLikeType,
+
+    // The TypeReferenceNode resolves to a BigInt-like type.
+    BigIntLikeType,
+
+    // The TypeReferenceNode resolves to a String-like type.
+    StringLikeType,
+
+    // The TypeReferenceNode resolves to a Boolean-like type.
+    BooleanType,
+
+    // The TypeReferenceNode resolves to an Array-like type.
+    ArrayLikeType,
+
+    // The TypeReferenceNode resolves to the ESSymbol type.
+    ESSymbolType,
+
+    // The TypeReferenceNode resolved to the global Promise constructor symbol.
+    Promise,
+
+    // The TypeReferenceNode resolves to a Function type or a type with call signatures.
+    TypeWithCallSignature,
+
+    // The TypeReferenceNode resolves to any other type.
+    ObjectType,
+}
