@@ -16,6 +16,18 @@ describe('Sanity', it => {
 
         expect(exports.foo).to.equal(true);
     });
+    it.only('when function declarations are named', async () => {
+        let exports = await runSimple({
+            trace: true,
+            code: `
+                export let foo = false;
+                function a() { return 321; }
+                foo = a() === 321;
+            `
+        });
+
+        expect(exports.foo).to.equal(true);
+    });
     it('when function declarations appear in if statements (2)', async () => {
         let exports = await runSimple({
             code: `
