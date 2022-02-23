@@ -289,7 +289,7 @@ export class MetadataEmitter extends RttiVisitor {
             decl = this.collector.collect(decl, metadata);
         }
 
-        return decl;
+        return this.visitEachChild(decl);
     }
 
     @Visit(ts.SyntaxKind.MethodSignature)
