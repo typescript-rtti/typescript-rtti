@@ -1135,7 +1135,25 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                                                 let localName : string;
 
                                                 if (type) {
-                                                    if (type.isClassOrInterface() && !type.isClass()) {
+                                                    if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
+                                                        if (type.symbol.declarations) {
+                                                            if (type.symbol.declarations.length === 1) {
+                                                                let decl = type.symbol.declarations[0];
+
+                                                                if (decl.kind === ts.SyntaxKind.TypeParameter) {
+                                                                    // This is an attempt at transient generic reflection. 
+                                                                    throw new CompileError(`reflect<${type.symbol.name}>(): Cannot be called on type parameter`);
+                                                                } else {
+                                                                    throw new CompileError(`reflect<${type.symbol.name}>(): Generic parameter of type '${ts.SyntaxKind[decl.kind]}' is not supported`);
+                                                                }
+                                                            } else {
+                                                                throw new CompileError(`reflect<${type.symbol.name}>(): Multiple declaration symbols found`)
+                                                            }
+                                                        } else {
+                                                            throw new CompileError(`reflect<${type.symbol.name}>(): No declaration symbol found`)
+                                                        }
+                                                        let decl = type.symbol.declarations;
+                                                    } else if (type.isClassOrInterface() && !type.isClass()) {
                                                         if (ts.isTypeReferenceNode(typeSpecifier)) {
                                                             localName = entityNameToString(typeSpecifier.typeName);
                                                         }
