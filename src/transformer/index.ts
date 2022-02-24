@@ -37,6 +37,7 @@ import { CompileError } from './common/compile-error';
 import { RttiContext } from './rtti-context';
 import { ApiCallTransformer } from './api-call-transformer';
 import { MetadataEmitter } from './metadata-emitter';
+import { DeclarationsEmitter } from './declarations-emitter';
 
 export interface RttiSettings {
     trace? : boolean;
@@ -60,8 +61,6 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
 
         return sourceFile => {
-            if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts'))
-                return sourceFile;
 
             let ctx : RttiContext = {
                 program,
@@ -76,6 +75,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 emitStandardMetadata,
                 interfaceSymbols: []
             };
+
+            if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts')) {
+                if (ctx.trace)
+                    console.log(`#### Processing declaration ${sourceFile.fileName}`);
+                return DeclarationsEmitter.emit(sourceFile, ctx);
+            }
 
             if (ctx.trace)
                 console.log(`#### Processing ${sourceFile.fileName}`);
