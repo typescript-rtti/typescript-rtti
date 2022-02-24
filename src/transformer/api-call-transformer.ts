@@ -8,10 +8,12 @@ import { RttiContext } from "./rtti-context";
 
 export class ApiCallTransformer extends RttiVisitor {
 
-    static transform(sourceFile : ts.SourceFile, ctx : RttiContext) {
+    static transform<T extends ts.Node>(node : T, ctx : RttiContext) {
         let transformer = new ApiCallTransformer(ctx);
-        return transformer.visitEachChild(sourceFile);
+        return transformer.visitEachChild(node);
     }
+
+    usesApi = false;
 
     @Visit(ts.SyntaxKind.CallExpression)
     callExpr(expr : ts.CallExpression) {
@@ -49,6 +51,7 @@ export class ApiCallTransformer extends RttiVisitor {
         if (!isTypescriptRtti || !typeSpecifier)
             return;
 
+        this.usesApi = true;
         let type = checker.getTypeAtLocation(typeSpecifier);
         let localName : string;
 
