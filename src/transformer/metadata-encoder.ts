@@ -34,9 +34,9 @@ export class MetadataEncoder {
 
     type(type : ts.Type, typeNode : ts.TypeNode, standardName : string, allowStandardMetadata = true) {
         let decs : ts.Decorator[] = [];
-        decs.push(metadataDecorator('rt:t', literalNode(forwardRef(this.typeEncoder.referToTypeNode(typeNode)))));
+        decs.push(metadataDecorator('rt:t', literalNode(forwardRef(this.typeEncoder.referToType(type, typeNode)))));
         if (this.emitStandardMetadata && allowStandardMetadata)
-            decs.push(legacyMetadataDecorator(`design:${standardName}`, literalNode(this.legacyTypeEncoder.referToTypeNode(typeNode))));
+            decs.push(legacyMetadataDecorator(`design:${standardName}`, literalNode(this.legacyTypeEncoder.referToType(type))));
         return decs;
     }
 
@@ -199,24 +199,14 @@ export class MetadataEncoder {
         decs.push(...this.params(node));
         decs.push(metadataDecorator('rt:f', this.methodFlags(node)));
 
-        
-        decs.push(...this.typeNode(node.type, 'returntype', ts.isMethodDeclaration(node) && node.decorators?.length > 0));
+        let allowStandardMetadata = ts.isMethodDeclaration(node) && node.decorators?.length > 0;
 
         if (node.type) {
-            decs.push(...this.typeNode(node.type, 'returntype', ts.isMethodDeclaration(node) && node.decorators?.length > 0));
+            decs.push(...this.typeNode(node.type, 'returntype', allowStandardMetadata));
         } else {
             let signature = this.checker.getSignatureFromDeclaration(node);
-            if (signature) {
-                decs.push(metadataDecorator('rt:t', literalNode(
-                    forwardRef(this.typeEncoder.referToType(signature.getReturnType()))
-                )));
-
-                if (this.emitStandardMetadata && ts.isMethodDeclaration(node) && node.decorators?.length > 0) {
-                    decs.push(legacyMetadataDecorator('design:returntype', literalNode(
-                        this.legacyTypeEncoder.referToType(signature.getReturnType())))
-                    );
-                }
-            }
+            if (signature)
+                decs.push(...this.type(signature.getReturnType(), undefined, 'returntype', allowStandardMetadata));
         }
 
         return decs;
