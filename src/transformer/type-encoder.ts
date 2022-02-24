@@ -19,10 +19,10 @@ export class TypeEncoder {
     get checker() { return this.ctx.checker; }
 
     referToTypeNode(typeNode : ts.TypeNode): ts.Expression {
-        return this.referToType(this.checker.getTypeFromTypeNode(typeNode));
+        return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }
 
-    referToType(type : ts.Type): ts.Expression {
+    referToType(type : ts.Type, typeNode? : ts.TypeNode): ts.Expression {
         if (!type['id'])
             throw new Error(`Type does not have an ID!`);
 

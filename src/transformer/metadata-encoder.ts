@@ -28,11 +28,15 @@ export class MetadataEncoder {
     typeEncoder = new TypeEncoder(this.ctx);
     legacyTypeEncoder = new LegacyTypeEncoder(this.ctx);
 
-    type(type : ts.TypeNode, standardName : string, allowStandardMetadata = true) {
+    typeNode(typeNode : ts.TypeNode, standardName : string, allowStandardMetadata = true) {
+        return this.type(this.checker.getTypeAtLocation(typeNode), typeNode, standardName, allowStandardMetadata);
+    }
+
+    type(type : ts.Type, typeNode : ts.TypeNode, standardName : string, allowStandardMetadata = true) {
         let decs : ts.Decorator[] = [];
-        decs.push(metadataDecorator('rt:t', literalNode(forwardRef(this.typeEncoder.referToTypeNode(type)))));
+        decs.push(metadataDecorator('rt:t', literalNode(forwardRef(this.typeEncoder.referToTypeNode(typeNode)))));
         if (this.emitStandardMetadata && allowStandardMetadata)
-            decs.push(legacyMetadataDecorator(`design:${standardName}`, literalNode(this.legacyTypeEncoder.referToTypeNode(type))));
+            decs.push(legacyMetadataDecorator(`design:${standardName}`, literalNode(this.legacyTypeEncoder.referToTypeNode(typeNode))));
         return decs;
     }
 
@@ -162,7 +166,7 @@ export class MetadataEncoder {
         }
 
         return [
-            ...this.type(
+            ...this.typeNode(
                 type, 'type', 
                 (ts.isPropertyDeclaration(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)) 
                     && node.decorators?.length > 0
@@ -195,8 +199,11 @@ export class MetadataEncoder {
         decs.push(...this.params(node));
         decs.push(metadataDecorator('rt:f', this.methodFlags(node)));
 
+        
+        decs.push(...this.typeNode(node.type, 'returntype', ts.isMethodDeclaration(node) && node.decorators?.length > 0));
+
         if (node.type) {
-            decs.push(...this.type(node.type, 'returntype', ts.isMethodDeclaration(node) && node.decorators?.length > 0));
+            decs.push(...this.typeNode(node.type, 'returntype', ts.isMethodDeclaration(node) && node.decorators?.length > 0));
         } else {
             let signature = this.checker.getSignatureFromDeclaration(node);
             if (signature) {
