@@ -1,4 +1,4 @@
-# vNext
+# v0.2.1
 - Fixes an issue where `RtAnyRef#kind` reported `unknown` instead of `any`
 - Add ability to detect whether a return type is inferred or explicit (#16)
 
