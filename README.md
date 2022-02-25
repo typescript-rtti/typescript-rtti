@@ -68,7 +68,7 @@ expect(reflect(foo).getParameter('username').type.isClass(String)).to.be.true;
 
 // Arrow functions
 
-let foo = function (id : number, username : string, protected favoriteColor? : number | string) {
+let foo = (id : number, username : string, protected favoriteColor? : number | string) => {
     return id;
 }
 
