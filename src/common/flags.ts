@@ -15,6 +15,7 @@ export const F_ARROW_FUNCTION = '>';
 export const F_OPTIONAL       = '?';
 export const F_ASYNC          = 'a';
 export const F_EXPORTED       = 'e';
+export const F_INFERRED       = '.';
 
 export const T_UNION          = '|';
 export const T_INTERSECTION   = '&';

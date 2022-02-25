@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { F_ARROW_FUNCTION, F_CLASS, F_FUNCTION, F_INTERFACE, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, F_STATIC, RtParameter, RtSerialized } from '../common';
+import { F_ARROW_FUNCTION, F_CLASS, F_FUNCTION, F_INFERRED, F_INTERFACE, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, F_STATIC, RtParameter, RtSerialized } from '../common';
 import { ClassDetails } from './common/class-details';
 import { getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef, functionForwardRef } from './forward-ref';
@@ -186,6 +186,9 @@ export class MetadataEncoder {
         
         if (ts.isMethodDeclaration(node) && (node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword))
             flags += F_STATIC;
+
+        if (!node.type)
+            flags += F_INFERRED;
         
         return flags;
     }

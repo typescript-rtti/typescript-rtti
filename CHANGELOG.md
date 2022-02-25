@@ -1,5 +1,6 @@
 # vNext
 - Fixes an issue where `RtAnyRef#kind` reported `unknown` instead of `any`
+- Add ability to detect whether a return type is inferred or explicit (#16)
 
 # v0.2.0
 - Fixes an issue where the value of `emitDecoratorMetadata` was lost and reset to `false` when run within `ts-jest`

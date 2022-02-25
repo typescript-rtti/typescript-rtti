@@ -605,6 +605,7 @@ export class ReflectedFlags {
     @Flag(Flags.F_OPTIONAL) isOptional : boolean;
     @Flag(Flags.F_ASYNC) isAsync : boolean;
     @Flag(Flags.F_EXPORTED) isExported : boolean;
+    @Flag(Flags.F_INFERRED) isInferred : boolean;
 
     toString() {
         return Object.keys(this.propertyToFlag)
@@ -1062,6 +1063,14 @@ export class ReflectedFunction<T extends Function = Function> {
     }
 
     /**
+     * True if the return type was inferred using the Typescript type checker. False if 
+     * the return type was defined explicitly.
+     */
+    get returnTypeInferred() {
+        return this.flags.isInferred;
+    }
+
+    /**
      * True if this function is declared as async.
      */
     get isAsync() {
@@ -1180,6 +1189,14 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
             return ReflectedTypeRef.createUnknown();
         
         return this._returnType = ReflectedTypeRef.createFromRtRef(typeResolver());
+    }
+
+    /**
+     * True if the return type was inferred using the Typescript type checker. False if 
+     * the return type was defined explicitly.
+     */
+    get returnTypeInferred() {
+        return this.flags.isInferred;
     }
 
     /**

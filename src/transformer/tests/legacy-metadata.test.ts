@@ -3,6 +3,7 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import { runSimple } from '../../runner.test';
+import { F_INFERRED, F_METHOD, F_PUBLIC } from '../flags';
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 function hasProperty(map: ts.MapLike<any>, key: string): boolean {
@@ -421,7 +422,7 @@ describe('emitDecoratorMetadata=false: ', it => {
         });
 
         let type = Reflect.getMetadata('rt:f', exports.C.prototype, 'method');
-        expect(type).to.equal('M$');
+        expect(Array.from(type)).to.include.all.members([F_METHOD, F_PUBLIC, F_INFERRED]);
     });
 });
 

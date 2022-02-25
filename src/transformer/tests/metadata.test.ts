@@ -1,7 +1,7 @@
 
 import { expect } from 'chai';
 import { describe } from 'razmin';
-import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from "../flags";
+import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED } from "../flags";
 import { F_ABSTRACT, F_ARROW_FUNCTION, F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../../common';
 import { InterfaceToken } from '../../common';
 import { runSimple } from '../../runner.test';
@@ -31,6 +31,19 @@ describe('rt:f', it => {
         let aFlags = Reflect.getMetadata('rt:f', exports.A);
         expect(aFlags).to.contain(F_CLASS);
         expect(aFlags).not.to.contain(F_INTERFACE);
+    });
+    it('identifies return-type inference', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A { 
+                    foo() { return 123; }
+                    bar() : number { return 123; }
+                }
+            `
+        });
+
+        expect(Reflect.getMetadata('rt:f', exports.A.prototype, 'foo')).to.contain(F_INFERRED);
+        expect(Reflect.getMetadata('rt:f', exports.A.prototype, 'bar')).not.to.contain(F_INFERRED);
     });
     it('identify interfaces', async () => {
         let exports = await runSimple({

@@ -207,6 +207,20 @@ describe('ReflectedMethod', it => {
         let refClass = ReflectedClass.new(B);
         expect(refClass.ownMethods.find(x => x.name === 'foo').returnType.isClass(String)).to.be.true;
     })
+    it('reflects whether the return type is inferred', () => {
+        class B {
+            foo() { }
+            bar() { }
+        }; undecorate(B.prototype, 'foo');
+
+        Reflect.defineMetadata('rt:f', flags.F_INFERRED, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', '', B.prototype, 'bar');
+        Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
+
+        let refClass = ReflectedClass.new(B);
+        expect(refClass.ownMethods.find(x => x.name === 'foo').returnTypeInferred).to.be.true;
+        expect(refClass.ownMethods.find(x => x.name === 'bar').returnTypeInferred).to.be.false;
+    })
     it('reflects public', () => {
         class B {}
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
