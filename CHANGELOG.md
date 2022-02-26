@@ -1,4 +1,4 @@
-# vNext 
+# v0.3.0
 - Added call-site reflection: Reflect on the type information at the location where your function is called
 
 # v0.2.1
