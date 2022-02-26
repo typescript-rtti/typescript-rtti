@@ -135,12 +135,13 @@ export function compile(invocation : RunInvocation): Record<string,string> {
         }
     }
 
-    program.emit(undefined, undefined, undefined, undefined, {
-        before: invocation.transformerEnabled !== false ? [ 
-            transformer(program) 
-        ] : []
-    });
-
+    if (invocation.transformerEnabled !== false) {
+        program.emit(undefined, undefined, undefined, undefined, {
+            before: [ transformer(program) ]
+        });
+    } else {
+        program.emit();
+    }
     if (outputs['./main.js'] === undefined) {
         if (program.getOptionsDiagnostics().length > 0) {
             console.dir(program.getOptionsDiagnostics());
