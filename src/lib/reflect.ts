@@ -94,7 +94,7 @@ export const TYPE_REF_KIND_EXPANSION : Record<string, ReflectedTypeRefKind> = {
     [Flags.T_VOID]: 'void'
 };
 
-export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
+export class ReflectedTypeRef<T = RtTypeRef> {
     /** @internal */
     constructor(
         private _ref : T
@@ -127,12 +127,12 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
     private static kinds : Record<ReflectedTypeRefKind, Constructor<ReflectedTypeRef>> = <any>{};
 
     get kind() : ReflectedTypeRefKind {
-        let ref : RtTypeRef = this._ref;
+        let ref = this._ref;
         if (ref === null || ['undefined', 'string', 'number', 'boolean'].includes(typeof ref))
             return 'literal';
 
         if (typeof ref === 'object' && 'TΦ' in ref) 
-            return TYPE_REF_KIND_EXPANSION[ref.TΦ];
+            return TYPE_REF_KIND_EXPANSION[(<RtType><unknown>ref).TΦ];
         
         if (typeof ref === 'object')
             return 'interface';
@@ -221,7 +221,7 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
     is(this, kind : ReflectedTypeRefKind | Constructor<any>): boolean {
         if (typeof kind === 'function')
             return this instanceof kind;
-        else if (typeof kind === 'string' && this.kind !== kind)
+        else if (typeof kind === 'string')
             return this.kind === kind;
     }
 
@@ -275,6 +275,11 @@ export class ReflectedTypeRef<T extends RtTypeRef = RtTypeRef> {
      * If the reference is not the correct type an error is thrown.
      */
     as(kind : 'any'): ReflectedAnyRef;
+    /**
+     * Assert that this type reference is a void type and cast it to ReflectedVoidRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind : 'literal'): ReflectedLiteralRef;
     /**
      * Assert that this type reference is the given ReflectedTypeRef subclass.
      * If the reference is not the correct type an error is thrown.
@@ -408,9 +413,9 @@ export class ReflectedInterfaceRef extends ReflectedTypeRef<InterfaceToken> {
 }
 
 @ReflectedTypeRef.Kind('literal')
-export class ReflectedLiteralRef<Class> extends ReflectedTypeRef<Constructor<Class>> { // TODO generics here
+export class ReflectedLiteralRef<Class = any> extends ReflectedTypeRef<Class> {
     get kind() { return 'literal' as const; }
-    get value() { return <any>this.ref; }
+    get value() { return <Class>this.ref; }
     toString() { return JSON.stringify(this.value); }
 
     matchesValue(value: any, errors?: Error[], context?: string): boolean {
@@ -1962,6 +1967,11 @@ export function matchesShape(value, interfaceType : InterfaceToken | Constructor
 }
 
 /**
+ * Get the reflected call site
+ * @returns The reflected call site
+ */
+ export function reflect(callSite : CallSite) : ReflectedCallSite;
+/**
  * Get the reflected interface object for the given interface (identified by T)
  * @returns The reflected interface
  */
@@ -1979,6 +1989,12 @@ export function reflect(value : any = NotProvided) {
         throw new Error(`reflect<T>() can only be used when project is built with the typescript-rtti transformer`);
     }
 
+    if (!value)
+        throw new TypeError(`Could not reflect on null/undefined`);
+
+    if (value.TΦ === 'c')
+        return new ReflectedCallSite(value);
+
     let flags = getFlags(value);
 
     if (flags.includes(Flags.F_FUNCTION))
@@ -1990,4 +2006,58 @@ export function reflect(value : any = NotProvided) {
         return ReflectedFunction.for(value);
     
     return ReflectedClass.for(value);
+}
+
+export interface CallSite {
+    TΦ: 'c'
+}
+
+interface RtCallSite {
+    TΦ: typeof Flags.T_CALLSITE;
+    t: RtTypeRef;
+    p: RtTypeRef[];
+    tp: RtTypeRef[];
+    r: RtTypeRef;
+}
+
+export class ReflectedCallSite {
+    constructor(callSite : CallSite) {
+        this.callSite = <RtCallSite>callSite;
+    }
+
+    private callSite : RtCallSite;
+
+    private _parameters : ReflectedTypeRef[];
+
+    get parameters() {
+        if (!this._parameters)
+            this._parameters = this.callSite.p.map(x => ReflectedTypeRef.createFromRtRef(x));
+        return this._parameters;
+    }
+
+    private _typeParameters : ReflectedTypeRef[];
+
+    get typeParameters() {
+        if (!this._typeParameters) {
+            this._typeParameters = this.callSite.tp.map(x => ReflectedTypeRef.createFromRtRef(x));
+        }
+
+        return this._typeParameters;
+    }
+
+    // private _target : ReflectedTypeRef;
+
+    // get target() {
+    //     if (!this._target)
+    //         this._target = ReflectedTypeRef.createFromRtRef(this.callSite.t);
+    //     return this._target;
+    // }
+
+    // private _return : ReflectedTypeRef;
+
+    // get return() {
+    //     if (!this._return)
+    //         this._return = ReflectedTypeRef.createFromRtRef(this.callSite.r);
+    //     return this._return;
+    // }
 }

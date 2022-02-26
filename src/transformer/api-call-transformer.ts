@@ -5,54 +5,161 @@ import { CompileError } from "./common/compile-error";
 import { TypeReferenceSerializationKind } from "./ts-internal-types";
 import { RttiVisitor } from "./rtti-visitor-base";
 import { RttiContext } from "./rtti-context";
+import { serialize } from "./serialize";
+import { TypeEncoder } from "./type-encoder";
+import { literalNode } from "./literal-node";
 
 export class ApiCallTransformer extends RttiVisitor {
 
+    typeEncoder = new TypeEncoder(this.ctx);
+
     static transform<T extends ts.Node>(node : T, ctx : RttiContext) {
         let transformer = new ApiCallTransformer(ctx);
-        return transformer.visitEachChild(node);
+        return transformer.visitNode(node);
     }
 
-    usesApi = false;
+    private isRttiCall(expr : ts.CallExpression) {
+        return ts.isIdentifier(expr.expression) 
+            && this.isAnyImportedSymbol(
+                this.checker.getSymbolAtLocation(expr.expression), 
+                'typescript-rtti', ['reify', 'reflect']
+            )
+        ;
+    }
+
+    isAnyImportedSymbol(symbol : ts.Symbol, packageName : string, names : string[]) {
+        if (!symbol || !names.includes(symbol.name))
+            return false;
+        
+        return this.isSymbolFromPackage(symbol, packageName);
+    }
+
+    isImportedSymbol(symbol : ts.Symbol, packageName : string, name : string) {
+        return this.isAnyImportedSymbol(symbol, packageName, [ name ])
+    }
+
+    isSymbolFromPackage(symbol : ts.Symbol, packageName : string) {
+        let decls = Array.from(symbol.getDeclarations());
+        let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
+        
+        if (!importSpecifier)
+            return false;
+
+        let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
+
+        if (!ts.isStringLiteral(modSpecifier))
+            return false;
+
+        return modSpecifier.text === packageName 
+            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.js$`)) 
+            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.ts$`)) 
+            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/?$`))
+        ;
+    }
+
+    isCallSite(type : ts.Type) {
+        if (!type)
+            return false;
+        return this.isImportedSymbol(type.symbol, 'typescript-rtti', 'ReflectedCall');
+    }
+
+    isCallSiteTypeRef(typeNode : ts.TypeNode) {
+        if (!typeNode)
+            return false;
+        
+        if (typeNode.kind === ts.SyntaxKind.TypeReference) {
+            let typeRef = <ts.TypeReferenceNode>typeNode;
+            if (!typeRef.typeName)
+                return false;
+            if (typeRef.typeName.kind === ts.SyntaxKind.Identifier && typeRef.typeName.text === 'CallSite') {
+                let symbol = this.checker.getSymbolAtLocation(typeRef.typeName)
+                return this.isImportedSymbol(symbol, 'typescript-rtti', 'CallSite');
+            }
+        }
+
+        return false;
+    }
+
+    isCallSiteSymbol(symbol : ts.Symbol, node : ts.Node) {
+        return this.isCallSite(this.checker.getTypeOfSymbolAtLocation(symbol, node));
+    }
+
+    typeOfParamSymbol(symbol : ts.Symbol): ts.Type {
+        return this.checker.getTypeOfSymbolAtLocation(symbol, symbol.getDeclarations()[0]);
+    }
 
     @Visit(ts.SyntaxKind.CallExpression)
     callExpr(expr : ts.CallExpression) {
-        if (!ts.isIdentifier(expr.expression))
-            return;
-    
-        let checker = this.checker;
-        let symbol = checker.getSymbolAtLocation(expr.expression);
-        if (!symbol)
-            return;
+        if (this.isRttiCall(expr))
+            return this.rewriteApiCall(expr);
+        
+        let signature = this.checker.getResolvedSignature(expr);
+        let params = signature.parameters;
 
-        let identifier = expr.expression;
-        
-        if (!symbol || !['reify', 'reflect'].includes(symbol.name))
+        let callSiteArgIndex = params.findIndex(
+            x => this.isCallSiteTypeRef((x.valueDeclaration as ts.ParameterDeclaration).type)
+        );
+        if (callSiteArgIndex < 0)
             return;
+            
+        if (callSiteArgIndex >= expr.arguments.length) {
+            
+            let args = Array.from(expr.arguments);
+            while (callSiteArgIndex < args.length) {
+                args.push(ts.factory.createVoidZero());
+            }
+
+            args.push(serialize({
+                TΦ: 'c',
+                t: undefined, // TODO: this type
+                p: expr.arguments.map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x)))),
+                r: undefined, // TODO return type
+                tp: (expr.typeArguments ?? []).map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x))))
+            }));
+            return ts.factory.updateCallExpression(expr, expr.expression, expr.typeArguments, args);
+        }
+
+    }
+
+    private referToType(type : ts.Type) {
+        if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
+            let symbol = type.symbol;
+            let decl = symbol.declarations[0];
+            if (ts.isTypeParameterDeclaration(decl)) {
+                let parentDecl = decl.parent;
+                if (ts.isFunctionDeclaration(parentDecl) || ts.isArrowFunction(parentDecl) || ts.isMethodDeclaration(parentDecl) || ts.isFunctionExpression(parentDecl)) {
+                    let typeIndex = parentDecl.typeParameters.findIndex(tp => this.checker.getTypeAtLocation(tp) === type);
+                    if (typeIndex >= 0) {
+                        let callSiteArgIndex = parentDecl.parameters.findIndex(p => this.isCallSiteTypeRef(p.type));
+                        if (callSiteArgIndex >= 0) {
+                            let callSiteArg = parentDecl.parameters[callSiteArgIndex];
         
-        let decls = symbol.getDeclarations();
-        let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
+                            if (ts.isIdentifier(callSiteArg.name)) {
+                                let callSiteName = callSiteArg.name.text;
+                                return ts.factory.createElementAccessExpression(
+                                    ts.factory.createPropertyAccessExpression(
+                                        ts.factory.createIdentifier(callSiteName),
+                                        'tp'
+                                    ),
+                                    typeIndex
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return this.typeEncoder.referToType(type);
+    }
+
+    private rewriteApiCall(expr : ts.CallExpression) {
         let typeSpecifier : ts.TypeNode = expr.typeArguments && expr.typeArguments.length === 1 ? expr.typeArguments[0] : null;
 
-        if (!importSpecifier)
-            return;
-
-        let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
-        if (!ts.isStringLiteral(modSpecifier))
+        if (!typeSpecifier)
             return;
         
-        let isTypescriptRtti = 
-            modSpecifier.text === 'typescript-rtti'
-            || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.js$/)
-            || modSpecifier.text.match(/^http.*\/typescript-rtti\/index.ts$/)
-            || modSpecifier.text.match(/^http.*\/typescript-rtti\/?$/)
-        ;
-
-        if (!isTypescriptRtti || !typeSpecifier)
-            return;
-
-        this.usesApi = true;
-        let type = checker.getTypeAtLocation(typeSpecifier);
+        let type = this.checker.getTypeAtLocation(typeSpecifier);
         let localName : string;
 
         if (type) {
@@ -166,7 +273,7 @@ export class ApiCallTransformer extends RttiVisitor {
             expression = ts.factory.createIdentifier(`IΦ${localName}`);
         }
         
-        return ts.factory.createCallExpression(identifier, undefined, [
+        return ts.factory.createCallExpression(expr.expression, undefined, [
             expression
         ]);
     }

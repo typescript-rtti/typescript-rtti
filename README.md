@@ -50,29 +50,29 @@ interface User {
 
 expect(reflect<User>().getProperty('username').isOptional).to.be.true;
 
-// Function declarations
+// Function declarations/expressions/arrow functions
 
 function foo(id : number, username : string, protected favoriteColor? : number | string) {
     return id;
 }
 
 expect(reflect(foo).getParameter('username').type.isClass(String)).to.be.true;
-
-// Function expressions
-
-let foo = function (id : number, username : string, protected favoriteColor? : number | string) {
-    return id;
-}
-
-expect(reflect(foo).getParameter('username').type.isClass(String)).to.be.true;
-
-// Arrow functions
-
-let foo = function (id : number, username : string, protected favoriteColor? : number | string) {
-    return id;
-}
-
 expect(reflect(foo).getParameter('favoriteColor').type.is('union')).to.be.true;
+
+// Call-site reflection
+
+import { CallSite } from 'typescript-rtti';
+function foo<T>(num : number, callSite? : CallSite) {
+    expect(reflect(callSite).typeParameters[0].isClass(Boolean)).to.be.true;
+    expect(reflect(callSite).parameters[0].isClass(Number)).to.be.true;
+    expect(reflect(callSite).parameters[0].is('literal')).to.be.true;
+    expect(reflect(callSite).parameters[0].as('literal').value).to.equal(123);
+}
+
+// The call-site type information is automatically serialized
+foo<Boolean>(123);
+
+
 ```
 
 More examples:
@@ -155,6 +155,7 @@ See https://github.com/rezonant/typescript-rtti-jest for a sample repo with jest
 - Emits metadata for the most useful elements (classes, interfaces, methods, properties, function declarations, function expressions, arrow functions) parsed by Typescript
 - Emits metadata for abstract classes / methods
 - Ability to evaluate parameter initializers (ie to obtain default values)
+- Call-site reflection allows you to receive type information from the caller from within a function.
 - Enables obtaining stable tokens for interfaces for dependency injection
 - Concise and terse metadata format saves space
 - Metadata format uses forward referencing via type resolvers to eliminate declaration ordering / circular reference 
@@ -166,6 +167,35 @@ See https://github.com/rezonant/typescript-rtti-jest for a sample repo with jest
 - Supports introspection of union and intersection types
 - Supports array and tuple types
 - Supports visibility (public, private), abstract, readonly, optional and more
+
+# Call site Reflection
+
+Many users are interested in passing type information in the form of a generic parameter. This is supported via 
+"call site reflection". The "call site" is the function call which executed the current invocation of a function. 
+Call site reflection allows you to reflect on both the generic and parameter types of a given function _call_ as 
+opposed to those defined on a function _declaration_.
+
+This type of reflection carries a cost, not only of the serialization of the types themselves but also for the 
+performance of the function that accepts the call-site information. It may cause the Javascript engine to mark such
+a function as megamorphic and thus ineligible for optimization. It is therefore important to ensure that functions 
+which wish to receive call-site information must opt in so that function calls in general retain the same performance
+characteristics as when the transformer isn't used to compile a codebase.
+
+Accepting a function parameter marked with the `CallSite` type is how `typescript-rtti` knows that call site information
+should be passed to the function. When making calls from one call-site enabled function to another, `typescript-rtti` 
+automatically passes generic types along. Thus the following example works as expected:
+
+```typescript
+function foo<T>(call? : CallSite) {
+    expect(reflect(call).typeParameters[0].isClass(String)).to.be.true;
+}
+
+function bar<T>(call? : CallSite) {
+    foo<T>();
+}
+
+bar<String>();
+```
 
 # Regarding `design:*`
 

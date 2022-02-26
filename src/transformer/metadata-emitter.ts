@@ -204,7 +204,7 @@ export class MetadataEmitter extends RttiVisitor {
         let metadata = this.metadataEncoder.method(decl);
         let functionName = decl.name.getText();
 
-        if (!ts.isBlock(decl.parent) && !ts.isSourceFile(decl.parent)) {
+        if (decl.parent && !ts.isBlock(decl.parent) && !ts.isSourceFile(decl.parent)) {
             // Care must be taken here. Take this example:
             //   if (true) function foo() { return 123 }
             //   expect(foo()).to.equal(123)
@@ -266,7 +266,7 @@ export class MetadataEmitter extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.MethodDeclaration)
     method(decl : ts.MethodDeclaration) {
-        if (!ts.isClassDeclaration(decl.parent))
+        if (!decl.parent || !ts.isClassDeclaration(decl.parent))
             return;
         if (this.trace)
             console.log(`Decorating class method ${decl.parent.name.text}#${decl.name.getText()}`);

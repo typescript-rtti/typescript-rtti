@@ -11,20 +11,6 @@ export class DeclarationsEmitter extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.FunctionDeclaration)
     functionDecl(decl : ts.FunctionDeclaration) {
-        
-        // let apiCallChecker = new ApiCallTransformer(this.ctx);
-        // apiCallChecker.visitNode(decl);
-
-        // if (apiCallChecker.usesApi) {
-        //     decl = ts.factory.updateFunctionDeclaration(
-        //         decl, decl.decorators, decl.modifiers, decl.asteriskToken, decl.name,
-        //         decl.typeParameters.concat(
-        //             ts.factory.createTypeParameterDeclaration(`RΦg`, undefined, ts.factory.createToken(ts.SyntaxKind.AnyKeyword))
-        //         ), 
-        //         decl.parameters, decl.type, decl.body
-        //     )
-        // }
-        
-        return decl;
+        // For future use
     }
 }
