@@ -97,7 +97,7 @@ export class ApiCallTransformer extends RttiVisitor {
         let params = signature.parameters;
 
         let callSiteArgIndex = params.findIndex(
-            x => this.isCallSiteTypeRef((x.valueDeclaration as ts.ParameterDeclaration).type)
+            x => this.isCallSiteTypeRef((x.valueDeclaration as ts.ParameterDeclaration)?.type)
         );
         if (callSiteArgIndex < 0)
             return;
