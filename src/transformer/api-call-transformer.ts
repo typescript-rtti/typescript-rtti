@@ -18,11 +18,11 @@ export class ApiCallTransformer extends RttiVisitor {
         return transformer.visitNode(node);
     }
 
-    private isRttiCall(expr : ts.CallExpression) {
+    private isRttiCall(expr : ts.CallExpression, name? : string) {
         return ts.isIdentifier(expr.expression) 
             && this.isAnyImportedSymbol(
                 this.checker.getSymbolAtLocation(expr.expression), 
-                'typescript-rtti', ['reify', 'reflect']
+                'typescript-rtti', name ? [name] : ['reify', 'reflect']
             )
         ;
     }
@@ -57,12 +57,6 @@ export class ApiCallTransformer extends RttiVisitor {
         ;
     }
 
-    isCallSite(type : ts.Type) {
-        if (!type)
-            return false;
-        return this.isImportedSymbol(type.symbol, 'typescript-rtti', 'ReflectedCall');
-    }
-
     isCallSiteTypeRef(typeNode : ts.TypeNode) {
         if (!typeNode)
             return false;
@@ -80,8 +74,8 @@ export class ApiCallTransformer extends RttiVisitor {
         return false;
     }
 
-    isCallSiteSymbol(symbol : ts.Symbol, node : ts.Node) {
-        return this.isCallSite(this.checker.getTypeOfSymbolAtLocation(symbol, node));
+    isCallSiteParameter(param : ts.ParameterDeclaration) {
+        return !!param?.questionToken && this.isCallSiteTypeRef(param?.type);
     }
 
     typeOfParamSymbol(symbol : ts.Symbol): ts.Type {
@@ -90,22 +84,26 @@ export class ApiCallTransformer extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.CallExpression)
     callExpr(expr : ts.CallExpression) {
-        if (this.isRttiCall(expr))
-            return this.rewriteApiCall(expr);
-        
         let signature = this.checker.getResolvedSignature(expr);
         let params = signature.parameters;
 
         let callSiteArgIndex = params.findIndex(
-            x => this.isCallSiteTypeRef((x.valueDeclaration as ts.ParameterDeclaration)?.type)
+            x => this.isCallSiteParameter((x.valueDeclaration as ts.ParameterDeclaration))
         );
+
+        if (this.isRttiCall(expr, 'reflect') && callSiteArgIndex < 0) {
+            callSiteArgIndex = 1;
+        } else if (this.isRttiCall(expr, 'reify') && callSiteArgIndex < 0) {
+            callSiteArgIndex = 0;
+        }
+
         if (callSiteArgIndex < 0)
             return;
             
         if (callSiteArgIndex >= expr.arguments.length) {
             
             let args = Array.from(expr.arguments);
-            while (callSiteArgIndex < args.length) {
+            while (callSiteArgIndex > args.length) {
                 args.push(ts.factory.createVoidZero());
             }
 
@@ -130,7 +128,7 @@ export class ApiCallTransformer extends RttiVisitor {
                 if (ts.isFunctionDeclaration(parentDecl) || ts.isArrowFunction(parentDecl) || ts.isMethodDeclaration(parentDecl) || ts.isFunctionExpression(parentDecl)) {
                     let typeIndex = parentDecl.typeParameters.findIndex(tp => this.checker.getTypeAtLocation(tp) === type);
                     if (typeIndex >= 0) {
-                        let callSiteArgIndex = parentDecl.parameters.findIndex(p => this.isCallSiteTypeRef(p.type));
+                        let callSiteArgIndex = parentDecl.parameters.findIndex(p => this.isCallSiteParameter(p));
                         if (callSiteArgIndex >= 0) {
                             let callSiteArg = parentDecl.parameters[callSiteArgIndex];
         
@@ -169,7 +167,9 @@ export class ApiCallTransformer extends RttiVisitor {
                         let decl = type.symbol.declarations[0];
 
                         if (decl.kind === ts.SyntaxKind.TypeParameter) {
-                            // This is an attempt at transient generic reflection. 
+                            // This is an attempt at transient generic reflection.
+                            // Check that we have a call site opt-in
+
                             //throw new CompileError(`reflect<${type.symbol.name}>(): Cannot be called on type parameter`);
                         } else {
                             throw new CompileError(`reflect<${type.symbol.name}>(): Generic parameter of type '${ts.SyntaxKind[decl.kind]}' is not supported`);

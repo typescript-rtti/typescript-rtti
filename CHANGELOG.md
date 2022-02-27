@@ -1,3 +1,7 @@
+# v0.4.0
+- **Breaking**: `reflect<T>()` now returns `ReflectedTypeRef`. This enables the generic `T` parameter to be any reflectable
+  type, for instance `reflect<string | number>()` or `reflect<123>()`.
+
 # v0.3.0
 - Added call-site reflection: Reflect on the type information at the location where your function is called
 

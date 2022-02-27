@@ -1,4 +1,7 @@
+import { expect } from "chai";
 import { describe } from "razmin";
+import { reify } from ".";
+import { T_UNDEFINED, T_UNION, T_VOID } from "../common";
 import { RunInvocation, runSimple } from "../runner.test";
 
 describe('reify<T>()', it => {
@@ -13,18 +16,26 @@ describe('reify<T>()', it => {
         throw new Error(`Expected error`);
     }
 
-    it('is an error to call it with an invalid type', async () => {
-        async function badCall(code : string) {
-            await expectError({
-                modules: {
-                    'typescript-rtti': { reify: a => a, reflect: a => a }
-                },
-                code: ` import { reify } from 'typescript-rtti'; ${code}`
-            });
+    it('extracts an InterfaceToken from a passed CallSite', () => {
+        let IΦFoo = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
+        expect(reify(<any>{ TΦ: 'c', tp: [ IΦFoo ]})).to.equal(IΦFoo);
+    });
+
+    it('is an error to call it with an invalid type', () => {
+        function badCall(func: () => void) {
+            let caughtError;
+            try {
+                func();
+            } catch (e) {
+                caughtError = e;
+            }
+
+            if (!caughtError)
+                throw new Error(`Expected an exception when running: ${func.toString()}`);
         }
 
-        await badCall(`reify<Number | String>()`);
-        await badCall(`reify<void>()`);
-        await badCall(`reify<undefined>()`);
+        badCall(() => reify(<any>{ TΦ: 'c', tp: [ { TΦ: T_UNION, e: [String,Number] } ]}));
+        badCall(() => reify(<any>{ TΦ: 'c', tp: [ { TΦ: T_VOID } ]}));
+        badCall(() => reify(<any>{ TΦ: 'c', tp: [ { TΦ: T_UNDEFINED } ]}));
     });
 });

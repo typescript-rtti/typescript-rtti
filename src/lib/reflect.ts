@@ -7,20 +7,23 @@ import { Sealed } from './sealed';
 const NotProvided = Symbol();
 
 /**
- * This has no effect because the Interface is already reified.
- * Simply use the Interface as is or use reflect() on the reified interface.
- */
-export function reify(value : InterfaceToken): InterfaceToken;
-/**
  * Obtain an object which uniquely identifies an interface type.
  * You may prefer reflect<InterfaceType>() if you are writing reflect(reify<InterfaceType>()) or 
  * ReflectedClass.from(reify<InterfaceType>())
  */
-export function reify<InterfaceType>(): InterfaceToken;
-export function reify(value? : InterfaceToken | typeof NotProvided): InterfaceToken {
-    if (value === NotProvided)
+export function reify<InterfaceType>(callSite? : CallSite): InterfaceToken {
+    if (!isCallSite(callSite))
         throw new Error(`reify<T>() can only be used when project is built with the typescript-rtti transformer`);
-    return value;
+    
+    let param = reflect(callSite).typeParameters[0];
+    if (param.is('interface'))
+        return param.token;
+    
+    throw new Error(`reify<${param}>(): Type parameter must be an interface reference, not an arbitrary type`);
+}
+
+export function isCallSite(callSite : CallSite) {
+    return callSite?.TΦ === 'c';
 }
 
 function Flag(value : string) {
@@ -381,6 +384,8 @@ export class ReflectedTypeRef<T = RtTypeRef> {
 export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class>> {
     get kind() { return 'class' as const; }
     get class() : Constructor<Class> { return <any>this.ref; }
+    get reflectedClass() { return ReflectedClass.for(this.class); }
+
     toString() { return `class ${this.class.name}`; }
 
     matchesValue(value: any, errors : Error[] = [], context? : string) {
@@ -405,6 +410,8 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
 export class ReflectedInterfaceRef extends ReflectedTypeRef<InterfaceToken> {
     get kind() { return 'interface' as const; }
     get token() : InterfaceToken { return this.ref; }
+    get reflectedInterface() { return ReflectedClass.for(this.token); }
+
     toString() { return `interface ${this.token.name}`; }
 
     matchesValue(value: any, errors : Error[] = [], context? : string) {
@@ -1970,12 +1977,13 @@ export function matchesShape(value, interfaceType : InterfaceToken | Constructor
  * Get the reflected call site
  * @returns The reflected call site
  */
- export function reflect(callSite : CallSite) : ReflectedCallSite;
+ export function reflect(value : CallSite) : ReflectedCallSite;
 /**
  * Get the reflected interface object for the given interface (identified by T)
+ * @param callSite Do not pass a value here. This opts in to call site reflection.
  * @returns The reflected interface
  */
-export function reflect<T>() : ReflectedClass<InterfaceToken<T> | Constructor<T>>;
+export function reflect<T>(unused? : number, callSite? : CallSite) : ReflectedTypeRef;
 /**
  * Get the reflected class for the given constructor or instance.
  * @param value A constructor, Interface value, or an instance of a class
@@ -1984,16 +1992,19 @@ export function reflect<T>() : ReflectedClass<InterfaceToken<T> | Constructor<T>
 export function reflect<T>(value : Constructor<T>) : ReflectedClass<Constructor<T>>;
 export function reflect<T extends Function>(value : T) : (ReflectedFunction<T> | ReflectedMethod<T>);
 export function reflect<T>(value : T) : ReflectedClass<Constructor<T>>;
-export function reflect(value : any = NotProvided) {
-    if (value === NotProvided) {
+export function reflect(value : any = NotProvided, callSite? : CallSite) {
+    if (value === NotProvided && !callSite) {
         throw new Error(`reflect<T>() can only be used when project is built with the typescript-rtti transformer`);
     }
 
     if (!value)
         throw new TypeError(`Could not reflect on null/undefined`);
 
-    if (value.TΦ === 'c')
+    if (isCallSite(value))
         return new ReflectedCallSite(value);
+
+    if (isCallSite(callSite))
+        return new ReflectedCallSite(callSite).typeParameters[0];
 
     let flags = getFlags(value);
 

@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { describe } from "razmin";
 import { runSimple } from "../../runner.test";
 import { MODULE_TYPES } from "./module-types.test";
+import { reify } from '../../lib';
 
 describe('API transformations', it => {
     describe(': reify<T>()', it => {
@@ -13,7 +14,7 @@ describe('API transformations', it => {
                     export const ReifiedFoo = reify<Foo>();
                 `,
                 modules: {
-                    "typescript-rtti": { reify: a => a }
+                    "typescript-rtti": { reify }
                 }
             });
 
@@ -27,42 +28,50 @@ describe('API transformations', it => {
             if (moduleType !== 'esm') continue;
             describe(` [${moduleType}]`, it => {
                 it('will resolve to the interface symbol generated in another file', async () => {
-                    let FooSym = "$$FOO";
-                    let IΦFoo = { name: 'Foo', prototype: {}, identity: FooSym };
-
                     let exports = await runSimple({
                         moduleType: moduleType,
                         code: `
                             import { reify } from 'typescript-rtti';
-                            import { Foo } from "another";
+                            import { Foo } from "./another";
                             export const ReifiedFoo = reify<Foo>();
                         `,
                         modules: {
-                            "typescript-rtti": { reify: a => a, reflect: a => a },
-                            "another": {
-                                IΦFoo
-                            }
+                            "typescript-rtti": { reify: callSite => callSite.tp[0] },
+                            "./another.ts": `
+                                export interface Foo {}
+                            `
                         }
                     });
-                    expect(exports.ReifiedFoo).to.eql(IΦFoo);
+                    expect(exports.ReifiedFoo.name).to.equal('Foo');
+                    expect(exports.ReifiedFoo.prototype).to.exist;
+                    expect(exports.ReifiedFoo.identity).to.exist;
                 })
-                it('will not choke if the imported interface has no type metadata', async () => {
+                it('will error at runtime if the imported interface has no type metadata', async () => {
                     let exports = await runSimple({
                         moduleType: moduleType,
                         code: `
                             import { reify } from 'typescript-rtti';
                             import { Foo } from "another2";
-                            export const ReifiedFoo = reify<Foo>();
+
+                            export function a() {
+                                return reify<Foo>();
+                            }
                         `,
                         modules: {
                             "typescript-rtti": { 
-                                reify: () => {}
+                                reify
                             },
                             "another2": {}
                         }
                     });
 
-                    expect(exports.ReifiedFoo).to.equal(undefined);
+                    let caughtError;
+                    try {
+                        exports.a();
+                    } catch (e) {
+                        caughtError = e;
+                    }
+                    expect(caughtError).to.exist;
                 });
             });
         }

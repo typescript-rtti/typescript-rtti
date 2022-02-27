@@ -48,7 +48,8 @@ interface User {
     doIt() { return 123; }
 }
 
-expect(reflect<User>().getProperty('username').isOptional).to.be.true;
+let reflectedInterface = reflect<User>().as('interface').reflectedInterface;
+expect(reflectedInterface.getProperty('username').isOptional).to.be.true;
 
 // Function declarations/expressions/arrow functions
 
@@ -167,6 +168,36 @@ See https://github.com/rezonant/typescript-rtti-jest for a sample repo with jest
 - Supports introspection of union and intersection types
 - Supports array and tuple types
 - Supports visibility (public, private), abstract, readonly, optional and more
+
+# Using `reflect` API
+
+The `reflect()` API is the entry point to all types of reflection offered by `typescript-rtti`. 
+- Use `reflect(ClassConstructor)` to obtain a `ReflectedClass`
+- Use `reflect<Type>()` to obtain a `ReflectedTypeRef`
+- Use `reflect(myFunction)` to obtain a `ReflectedFunction`
+- Use `reflect(callSite)` to obtain a `ReflectedCallSite`
+
+## Reflecting on Interfaces
+
+`reflect<Type>()` returns a _type reference_, which could be a union type, intersection type, a class, a literal type, the 
+null type, or indeed, an interface type. You can narrow the returned `ReflectedTypeRef` using `is()` or `as()`.
+The `is()` function is a type guard, and `as()` returns the value casted to the appropriate type as well as performing
+a runtime assertion that the cast is correct.
+
+If you want to reflect upon the properties and methods of an interface, you'll want to obtain the `reflectedInterface`:
+
+```typescript
+interface Foo { 
+    foo : string;
+}
+
+let reflectedInterface = reflect<Foo>().as('interface').reflectedInterface;
+
+expect(reflectedInterface.getProperty('foo').type.isClass(String))
+    .to.be.true;
+```
+
+You can encapsulate this away from users of your library using call site reflection.
 
 # Call site Reflection
 

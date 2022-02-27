@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe } from "razmin";
-import { ReflectedClass } from ".";
-import { compile, runSimple } from "../runner.test";
+import { ReflectedTypeRef } from ".";
+import { runSimple } from "../runner.test";
 import { reify, reflect } from "./reflect";
 
 describe('reflect<T>()', it => {
@@ -13,12 +13,12 @@ describe('reflect<T>()', it => {
             code: `
                 import { reflect } from 'typescript-rtti';
                 export interface Something {}
-                export const reflectedInterface = reflect<Something>();
+                export const reflectedTypeRef = reflect<Something>();
             `
         })
 
-        expect(exports.reflectedInterface).to.be.instanceOf(ReflectedClass);
-        expect((exports.reflectedInterface as ReflectedClass).class).to.equal(exports.IΦSomething);
+        expect((exports.reflectedTypeRef as ReflectedTypeRef).as('interface').token)
+            .to.equal(exports.IΦSomething);
     });
     it(`doesn't rewrite other calls into typescript-rtti`, async () => {
         let exports = await runSimple({ 
