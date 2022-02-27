@@ -1,6 +1,8 @@
 # vNext
 - Fixes an issue where matchesValue() behavior for union/intersection was swapped
 - Fixes an issue where the isOptional flag was not emitted properly for properties/methods
+- Fixes an issue where interfaces did not wrap metadata declarations in ExpressionStatement leading to 
+  automatic semicolon insertion (ASI) bugs. This was previously fixed but only for classes.
 
 # v0.4.2
 - Fixes a bug where reflect(ClassConstructor) becomes confused due to injected callSite object

@@ -178,17 +178,17 @@ export class MetadataEmitter extends RttiVisitor {
             return [
                 result.node,
                 ...this.metadataEncoder.class(<ts.InterfaceDeclaration>decl, details)
-                    .map(decorator => ts.factory.createCallExpression(decorator.expression, undefined, [
+                    .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
                         ts.factory.createIdentifier(`IΦ${(decl as ts.InterfaceDeclaration).name.text}`)
-                    ])),
+                    ]))),
                 ...this.emitOutboardMetadata(interfaceDecl, result),
-                ...(result.decorators.map(dec => ts.factory.createCallExpression(dec.decorator.expression, undefined, [
+                ...(result.decorators.map(dec => ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [
                     ts.factory.createPropertyAccessExpression(
                         ts.factory.createIdentifier(`IΦ${(decl as ts.InterfaceDeclaration).name.text}`), 
                         'prototype'
                     ),
                     ts.factory.createStringLiteral(dec.property)
-                ])))
+                ]))))
             ]
         });
     }
