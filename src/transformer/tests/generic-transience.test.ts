@@ -34,6 +34,59 @@ describe('Transformer: Generic transience', it => {
             tp: [ String ],
         });
     });
+    it('is supported at the top level', async () => {
+        let exports = await runSimple({
+            compilerOptions: {
+                declaration: true
+            },
+            code: `
+                import { CallSite } from 'typescript-rtti';
+                export function a<T>(foo? : number, call? : CallSite) {
+                    return call;
+                }
+
+                export const t = a<String>();
+            `,
+            modules: {
+                'typescript-rtti': {}
+            }
+        });
+
+        expect(exports.t).to.eql({ 
+            TΦ: 'c', 
+            t: undefined, 
+            p: [ ], 
+            r: undefined,
+            tp: [ String ],
+        });
+    });
+    it('is supported in function calls', async () => {
+        let exports = await runSimple({
+            compilerOptions: {
+                declaration: true
+            },
+            code: `
+                import { CallSite } from 'typescript-rtti';
+                export function a<T>(foo? : number, call? : CallSite) {
+                    return call;
+                }
+
+                function wrap(t) { return t; }
+                export const t = wrap(a<String>());
+            `,
+            modules: {
+                'typescript-rtti': {}
+            }
+        });
+
+        expect(exports.t).to.eql({ 
+            TΦ: 'c', 
+            t: undefined, 
+            p: [ ], 
+            r: undefined,
+            tp: [ String ],
+        });
+    });
     it('reflects generic transience via call-site reflection on function declarations', async () => {
         let exports = await runSimple({
             compilerOptions: {

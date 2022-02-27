@@ -1,3 +1,6 @@
+# v0.4.1
+- Fixes a bug where nested calls were not checked for call-site reflection.
+
 # v0.4.0
 - **Breaking**: `reflect<T>()` now returns `ReflectedTypeRef`. This enables the generic `T` parameter to be any reflectable
   type, for instance `reflect<string | number>()` or `reflect<123>()`.

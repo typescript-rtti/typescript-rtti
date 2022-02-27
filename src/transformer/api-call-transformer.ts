@@ -85,6 +85,10 @@ export class ApiCallTransformer extends RttiVisitor {
     @Visit(ts.SyntaxKind.CallExpression)
     callExpr(expr : ts.CallExpression) {
         let signature = this.checker.getResolvedSignature(expr);
+
+        if (!signature) {
+            debugger;
+        }
         let params = signature.parameters;
 
         let callSiteArgIndex = params.findIndex(
@@ -97,11 +101,8 @@ export class ApiCallTransformer extends RttiVisitor {
             callSiteArgIndex = 0;
         }
 
-        if (callSiteArgIndex < 0)
-            return;
-            
-        if (callSiteArgIndex >= expr.arguments.length) {
-            
+        if (callSiteArgIndex >= 0 && callSiteArgIndex >= expr.arguments.length) {
+
             let args = Array.from(expr.arguments);
             while (callSiteArgIndex > args.length) {
                 args.push(ts.factory.createVoidZero());
@@ -114,9 +115,11 @@ export class ApiCallTransformer extends RttiVisitor {
                 r: undefined, // TODO return type
                 tp: (expr.typeArguments ?? []).map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x))))
             }));
-            return ts.factory.updateCallExpression(expr, expr.expression, expr.typeArguments, args);
-        }
 
+            return ts.factory.updateCallExpression(this.visitEachChild(expr), expr.expression, expr.typeArguments, args);
+        } else {
+            return this.visitEachChild(expr);
+        }
     }
 
     private referToType(type : ts.Type) {
