@@ -129,7 +129,7 @@ export class MetadataEmitter extends RttiVisitor {
                                 ])
                                 
                             )],
-                            ts.NodeFlags.Const
+                            ts.NodeFlags.None
                         )
                     ),
                     ...(
