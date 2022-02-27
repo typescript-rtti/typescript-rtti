@@ -337,3 +337,7 @@ automatically collapses to `number`. When you have it enabled, `number | null` i
 `typescript-rtti`. We are [investigating](https://github.com/typescript-rtti/typescript-rtti/issues/19) how to enable
 observing `number | null` without requiring `strictNullChecks` to be available, but the current behavior matches 
 what _Typescript_ sees.
+
+# Related/Similar Projects
+
+- [https://github.com/Hookyns/tst-reflect](Hookyns/tst-reflect)
