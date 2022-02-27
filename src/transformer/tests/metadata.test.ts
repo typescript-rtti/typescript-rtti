@@ -430,6 +430,30 @@ describe('rt:p', it => {
         expect(cFlags[0].f).to.contain(F_READONLY);
         expect(cFlags[0].f).to.contain(F_OPTIONAL);
     });
+    it('emits F_OPTIONAL for optional properties', async () => {
+        let exports = await runSimple({
+            code: `
+                export class C {
+                    foo? : number;
+                }
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:f', exports.C.prototype, 'foo');
+        expect(params).to.contain(F_OPTIONAL);
+    });
+    it('emits F_OPTIONAL for optional methods', async () => {
+        let exports = await runSimple({
+            code: `
+                export class C {
+                    foo?() { };
+                }
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:f', exports.C.prototype, 'foo');
+        expect(params).to.contain(F_OPTIONAL);
+    });
     it('emits for method params', async () => {
         let exports = await runSimple({
             code: `

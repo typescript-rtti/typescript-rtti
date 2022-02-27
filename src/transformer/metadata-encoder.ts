@@ -171,7 +171,7 @@ export class MetadataEncoder {
                 (ts.isPropertyDeclaration(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)) 
                     && node.decorators?.length > 0
             ),
-            metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(node.modifiers)}${isReadOnly(node.modifiers)}`)
+            metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(node.modifiers)}${isReadOnly(node.modifiers)}${node.questionToken ? F_OPTIONAL : ''}`)
         ];
     }
 
@@ -187,6 +187,9 @@ export class MetadataEncoder {
         if (ts.isMethodDeclaration(node) && (node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword))
             flags += F_STATIC;
 
+        if (node.questionToken)
+            flags += F_OPTIONAL;
+        
         if (!node.type)
             flags += F_INFERRED;
         

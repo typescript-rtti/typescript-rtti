@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { describe } from "razmin";
 import { runSimple } from "../../runner.test";
 import { T_UNION } from "../flags";
+import { reflect } from '../../lib';
 
 describe('Interface tokens', it => {
     it('are emitted for exported interfaces', async () => {
@@ -13,6 +14,31 @@ describe('Interface tokens', it => {
 
         expect(typeof exports.IΦFoo).to.equal('object');
         expect(typeof exports.IΦFoo.identity).to.equal('symbol');
+    });
+    it('should matchValue() correctly', async () => {
+        let exports = await runSimple({
+            code: `
+                import { reflect } from 'typescript-rtti';
+
+                interface Request {
+                    operation : 'foo' | 'bar';
+                    items? : string[];
+                }
+                
+                export const trueErrors = [];
+                export const trueResult = reflect<Request>().matchesValue({ operation : 'bar' }, trueErrors);
+                export const falseResult = reflect<Request>().matchesValue({ operation : 'baz' });
+            `,
+            modules: {
+                'typescript-rtti': { reflect }
+            }
+        });
+
+        if (!exports.trueResult) {
+            console.log(`Expected matchValues() to return true, not false. Errors were: ${JSON.stringify(exports.trueErrors)}`);
+        }
+        expect(exports.trueResult).to.be.true;
+        expect(exports.falseResult).to.be.false;
     });
     it('are emitted for non-exported interfaces', async () => {
         let exports = await runSimple({

@@ -1,3 +1,7 @@
+# vNext
+- Fixes an issue where matchesValue() behavior for union/intersection was swapped
+- Fixes an issue where the isOptional flag was not emitted properly for properties/methods
+
 # v0.4.2
 - Fixes a bug where reflect(ClassConstructor) becomes confused due to injected callSite object
 

@@ -443,7 +443,7 @@ export class ReflectedUnionRef extends ReflectedTypeRef<RtUnionType> {
     }
 
     matchesValue(value: any, errors : Error[] = [], context? : string) {
-        return this.types.every(t => t.matchesValue(value, errors, context));
+        return this.types.some(t => t.matchesValue(value, errors, context));
     }
 }
 
@@ -460,7 +460,7 @@ export class ReflectedIntersectionRef extends ReflectedTypeRef<RtIntersectionTyp
     }
 
     matchesValue(value: any, errors : Error[] = [], context? : string) {
-        return this.types.some(t => t.matchesValue(value, errors, context));
+        return this.types.every(t => t.matchesValue(value, errors, context));
     }
 }
 
