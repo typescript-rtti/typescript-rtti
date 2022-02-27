@@ -1,3 +1,6 @@
+# v0.4.2
+- Fixes a bug where reflect(ClassConstructor) becomes confused due to injected callSite object
+
 # v0.4.1
 - Fixes a bug where nested calls were not checked for call-site reflection.
 

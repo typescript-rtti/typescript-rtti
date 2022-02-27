@@ -1983,7 +1983,7 @@ export function matchesShape(value, interfaceType : InterfaceToken | Constructor
  * @param callSite Do not pass a value here. This opts in to call site reflection.
  * @returns The reflected interface
  */
-export function reflect<T>(unused? : number, callSite? : CallSite) : ReflectedTypeRef;
+export function reflect<T>(unused? : never, callSite? : CallSite) : ReflectedTypeRef;
 /**
  * Get the reflected class for the given constructor or instance.
  * @param value A constructor, Interface value, or an instance of a class
@@ -2003,7 +2003,7 @@ export function reflect(value : any = NotProvided, callSite? : CallSite) {
     if (isCallSite(value))
         return new ReflectedCallSite(value);
 
-    if (isCallSite(callSite))
+    if (value === NotProvided && isCallSite(callSite))
         return new ReflectedCallSite(callSite).typeParameters[0];
 
     let flags = getFlags(value);

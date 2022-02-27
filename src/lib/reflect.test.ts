@@ -573,6 +573,10 @@ describe('reflect(value)', it => {
         class A { }
         expect(reflect(A)).to.be.an.instanceOf(ReflectedClass);
     });
+    it('returns a ReflectedClass even if callSite is passed when passing a class', () => {
+        class A { }
+        expect((reflect as any)(<any>A, { TΦ: 'c', p: [], tp: [] })).to.be.an.instanceOf(ReflectedClass);
+    });
     it('returns a ReflectedClass when passing in an instance', () => {
         class A { }
         let a = new A();
