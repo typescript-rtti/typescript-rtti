@@ -233,7 +233,7 @@ export async function runSimple(invocation : RunInvocation) {
                 throw new Error(
                     `(RTTI Test) Cannot find module '${moduleName}' [aka '${fileName}']. ` 
                     + `Compilation outputs are: ${JSON.stringify(Object.keys(outputs))}, ` 
-                    + `JSON modules are: ${JSON.stringify(Object.keys(invocation.modules)
+                    + `JSON modules are: ${JSON.stringify(Object.keys(invocation?.modules ?? [])
                                                                 .filter(x => !x.endsWith('.ts')))}`
                 );
             }
