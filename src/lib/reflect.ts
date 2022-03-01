@@ -186,10 +186,11 @@ export class ReflectedTypeRef<T = RtTypeRef> {
         return this.kind === 'class' && (!klass || <any>this.ref === klass);
     }
 
-    isInterface(interfaceType : InterfaceToken): this is ReflectedInterfaceRef {
-        if (this.kind === 'interface')
-            return (this.ref as unknown as InterfaceToken).identity === interfaceType.identity;
-        return false;
+    isInterface(interfaceType? : InterfaceToken): this is ReflectedInterfaceRef {
+        if (interfaceType)
+            return this.isInterface() && (this.ref as unknown as InterfaceToken).identity === interfaceType.identity;
+        else
+            return this.kind === 'interface';
     }
 
     /**

@@ -1,3 +1,6 @@
+# vNext
+- Allow `ReflectedTypeRef#isInterface()` without passing an interface token
+
 # v0.4.3
 - Fixes an issue where matchesValue() behavior for union/intersection was swapped
 - Fixes an issue where the isOptional flag was not emitted properly for properties/methods
