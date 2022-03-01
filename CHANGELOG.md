@@ -1,4 +1,5 @@
-# vNext
+# v0.4.4
+
 - Allow `ReflectedTypeRef#isInterface()` without passing an interface token
 - Added `metadata()` convenience function to `ReflectedClass`, `ReflectedMember` and `ReflectedFunction`. This method 
   allows you to get or create a metadata key on the reflected target.
