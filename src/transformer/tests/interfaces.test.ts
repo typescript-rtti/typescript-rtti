@@ -15,7 +15,7 @@ describe('Interface tokens', it => {
         expect(typeof exports.IΦFoo).to.equal('object');
         expect(typeof exports.IΦFoo.identity).to.equal('symbol');
     });
-    it.only('should emit using ExpressionStatement to avoid ASI issues', async () => {
+    it('should emit using ExpressionStatement to avoid ASI issues', async () => {
         // If the __RΦ.m() metadata definer calls are not statements, then automatic semicolon insertion
         // can cause the last line of this example to be treated as a continuation of the previous expression,
         // which in this case will be the last __RΦ.m() call, yielding "__RΦ.m(...)(...) is not a function"
