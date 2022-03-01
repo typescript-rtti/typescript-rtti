@@ -798,7 +798,7 @@ export class ReflectedConstructorParameter extends ReflectedParameter {
 /**
  * Reflection data for a class member
  */
-export class ReflectedMember {
+export class ReflectedMember implements ReflectedMetadataTarget {
     constructor(
         reflectedClass : ReflectedClass,
         readonly name : string,
@@ -828,6 +828,25 @@ export class ReflectedMember {
      */
     defineMetadata<T = any>(key : string, value : T) {
         Reflect.defineMetadata(key, value, this.host, this.name);
+        return value;
+    }
+
+    /**
+     * Get or define a metadata item for this member. If the key already exists, its 
+     * value is returned without calling the passed function. Otherwise the passed function 
+     * is called and its value is saved to the given metadata key.
+     * 
+     * @param key The metadata key to fetch
+     * @param definer A function which will define the value of the metadata 
+     * @returns The value of the existing metadata key or the new value returned by the definer function
+     *          which will also be defined as the appropriate metadata item on this member.
+     */
+    metadata<T = any>(key : string, definer : () => T) : T {
+        if (this.hasMetadata(key))
+            return this.getMetadata(key);
+        let value = definer();
+        this.defineMetadata(key, value);
+        return value;
     }
 
     /**
@@ -921,7 +940,7 @@ export class ReflectedMember {
     }
 }
 
-export class ReflectedFunction<T extends Function = Function> {
+export class ReflectedFunction<T extends Function = Function> implements ReflectedMetadataTarget {
     private constructor(
         readonly func : T
     ) {
@@ -989,6 +1008,25 @@ export class ReflectedFunction<T extends Function = Function> {
      */
     defineMetadata<T = any>(key : string, value : T) {
         Reflect.defineMetadata(key, value, this.func);
+        return value;
+    }
+    
+    /**
+     * Get or define a metadata item for this function. If the key already exists, its 
+     * value is returned without calling the passed function. Otherwise the passed function 
+     * is called and its value is saved to the given metadata key.
+     * 
+     * @param key The metadata key to fetch
+     * @param definer A function which will define the value of the metadata 
+     * @returns The value of the existing metadata key or the new value returned by the definer function
+     *          which will also be defined as the appropriate metadata item on this function.
+     */
+     metadata<T = any>(key : string, definer : () => T) : T {
+        if (this.hasMetadata(key))
+            return this.getMetadata(key);
+        let value = definer();
+        this.defineMetadata(key, value);
+        return value;
     }
 
     /**
@@ -1293,12 +1331,48 @@ function hasAllFlags(value, desiredFlags : string[]) {
     return desiredFlags.every(x => flags.includes(x));
 }
 
+export interface ReflectedMetadataTarget {
+    /**
+     * Check if the target has the given metadata key defined.
+     * @param key 
+     * @returns 
+     */
+    hasMetadata(key : string): boolean;
+
+    /**
+     * Get the specified metadata key. 
+     * @param key 
+     * @returns 
+     */
+    getMetadata<T = any>(key : string): T;
+
+    /**
+     * Define a metadata key on this class. 
+     * @param key 
+     * @param value 
+     * @returns 
+     */
+    defineMetadata<T = any>(key : string, value : T): T;
+
+    /**
+     * Get or define a metadata item for this target. If the key already exists, its 
+     * value is returned without calling the passed function. Otherwise the passed function 
+     * is called and its value is saved to the given metadata key.
+     * 
+     * @param key The metadata key to fetch
+     * @param definer A function which will define the value of the metadata 
+     * @returns The value of the existing metadata key or the new value returned by the definer function
+     *          which will also be defined as the appropriate metadata item on this target.
+     */
+     metadata<T = any>(key : string, definer : () => T) : T;
+}
+
 /**
  * Provides access to the known runtime type metadata for a particular class 
  * or Interface value (as obtained by reify<InterfaceT>()). 
  */
 @Sealed()
-export class ReflectedClass<ClassT = any> {
+export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
     /**
      * Constructs a new ReflectedClass. Use ReflectedClass.for() to obtain a ReflectedClass.
      */
@@ -1497,6 +1571,24 @@ export class ReflectedClass<ClassT = any> {
      */
     defineMetadata<T = any>(key : string, value : T): T {
         Reflect.defineMetadata(key, value, this.class);
+        return value;
+    }
+
+    /**
+     * Get or define a metadata item for this class/interface. If the key already exists, its 
+     * value is returned without calling the passed function. Otherwise the passed function 
+     * is called and its value is saved to the given metadata key.
+     * 
+     * @param key The metadata key to fetch
+     * @param definer A function which will define the value of the metadata 
+     * @returns The value of the existing metadata key or the new value returned by the definer function
+     *          which will also be defined as the appropriate metadata item on this class/interface.
+     */
+     metadata<T = any>(key : string, definer : () => T) : T {
+        if (this.hasMetadata(key))
+            return this.getMetadata(key);
+        let value = definer();
+        this.defineMetadata(key, value);
         return value;
     }
 

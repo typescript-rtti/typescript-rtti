@@ -1,5 +1,9 @@
 # vNext
 - Allow `ReflectedTypeRef#isInterface()` without passing an interface token
+- Added `metadata()` convenience function to `ReflectedClass`, `ReflectedMember` and `ReflectedFunction`. This method 
+  allows you to get or create a metadata key on the reflected target.
+- Modified `defineMetadata()` on `ReflectedMember`, `ReflectedFunction` to return the value of the new metadata item 
+  for consistency with the corresponding method on `ReflectedClass`. Previously these methods returned nothing.
 
 # v0.4.3
 - Fixes an issue where matchesValue() behavior for union/intersection was swapped
