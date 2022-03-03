@@ -300,8 +300,6 @@ export class TypeEncoder {
 
                     if (!modulePath) {
                         // The type is not directly imported in this file. 
-                        console.log(`infer relative path: '${this.ctx.sourceFile.fileName}' -> '${sourceFile.fileName}'`);
-
                         let destFile = sourceFile.fileName;
                         
                         if (destFile.endsWith('.d.ts'))
@@ -315,9 +313,9 @@ export class TypeEncoder {
 
                         let relativePath = this.findRelativePathToFile(this.ctx.sourceFile.fileName, destFile);
                         if (relativePath) {
-                            console.log(`infer successful: '${relativePath}'`);
                             modulePath = relativePath;
                         } else { 
+                            if (globalThis.RTTI_TRACE)
                             console.log(`RTTI: Cannot determine relative path from '${this.ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
                             modulePath = destFile;
                         }
