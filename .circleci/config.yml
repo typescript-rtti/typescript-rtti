@@ -14,6 +14,8 @@ commands:
           keys:
           - v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
           - v1-dependencies-<< parameters.version >>-
+      - run: npm install npm@7 -g
+      - run: npm --version
       - run: npm install
       - save_cache:
           paths:
