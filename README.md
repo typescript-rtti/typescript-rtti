@@ -7,7 +7,7 @@
 [Github](https://github.com/typescript-rtti/typescript-rtti)
 
 > **NOTE**
-> This software is _beta quality_, semver 0.0.x. Transformer: Expect all codebases to build and operate the same as when the transformer is not present. Reflection API:  API is stable, expect only rare breaking changes on the way to major-stable semver.
+> This software is _beta quality_, semver 0.x.x. Transformer: Expect all codebases to build and operate the same as when the transformer is not present. Reflection API:  API is stable, expect only rare breaking changes on the way to major-stable semver.
 
 A Typescript transformer to implement comprehensive runtime type information (RTTI).
 
