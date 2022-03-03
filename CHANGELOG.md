@@ -1,4 +1,4 @@
-# vNext
+# v0.4.5
 - Fixes issues where external interfaces were imported using absolute file paths 
   which produced builds that could not be moved
 - Fixes issues where classes/interfaces defined within functions would not be properly accessible via reflection 
