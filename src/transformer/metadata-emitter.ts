@@ -190,46 +190,42 @@ export class MetadataEmitter extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.InterfaceDeclaration)
     interface(decl : ts.InterfaceDeclaration) {
+        
+        let tokenDecl = ts.factory.createVariableStatement(
+            [],
+            ts.factory.createVariableDeclarationList(
+                [ts.factory.createVariableDeclaration(
+                    ts.factory.createIdentifier(`IΦ${decl.name.text}`),
+                    undefined,
+                    undefined,
+                    ts.factory.createObjectLiteralExpression([
+                        ts.factory.createPropertyAssignment(
+                            'name',
+                            ts.factory.createStringLiteral(decl.name.text)
+                        ),
+                        ts.factory.createPropertyAssignment(
+                            'prototype',
+                            ts.factory.createObjectLiteralExpression()
+                        ),
+                        ts.factory.createPropertyAssignment(
+                            'identity',
+                            ts.factory.createCallExpression(
+                                ts.factory.createIdentifier("Symbol"),
+                                undefined,
+                                [ts.factory.createStringLiteral(`${decl.name.text} (interface)`)]
+                            )
+                        )
+                    ])
+                    
+                )],
+                ts.NodeFlags.None
+            )
+        );
+        
         this.ctx.interfaceSymbols.push(
             {
                 interfaceDecl: decl,
-                symbolDecl: [
-                    ts.factory.createVariableStatement(
-                        [],
-                        ts.factory.createVariableDeclarationList(
-                            [ts.factory.createVariableDeclaration(
-                                ts.factory.createIdentifier(`IΦ${decl.name.text}`),
-                                undefined,
-                                undefined,
-                                ts.factory.createObjectLiteralExpression([
-                                    ts.factory.createPropertyAssignment(
-                                        'name',
-                                        ts.factory.createStringLiteral(decl.name.text)
-                                    ),
-                                    ts.factory.createPropertyAssignment(
-                                        'prototype',
-                                        ts.factory.createObjectLiteralExpression()
-                                    ),
-                                    ts.factory.createPropertyAssignment(
-                                        'identity',
-                                        ts.factory.createCallExpression(
-                                            ts.factory.createIdentifier("Symbol"),
-                                            undefined,
-                                            [ts.factory.createStringLiteral(`${decl.name.text} (interface)`)]
-                                        )
-                                    )
-                                ])
-                                
-                            )],
-                            ts.NodeFlags.None
-                        )
-                    ),
-                    ...(
-                        (decl.modifiers && decl.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword))
-                        ? [this.exportInterfaceToken(decl.name.text)] 
-                        : []
-                    )
-                ]
+                symbolDecl: []
             }
         );
         
@@ -256,6 +252,12 @@ export class MetadataEmitter extends RttiVisitor {
 
             return [
                 result.node,
+                tokenDecl,
+                ...(
+                    (decl.modifiers && decl.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword))
+                    ? [this.exportInterfaceToken(decl.name.text)] 
+                    : []
+                ),
                 ...this.metadataEncoder.class(<ts.InterfaceDeclaration>decl, details)
                     .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
                         ts.factory.createIdentifier(`IΦ${(decl as ts.InterfaceDeclaration).name.text}`)

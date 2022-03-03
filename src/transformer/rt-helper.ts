@@ -1,8 +1,28 @@
 import ts from 'typescript';
-import { forwardRef } from './forward-ref';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 
+/*
+const __RΦ = { 
+    m: (k, v) => (t, ...a) => t && Reflect.metadata ? Reflect.metadata(k, v)(t, ...a) : void 0, 
+    f: (f, d, n) => (d.forEach(d => d(f)), Object.defineProperty(f, "name", { value: n, writable: false }), f), 
+    r: (o, a) => (Object.assign(o, a)), 
+    a: id => {
+            let t = __RΦ.t[id];
+            if (t.RΦ) {
+                let r = t.RΦ;
+                delete t.RΦ;
+                __RΦ.r(t, r(t));
+            }
+            else if (t.LΦ) {
+                let l = t.LΦ();
+                delete t.LΦ;
+                __RΦ.t[id] = t = l;
+            }
+            return t;
+    }
+}
+ */
 
 export function rtStore(typeMap : Map<number,ts.Expression>) {
   const factory = ts.factory;

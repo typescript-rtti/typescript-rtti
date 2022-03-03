@@ -170,7 +170,7 @@ function runCommonJS(module : Module, $require) {
             }
         )`)(module, module.exports, $require);
     } catch (e) {
-        throw new Error(`Failed to compile '${module.filename}': ${e.message}`);
+        throw new Error(`Failed to run '${module.filename}': ${e.message}`);
     }
     return module;
 }

@@ -1,6 +1,6 @@
 
 import { expect } from 'chai';
-import { describe } from 'razmin';
+import { describe, it } from 'razmin';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED } from "../flags";
 import { F_ABSTRACT, F_ARROW_FUNCTION, F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../../common';
 import { InterfaceToken } from '../../common';
@@ -19,6 +19,51 @@ describe('rt:h', it => {
         let fooHost = Reflect.getMetadata('rt:h', exports.B.prototype.foo);
         expect(fooHost()).to.equal(exports.B);
     })
+});
+describe('Central Libraries', it => {
+    it('works correctly for class declarations within functions', async () => {
+        let exports = await runSimple({
+            code: `
+                function foo() {
+                    class A {
+                        foo : string;
+                    }
+
+                    class B { 
+                        a : A;
+                    }
+
+                    return { A, B };
+                }
+
+                export const classes = foo();
+            `
+        });
+
+        expect(Reflect.getMetadata('rt:t', exports.classes.A.prototype, 'foo')()).to.equal(String);
+        expect(Reflect.getMetadata('rt:t', exports.classes.B.prototype, 'a')()).to.equal(exports.classes.A);
+    });
+    it('works correctly for interface declarations within functions', async () => {
+        let exports = await runSimple({
+            code: `
+                function foo() {
+                    interface A {
+                        foo : string;
+                    }
+
+                    class B { 
+                        a : A;
+                    }
+
+                    return { B };
+                }
+
+                export const classes = foo();
+            `
+        });
+
+        expect(Reflect.getMetadata('rt:t', exports.classes.B.prototype, 'a')().name).to.equal('A');
+    });
 });
 describe('rt:f', it => {
     it('identify classes', async () => {

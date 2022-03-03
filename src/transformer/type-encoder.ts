@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from "../common";
+import { T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_STAND_IN, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from "../common";
 import { literalNode } from "./literal-node";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
@@ -27,20 +27,40 @@ export class TypeEncoder {
             throw new Error(`Type does not have an ID!`);
 
         if (!this.typeMap.has(type['id'])) {
+
+            // Allocate the typeMap slot so that we do not recurse if we encounter this type again
             this.typeMap.set(type['id'], null);
+
             let expr = this.typeLiteral(type, typeNode);
             let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
+            let useStandIn = false;
+            if (type.isClassOrInterface()) {
+                let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
+                let isLocal = sourceFile === this.ctx.sourceFile;
+                useStandIn = isLocal;
+            }
 
-            this.typeMap.set(type['id'], serialize({
-                [propName]: literalNode(ts.factory.createArrowFunction(
-                    [], [], [
-                        ts.factory.createParameterDeclaration(
-                            [], [], undefined, 't', undefined, undefined, 
-                            undefined
-                        )
-                    ], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expr
-                ))
-            }));
+            if (useStandIn) {
+                // The class or interface may not be defined at the top level of the module.
+                // If it is defined in a function for instance then outputting a reference to 
+                // it is not valid. We'll put the real reference into the map at runtime when the 
+                // class/interface declaration is executed.
+                this.typeMap.set(type['id'], serialize({
+                    TΦ: T_STAND_IN,
+                    name: `${type.symbol.name}`
+                }));
+            } else {
+                this.typeMap.set(type['id'], serialize({
+                    [propName]: literalNode(ts.factory.createArrowFunction(
+                        [], [], [
+                            ts.factory.createParameterDeclaration(
+                                [], [], undefined, 't', undefined, undefined, 
+                                undefined
+                            )
+                        ], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expr
+                    ))
+                }));
+            }
         }
 
         return ts.factory.createCallExpression(
