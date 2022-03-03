@@ -52,7 +52,7 @@ describe('Interface token', it => {
         expect(exports.IΦFoo.prototype).to.exist;
         expect(typeof exports.IΦFoo.identity).to.equal('symbol');
     });
-    it.only('is emitted for interfaces across multiple re-exports', async () => {
+    it('is emitted for interfaces across multiple re-exports', async () => {
         let exports = await runSimple({
             code: `
                 import { Foo } from './foo2';
