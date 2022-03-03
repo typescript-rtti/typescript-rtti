@@ -96,6 +96,98 @@ export class MetadataEmitter extends RttiVisitor {
         });
     }
 
+    @Visit(ts.SyntaxKind.ExportDeclaration)
+    export(decl : ts.ExportDeclaration) {
+        if (!decl.exportClause)
+            return this.visitEachChild(decl);
+        
+        if (ts.isNamedExports(decl.exportClause)) {
+            let statements : ts.Statement[] = [];
+
+            for (let expo of decl.exportClause.elements) {
+                let ident = expo.name;
+                let localSymbol = this.checker.getSymbolAtLocation(ident);
+                let rootSymbol = this.checker.getAliasedSymbol(localSymbol);
+
+                let type = this.checker.getTypeAtLocation(rootSymbol?.declarations?.[0]);
+                let reifiedType = <boolean>type.isClass() || type.symbol.name === 'Promise' || !!type.symbol.valueDeclaration;
+                let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+                let isLocal = sourceFile === this.ctx.sourceFile;
+
+                if (!reifiedType && !isLocal) {
+                    // Imported interface
+
+                    let parents : ts.Symbol[] = [];
+                    let parent : ts.Symbol = type.symbol['parent'];
+                    
+                    while (parent) {
+                        parents.push(parent);
+                        parent = parent['parent'];
+                    }
+
+                    let importName : string;
+                    if (parents.length > 1) {
+                        importName = parents[1].name
+                    } else {
+                        importName = type.symbol.name;
+                    }
+
+                    let modulePath = JSON.parse(parents[0].name);
+
+                    if (localSymbol) {
+                        let localDecl = localSymbol.declarations[0];
+
+                        if (localDecl) {
+                            if (ts.isExportSpecifier(localDecl)) {
+                                localSymbol = this.checker.getImmediateAliasedSymbol(localSymbol);
+                                localDecl = localSymbol.declarations[0];
+                            }
+
+                            if (ts.isImportSpecifier(localDecl)) {
+                                let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
+
+                                let detectedImportPath = specifier.text;
+                                if (detectedImportPath)
+                                    modulePath = detectedImportPath;
+                            } else {
+                                throw new Error(`Unexpected declaration type '${ts.SyntaxKind[localDecl.kind]}'`);
+                            }
+                        }
+                    }
+
+                    if (parents.length === 1 && type.symbol.name === 'default') {
+                        statements.push(this.exportInterfaceToken(ident.text, `default`, modulePath));
+                    } else {
+                        statements.push(this.exportInterfaceToken(ident.text, undefined, modulePath));
+                    }
+                }
+            }
+            
+            return [
+                this.visitEachChild(decl),
+                ...statements
+            ];
+        }
+    }
+    
+    private exportInterfaceToken(name : string, propertyName? : string, from? : string) {
+        return ts.factory.createExportDeclaration(
+            undefined,
+            undefined,
+            false,
+            ts.factory.createNamedExports(
+                [
+                    ts.factory.createExportSpecifier(
+                        false,
+                        propertyName ? ts.factory.createIdentifier(propertyName) : undefined,
+                        ts.factory.createIdentifier(`IΦ${name}`)
+                    )
+                ]
+            ),
+            from ? ts.factory.createStringLiteral(from) : undefined
+        );
+    }
+
     @Visit(ts.SyntaxKind.InterfaceDeclaration)
     interface(decl : ts.InterfaceDeclaration) {
         this.ctx.interfaceSymbols.push(
@@ -134,21 +226,8 @@ export class MetadataEmitter extends RttiVisitor {
                     ),
                     ...(
                         (decl.modifiers && decl.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword))
-                        ? [ts.factory.createExportDeclaration(
-                            undefined,
-                            undefined,
-                            false,
-                            ts.factory.createNamedExports(
-                                [
-                                    ts.factory.createExportSpecifier(
-                                        false,
-                                        undefined,
-                                        ts.factory.createIdentifier(`IΦ${decl.name.text}`)
-                                    )
-                                ]
-                            ),
-                            undefined
-                        )] : []
+                        ? [this.exportInterfaceToken(decl.name.text)] 
+                        : []
                     )
                 ]
             }

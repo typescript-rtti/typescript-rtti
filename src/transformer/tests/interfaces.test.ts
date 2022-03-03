@@ -4,8 +4,8 @@ import { runSimple } from "../../runner.test";
 import { T_UNION } from "../flags";
 import { reflect } from '../../lib';
 
-describe('Interface tokens', it => {
-    it('are emitted for exported interfaces', async () => {
+describe('Interface token', it => {
+    it('is emitted for exported interfaces', async () => {
         let exports = await runSimple({
             code: `
                 export interface Foo { }
@@ -14,6 +14,65 @@ describe('Interface tokens', it => {
 
         expect(typeof exports.IΦFoo).to.equal('object');
         expect(typeof exports.IΦFoo.identity).to.equal('symbol');
+    });
+    it('is emitted for imported interfaces', async () => {
+        let exports = await runSimple({
+            code: `
+                import { Foo } from './foo';
+                export interface Bar { 
+                    foo : Foo;
+                }
+            `,
+            modules: {
+                './foo.ts': `
+                    export interface Foo { }
+                `
+            }
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.IΦBar.prototype, 'foo');
+        let type = typeResolver();
+        expect(type.name).to.equal('Foo');
+    });
+    it('is re-exported along with interface re-export', async () => {
+        let exports = await runSimple({
+            code: `
+                import { Foo } from './foo';
+                export { Foo };
+            `,
+            modules: {
+                './foo.ts': `
+                    export interface Foo { }
+                `
+            }
+        });
+
+        expect(exports.IΦFoo).to.exist;
+        expect(exports.IΦFoo.name).to.equal('Foo');
+        expect(exports.IΦFoo.prototype).to.exist;
+        expect(typeof exports.IΦFoo.identity).to.equal('symbol');
+    });
+    it.only('is emitted for interfaces across multiple re-exports', async () => {
+        let exports = await runSimple({
+            code: `
+                import { Foo } from './foo2';
+                export interface Bar { 
+                    foo : Foo;
+                }
+            `,
+            modules: {
+                './foo2.ts': `
+                    export interface Foo { }
+                `,
+                './foo1.ts': `
+                    export interface Foo { }
+                `
+            }
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.IΦBar.prototype, 'foo');
+        let type = typeResolver();
+        expect(type.name).to.equal('Foo');
     });
     it('should emit using ExpressionStatement to avoid ASI issues', async () => {
         // If the __RΦ.m() metadata definer calls are not statements, then automatic semicolon insertion
@@ -63,7 +122,7 @@ describe('Interface tokens', it => {
         expect(exports.trueResult).to.be.true;
         expect(exports.falseResult).to.be.false;
     });
-    it('are emitted for non-exported interfaces', async () => {
+    it('is emitted for non-exported interface', async () => {
         let exports = await runSimple({
             code: `
                 interface Foo { }
@@ -71,7 +130,7 @@ describe('Interface tokens', it => {
         });
         expect(exports.IΦFoo).not.to.exist;
     });
-    it('collect type metadata', async () => {
+    it('collects type metadata', async () => {
         let exports = await runSimple({
             code: `
                 export interface Foo { 

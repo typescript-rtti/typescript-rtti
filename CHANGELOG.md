@@ -1,3 +1,7 @@
+# vNext
+- Fixes issues where external interfaces were imported using absolute file paths 
+  which produced builds that could not be moved
+
 # v0.4.4
 
 - Allow `ReflectedTypeRef#isInterface()` without passing an interface token

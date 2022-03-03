@@ -28,7 +28,7 @@ export class TypeEncoder {
 
         if (!this.typeMap.has(type['id'])) {
             this.typeMap.set(type['id'], null);
-            let expr = this.typeLiteral(type);
+            let expr = this.typeLiteral(type, typeNode);
             let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
 
             this.typeMap.set(type['id'], serialize({
@@ -53,12 +53,61 @@ export class TypeEncoder {
         )
     }
 
+    private findRelativePathToFile(fromFile : string, toFile : string) {
+        fromFile = fromFile.replace(/\\/g, '/');
+        toFile = toFile.replace(/\\/g, '/');
+    
+        if (fromFile.startsWith('./'))
+            fromFile = fromFile.slice(2);
+        if (toFile.startsWith('./'))
+            toFile = toFile.slice(2);
+        
+        let fromAbsolute = /^[A-Za-z]:/.test(fromFile) || /^\//.test(fromFile);
+        let toAbsolute = /^[A-Za-z]:/.test(toFile) || /^\//.test(toFile);
+
+        if (fromAbsolute !== toAbsolute)
+            throw new Error(`Cannot determine relationship between an absolute and a relative path!`);
+        
+        if (!fromAbsolute && !toAbsolute) {
+            fromFile = `/${fromFile}`;
+            toFile = `/${toFile}`;
+        }
+
+        let from = fromFile.split('/');
+        let to = toFile.split('/');
+        let parents = 0;
+        let forwardPaths : string[] = [];
+    
+        // pop off the filenames
+        let fromFileName = from.pop();
+        let toFileName = to.pop();
+        
+        while (from.length > 0 && !to.join('/').startsWith(from.join('/'))) {
+            parents += 1;
+            from.pop();
+        }
+    
+        if (from.length === 0) {
+            // Could be different drive letters, ie C:/ vs D:/ -- in that case, we just have to 
+            // use the absolute path
+            return undefined;
+        } else {
+            if (parents > 0) {
+                return [ ...[Array(1 + parents).join('..')], ...to.slice(from.length), toFileName].join('/');
+            } else {
+                return ['.', ...to.slice(from.length), toFileName].join('/');
+            }
+        }
+    
+
+    }
+
     /**
      * Create a literal expression for the given type. 
      * @param type 
      * @returns 
      */
-    private typeLiteral(type : ts.Type): ts.Expression {
+    private typeLiteral(type : ts.Type, typeNode? : ts.TypeNode): ts.Expression {
         if (!type)
             return ts.factory.createIdentifier('Object');
         
@@ -200,7 +249,15 @@ export class TypeEncoder {
 
                 // If this symbol is imported, we need to handle it specially.
 
-                if (parents.length > 0 && parents[0].name.startsWith('"')) {
+                let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+                let isLocal = sourceFile === this.ctx.sourceFile;
+
+                if (sourceFile.hasNoDefaultLib && /lib\.[^\.]+\.d\.ts/.test(sourceFile.fileName)) {
+                    // Appears to be the standard lib. Assume no import is needed.
+                    isLocal = true;
+                }
+
+                if (!isLocal) {
                     // This is imported
                     
                     let importName : string;
@@ -210,8 +267,62 @@ export class TypeEncoder {
                         importName = type.symbol.name;
                     }
 
-                    let modulePath = JSON.parse(parents[0].name);
-                    
+                    let modulePath : string; //parents[0] ? JSON.parse(parents[0].name) : undefined;
+
+                    if (typeNode) {
+                        if (ts.isTypeReferenceNode(typeNode)) {
+                            let importIdentifier : ts.Identifier;
+                            let typeName = typeNode.typeName;
+                            while (ts.isQualifiedName(typeName))
+                                typeName = typeName.left;
+                            
+                            let localSymbol = this.checker.getSymbolAtLocation(typeNode.typeName);
+                            if (localSymbol) {
+                                let localDecl = localSymbol.declarations[0];
+                                if (localDecl) {
+                                    if (ts.isImportClause(localDecl)) {
+                                        let specifier = <ts.StringLiteral>localDecl.parent?.moduleSpecifier;
+                                        let detectedImportPath = specifier.text;
+                                        if (detectedImportPath)
+                                            modulePath = detectedImportPath;
+                                    } else if (ts.isImportSpecifier(localDecl)) {
+                                        let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
+                                        let detectedImportPath = specifier.text;
+                                        if (detectedImportPath)
+                                            modulePath = detectedImportPath;
+                                    }
+                                }
+                            }
+                        } else {
+                            throw new Error(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
+                        }
+                    }
+
+                    if (!modulePath) {
+                        // The type is not directly imported in this file. 
+                        console.log(`infer relative path: '${this.ctx.sourceFile.fileName}' -> '${sourceFile.fileName}'`);
+
+                        let destFile = sourceFile.fileName;
+                        
+                        if (destFile.endsWith('.d.ts'))
+                            destFile = destFile.replace(/\.d\.ts$/, '');
+                        else if (destFile.endsWith('.ts'))
+                            destFile = destFile.replace(/\.ts$/, '');
+
+                        // TODO: The import now has no extension, but for Deno it is required.
+                        // I think only a configuration option could fix this, in which case we 
+                        // would append .js here
+
+                        let relativePath = this.findRelativePathToFile(this.ctx.sourceFile.fileName, destFile);
+                        if (relativePath) {
+                            console.log(`infer successful: '${relativePath}'`);
+                            modulePath = relativePath;
+                        } else { 
+                            console.log(`RTTI: Cannot determine relative path from '${this.ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
+                            modulePath = destFile;
+                        }
+                    }
+
                     if (parents.length === 1 && type.symbol.name === 'default') {
                         // Default export 
 
