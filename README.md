@@ -20,7 +20,7 @@ A Typescript transformer to implement comprehensive runtime type information (RT
 
 # Requirements
 
-- Typescript 4.5.5 or newer
+- Typescript 4.5.5 or newer (supports Typescript 4.6!)
 - Node.js v14 or newer (when using Node.js)
 
 # Introduction
