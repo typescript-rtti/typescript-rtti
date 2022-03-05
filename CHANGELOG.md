@@ -1,5 +1,7 @@
 # vNext
 - Reflected parameters now have an `index` property for convenience.
+- Reflected parameters now have appropriate `parent` properties
+- Reflected parameters involving a class (constructor/method parameters) now have `class` properties.
 
 # v0.4.5
 - Fixes issues where external interfaces were imported using absolute file paths 

@@ -711,6 +711,9 @@ export class ReflectedParameter<ValueT = any> {
     ) {
         super(rawMetadata, index);
     }
+    
+    get parent() { return this.method; }
+    get class() { return this.method.class; }
 }
 
 /**
@@ -724,6 +727,8 @@ export class ReflectedParameter<ValueT = any> {
     ) {
         super(rawMetadata, index);
     }
+
+    get parent() { return this.func; }
 }
 
 /**
@@ -740,6 +745,8 @@ export class ReflectedConstructorParameter extends ReflectedParameter {
     }
 
     private _class : ReflectedClass;
+
+    get parent() { return this.class; }
 
     /**
      * Retrieve the reflected class that this constructor parameter is defined on.
