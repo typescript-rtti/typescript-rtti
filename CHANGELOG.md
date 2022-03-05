@@ -1,3 +1,6 @@
+# v0.4.9
+- Fixes a bug where initializers did not work correctly
+
 # v0.4.8
 - Fixes a bug where constructor parameters did not emit type information when inferred (instead of defined explicitly)
 

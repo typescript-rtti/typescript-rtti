@@ -683,7 +683,7 @@ export class ReflectedParameter<ValueT = any> {
      * Use evaluateInitializer() to properly invoke the initializer.
      */
     get initializer(): () => ValueT {
-        return this.rawMetadata.t;
+        return this.rawMetadata.v;
     }
 
     /**
