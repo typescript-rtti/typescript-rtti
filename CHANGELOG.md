@@ -1,3 +1,6 @@
+# vNext
+- Reflected parameters now have an `index` property for convenience.
+
 # v0.4.5
 - Fixes issues where external interfaces were imported using absolute file paths 
   which produced builds that could not be moved
