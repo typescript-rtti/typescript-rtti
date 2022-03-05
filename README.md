@@ -18,6 +18,11 @@ A Typescript transformer to implement comprehensive runtime type information (RT
 - **Isomorphic**: works in the browser, Node.js and other runtimes (Deno?)
 - **Compatible** with existing `design:*` metadata
 
+# Projects using typescript-rtti
+Send a pull request to feature your project!
+- [phantomdi](https://github.com/rezonant/phantomdi) -- A dependency injector using runtime type information
+  with advanced features like dynamic alterations of injectables
+
 # Requirements
 
 - Typescript 4.5.5 or newer (supports Typescript 4.6!)
