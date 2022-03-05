@@ -1,4 +1,4 @@
-# vNext
+# v0.4.6
 - Reflected parameters now have an `index` property for convenience.
 - Reflected parameters now have appropriate `parent` properties
 - Reflected parameters involving a class (constructor/method parameters) now have `class` properties.
