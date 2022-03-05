@@ -1186,7 +1186,7 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
         if (!host)
             throw new TypeError(`The method has a defined host, but it is null/undefined`);
         
-        return ReflectedClass.for(host).getMethod(method.name);
+        return ReflectedClass.for(host()).getMethod(method.name);
     }
 
     /**

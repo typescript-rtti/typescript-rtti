@@ -1,3 +1,7 @@
+# vNext
+- Fixes a bug where ReflectedMethod.for(function) failed to resolve the `rt:h` type resolver, producing 
+  incorrect results.
+
 # v0.4.6
 - Reflected parameters now have an `index` property for convenience.
 - Reflected parameters now have appropriate `parent` properties
