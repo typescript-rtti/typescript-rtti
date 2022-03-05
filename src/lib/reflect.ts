@@ -959,7 +959,7 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
 
     private _flags : ReflectedFlags;
     private _returnType : ReflectedTypeRef;
-    private _RtParameter : RtParameter[];
+    private _rawParameterMetadata : RtParameter[];
     private _parameters : ReflectedFunctionParameter[];
 
     private static reflectedFunctions = new WeakMap<object, ReflectedFunction>();
@@ -1054,10 +1054,10 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
      * @internal
      */
     get rawParameterMetadata(): RtParameter[] {
-        if (this._RtParameter)
-            return this._RtParameter;
+        if (this._rawParameterMetadata)
+            return this._rawParameterMetadata;
         
-        return this._RtParameter = this.getMetadata('rt:p');
+        return this._rawParameterMetadata = this.getMetadata('rt:p');
     }
 
     /**
@@ -1145,7 +1145,7 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
  */
 export class ReflectedMethod<T extends Function = Function> extends ReflectedMember {
     private _returnType : ReflectedTypeRef;
-    private _RtParameter : RtParameter[];
+    private _rawParameterMetadata : RtParameter[];
     private _parameters : ReflectedMethodParameter[];
 
     matchesValue(object, errors : Error[] = [], context? : string) {
@@ -1163,10 +1163,10 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
      * @internal
      */
     get rawParameterMetadata(): RtParameter[] {
-        if (this._RtParameter)
-            return this._RtParameter;
+        if (this._rawParameterMetadata)
+            return this._rawParameterMetadata;
         
-        return this._RtParameter = this.getMetadata('rt:p');
+        return this._rawParameterMetadata = this.getMetadata('rt:p');
     }
 
     /**
@@ -1447,7 +1447,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
     private _ownMethodNames : string[];
     private _methodNames : string[];
     private _super : ReflectedClass;
-    private _RtParameter : RtParameter[];
+    private _rawParameterMetadata : RtParameter[];
     private _parameters : ReflectedConstructorParameter[];
     private _ownProperties : ReflectedProperty[];
     private _properties : ReflectedProperty[];
@@ -1884,8 +1884,8 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
     }
 
     private get rawParameterMetadata(): RtParameter[] {
-        if (this._RtParameter)
-            return this._RtParameter;
+        if (this._rawParameterMetadata)
+            return this._rawParameterMetadata;
         
         let rawParams = this.getMetadata('rt:p');
         if (rawParams === void 0 && this.hasMetadata('design:paramtypes')) {
@@ -1894,7 +1894,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
             rawParams = names.map((n, i) => ({ n, t: () => types[i] }));
         }
 
-        return this._RtParameter = rawParams || [];
+        return this._rawParameterMetadata = rawParams || [];
     }
 
     /**
