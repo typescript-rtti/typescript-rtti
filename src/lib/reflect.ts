@@ -1082,8 +1082,10 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
             });
         } else if (this.hasMetadata('design:paramtypes')) {
             let params : Function[] = this.getMetadata('design:paramtypes');
-            return this._parameterTypes = params.map(t => ReflectedTypeRef.createFromRtRef(() => t));
+            return this._parameterTypes = (params || []).map(t => ReflectedTypeRef.createFromRtRef(() => t));
         }
+
+        return [];
     }
 
     /**
