@@ -1,7 +1,14 @@
+# v0.4.13
+- Added `reflect-metadata` as a peer dependency. It has always been required for the correct operation of 
+  the transformer, but the peer dependency was missing until this version.
+
+# v0.4.12
+- Additional checks for bad `design:paramtypes` emit
+
 # v0.4.11
 - Guard at runtime for bad `design:paramtypes` emit and ensure `parameters` always returns
   an array even if no metadata sources are available.
-  
+
 # v0.4.10
 - Support for reflecting on primitive values (number, boolean, string, etc)
 
