@@ -1,3 +1,7 @@
+# v0.4.11
+- Guard at runtime for bad `design:paramtypes` emit and ensure `parameters` always returns
+  an array even if no metadata sources are available.
+  
 # v0.4.10
 - Support for reflecting on primitive values (number, boolean, string, etc)
 

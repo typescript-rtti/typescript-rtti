@@ -1211,8 +1211,10 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
             });
         } else if (this.hasMetadata('design:paramtypes')) {
             let params : Function[] = this.getMetadata('design:paramtypes');
-            return this._parameterTypes = params.map(t => ReflectedTypeRef.createFromRtRef(() => t));
+            return this._parameterTypes = (params || []).map(t => ReflectedTypeRef.createFromRtRef(() => t));
         }
+
+        return [];
     }
 
     /**
