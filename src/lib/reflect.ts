@@ -1053,7 +1053,7 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
     /**
      * @internal
      */
-    get RtParameter(): RtParameter[] {
+    get rawParameterMetadata(): RtParameter[] {
         if (this._RtParameter)
             return this._RtParameter;
         
@@ -1064,7 +1064,7 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
      * Names of the parameters for this function.
      */
     get parameterNames() {
-        return this.RtParameter.map(x => x.n);
+        return this.rawParameterMetadata.map(x => x.n);
     }
 
     private _parameterTypes : ReflectedTypeRef[];
@@ -1076,8 +1076,8 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
         if (this._parameterTypes !== undefined)
             return this._parameterTypes;
         
-        if (this.RtParameter !== undefined) {
-            return this._parameterTypes = this.RtParameter.map(param => {
+        if (this.rawParameterMetadata !== undefined) {
+            return this._parameterTypes = this.rawParameterMetadata.map(param => {
                 return param.t ? ReflectedTypeRef.createFromRtRef(param.t()) : ReflectedTypeRef.createUnknown();
             });
         } else if (this.hasMetadata('design:paramtypes')) {
@@ -1093,7 +1093,7 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
         if (this._parameters)
             return this._parameters;
         
-        return this._parameters = this.RtParameter.map((x, i) => new ReflectedFunctionParameter(this, x, i));
+        return this._parameters = this.rawParameterMetadata.map((x, i) => new ReflectedFunctionParameter(this, x, i));
     }
 
     /**
@@ -1162,7 +1162,7 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
     /**
      * @internal
      */
-    get RtParameter(): RtParameter[] {
+    get rawParameterMetadata(): RtParameter[] {
         if (this._RtParameter)
             return this._RtParameter;
         
@@ -1193,7 +1193,7 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
      * Retrieve an array with the parameter names for this method.
      */
     get parameterNames() {
-        return this.RtParameter.map(x => x.n);
+        return this.rawParameterMetadata.map(x => x.n);
     }
 
     private _parameterTypes : ReflectedTypeRef[];
@@ -1205,8 +1205,8 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
         if (this._parameterTypes !== undefined)
             return this._parameterTypes;
         
-        if (this.RtParameter !== undefined) {
-            return this._parameterTypes = this.RtParameter.map(param => {
+        if (this.rawParameterMetadata !== undefined) {
+            return this._parameterTypes = this.rawParameterMetadata.map(param => {
                 return param.t ? ReflectedTypeRef.createFromRtRef(param.t()) : ReflectedTypeRef.createUnknown();
             });
         } else if (this.hasMetadata('design:paramtypes')) {
@@ -1222,7 +1222,7 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
         if (this._parameters)
             return this._parameters;
         
-        return this._parameters = this.RtParameter.map((x, i) => new ReflectedMethodParameter(this, x, i));
+        return this._parameters = this.rawParameterMetadata.map((x, i) => new ReflectedMethodParameter(this, x, i));
     }
 
     /**
@@ -1883,7 +1883,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
             return this._properties = this.ownProperties;
     }
 
-    private get RtParameter(): RtParameter[] {
+    private get rawParameterMetadata(): RtParameter[] {
         if (this._RtParameter)
             return this._RtParameter;
         
@@ -1901,7 +1901,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
      * Retrieve an array of the parameter names for this class's constructor.
      */
     get parameterNames() {
-        return this.RtParameter.map(x => x.n);
+        return this.rawParameterMetadata.map(x => x.n);
     }
 
     /**
@@ -1909,7 +1909,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
      * constructor.
      */
     get parameterTypes() {
-        return this.RtParameter.map(x => x.t);
+        return this.rawParameterMetadata.map(x => x.t);
     }
 
     /**
@@ -1919,7 +1919,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._parameters)
             return this._parameters;
         
-        return this._parameters = this.RtParameter.map((x, i) => new ReflectedConstructorParameter(<any>this, x, i));
+        return this._parameters = this.rawParameterMetadata.map((x, i) => new ReflectedConstructorParameter(<any>this, x, i));
     }
 
     /**
