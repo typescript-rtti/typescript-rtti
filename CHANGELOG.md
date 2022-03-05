@@ -1,4 +1,4 @@
-# vNext
+# v0.4.7
 - Fixes a bug where ReflectedMethod.for(function) failed to resolve the `rt:h` type resolver, producing 
   incorrect results.
 
