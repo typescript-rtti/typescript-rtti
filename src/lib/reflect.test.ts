@@ -78,6 +78,9 @@ describe('ReflectedClass', it => {
         expect(b.type.isClass(String)).to.be.true;
         expect(b.name).to.equal('b');
     });
+    it('can reflect on a primitive value', () => {
+        expect(reflect(123) instanceof ReflectedClass).to.be.true;
+    });
     it('can reflect constructor parameters from design:paramtypes', () => {
         class A {
             constructor(a, b, c) { }

@@ -1,3 +1,6 @@
+# v0.4.10
+- Support for reflecting on primitive values (number, boolean, string, etc)
+
 # v0.4.9
 - Fixes a bug where initializers did not work correctly
 

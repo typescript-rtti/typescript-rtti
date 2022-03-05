@@ -2110,6 +2110,11 @@ export function reflect(value : any = NotProvided, callSite? : CallSite) {
     if (value === NotProvided && isCallSite(callSite))
         return new ReflectedCallSite(callSite).typeParameters[0];
 
+    if (!['object', 'function'].includes(typeof value)) {
+        // Primitive value
+        return reflect(value.constructor);
+    }
+
     let flags = getFlags(value);
 
     if (flags.includes(Flags.F_FUNCTION))
