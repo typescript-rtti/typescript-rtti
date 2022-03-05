@@ -1,3 +1,6 @@
+# v0.4.8
+- Fixes a bug where constructor parameters did not emit type information when inferred (instead of defined explicitly)
+
 # v0.4.7
 - Fixes a bug where ReflectedMethod.for(function) failed to resolve the `rt:h` type resolver, producing 
   incorrect results.

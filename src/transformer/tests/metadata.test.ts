@@ -370,6 +370,17 @@ describe('rt:p', it => {
         expect(params[0].t()).to.equal(exports.A);
         expect(params[0].n).to.equal('hello');
     });
+    it('emits for inferred ctor params', async () => {
+        let exports = await runSimple({
+            code: `
+                export class B { constructor(readonly bar = 321) { } };
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:p', exports.B);
+        expect(params[0].t()).to.eql(321);
+    });
+    
     it('supports ctor param default value', async () => {
         let exports = await runSimple({
             code: `

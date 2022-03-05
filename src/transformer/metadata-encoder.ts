@@ -272,7 +272,7 @@ export class MetadataEncoder {
 
             let meta : RtSerialized<RtParameter> = {
                 n: param.name?.getText(),
-                t: literalNode(forwardRef(this.typeEncoder.referToTypeNode(param.type))),
+                t: literalNode(forwardRef(this.typeEncoder.referToTypeOfInitializer(param.initializer, param.type))),
                 v: param.initializer ? literalNode(functionForwardRef(param.initializer)) : null
             };
 
