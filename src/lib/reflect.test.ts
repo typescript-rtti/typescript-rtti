@@ -600,7 +600,7 @@ describe('reflect(value)', it => {
         Reflect.defineMetadata('rt:m', ['foo'], A);
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A, 'foo');
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A.prototype.foo);
-        Reflect.defineMetadata('rt:h', A, A.prototype.foo);
+        Reflect.defineMetadata('rt:h', () => A, A.prototype.foo);
 
         expect(reflect(A.prototype.foo)).to.be.an.instanceOf(ReflectedMethod);
     });
@@ -610,7 +610,7 @@ describe('reflect(value)', it => {
         Reflect.defineMetadata('rt:m', ['foo'], A);
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A, 'foo');
         Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_STATIC}`, A.foo);
-        Reflect.defineMetadata('rt:h', A, A.foo);
+        Reflect.defineMetadata('rt:h', () => A, A.foo);
 
         expect(reflect(A.foo)).to.be.an.instanceOf(ReflectedMethod);
     });
