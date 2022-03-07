@@ -109,7 +109,7 @@ export class MetadataEmitter extends RttiVisitor {
                 let rootSymbol = this.checker.getAliasedSymbol(localSymbol);
 
                 let type = this.checker.getTypeAtLocation(rootSymbol?.declarations?.[0]);
-                let reifiedType = <boolean>type.isClass() || type.symbol.name === 'Promise' || !!type.symbol.valueDeclaration;
+                let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol.valueDeclaration;
                 let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
                 let isLocal = sourceFile === this.ctx.sourceFile;
 
@@ -154,7 +154,7 @@ export class MetadataEmitter extends RttiVisitor {
                         }
                     }
 
-                    if (parents.length === 1 && type.symbol.name === 'default') {
+                    if (parents.length === 1 && type.symbol?.name === 'default') {
                         statements.push(this.exportInterfaceToken(ident.text, `default`, modulePath));
                     } else {
                         statements.push(this.exportInterfaceToken(ident.text, undefined, modulePath));

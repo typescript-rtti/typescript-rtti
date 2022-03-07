@@ -243,7 +243,7 @@ export class TypeEncoder {
                 }
             }
 
-            if (type.symbol.name === '__object') {
+            if (type.symbol?.name === '__object') {
                 // TODO: anonymous object type, not yet supported
                 return ts.factory.createIdentifier('Object');
             }
@@ -252,12 +252,12 @@ export class TypeEncoder {
                 return ts.factory.createIdentifier(`Function`);
             } else if (type.isClassOrInterface()) { 
                 let isCommonJS = this.program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
-                let reifiedType = <boolean>type.isClass() || type.symbol.name === 'Promise' || !!type.symbol.valueDeclaration;
+                let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol?.valueDeclaration;
                 
                 // Acquire the list of parent symbols. This will be used for detecting imports.
 
                 let parents : ts.Symbol[] = [];
-                let parent : ts.Symbol = type.symbol['parent'];
+                let parent : ts.Symbol = type.symbol?.['parent'];
                 
                 while (parent) {
                     parents.push(parent);
@@ -348,7 +348,7 @@ export class TypeEncoder {
                         }
                     }
 
-                    if (parents.length === 1 && type.symbol.name === 'default') {
+                    if (parents.length === 1 && type.symbol?.name === 'default') {
                         // Default export 
 
                         if (isCommonJS) {

@@ -52,7 +52,7 @@ export class LegacyTypeEncoder {
                 return ts.factory.createIdentifier('Object');
 
             } else if (type.isClassOrInterface()) { 
-                let reifiedType = <boolean>type.isClass() || type.symbol.name === 'Promise' || !!type.symbol.valueDeclaration;
+                let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol.valueDeclaration;
                 if (reifiedType)
                     return ts.factory.createIdentifier(type.symbol.name);
             }
