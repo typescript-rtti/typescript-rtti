@@ -1,4 +1,4 @@
-# vNext
+# v0.4.14
 - Support for metadata on properties with computed names (including symbols)
 
 # v0.4.13
