@@ -35,7 +35,7 @@ export function compile(invocation : RunInvocation): Record<string,string> {
             noLib: false,
             emitDecoratorMetadata: false,
             suppressOutputPathCheck: true,
-            rtti: <any>{ trace: invocation.trace === true }
+            rtti: <any>{ trace: invocation.trace === true, throwOnFailure: true }
         }, 
         ...invocation.compilerOptions || {},
     };

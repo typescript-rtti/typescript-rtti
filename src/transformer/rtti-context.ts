@@ -11,6 +11,7 @@ export interface RttiContext {
     sourceFile : ts.SourceFile;
     checker : ts.TypeChecker;
     trace : boolean;
+    throwOnFailure : boolean;
     transformationContext : ts.TransformationContext;
     importMap : Map<string, TypeImport>;
     typeMap : Map<number, ts.Expression>;

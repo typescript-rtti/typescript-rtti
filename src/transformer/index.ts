@@ -41,6 +41,7 @@ import { DeclarationsEmitter } from './declarations-emitter';
 
 export interface RttiSettings {
     trace? : boolean;
+    throwOnFailure? : boolean;
 }
 
 const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program : ts.Program) => {
@@ -60,7 +61,13 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
 
+        if (globalThis.RTTI_TRACE)
+            console.log(`RTTI: Transformer setup`);
+    
         return sourceFile => {
+
+            if (globalThis.RTTI_TRACE)
+                console.log(`RTTI: Transforming '${sourceFile.fileName}'`);
 
             let ctx : RttiContext = {
                 program,
@@ -70,6 +77,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 importMap: ImportAnalyzer.analyze(sourceFile, context),
                 sourceFile,
                 trace: settings?.trace ?? false,
+                throwOnFailure: settings?.throwOnFailure ?? false,
                 transformationContext: context,
                 typeMap: new Map<number, ts.Expression>(),
                 emitStandardMetadata,
@@ -86,6 +94,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 console.log(`#### Processing ${sourceFile.fileName}`);
 
             globalThis.RTTI_TRACE = ctx.trace;
+            globalThis.RTTI_THROW_ON_FAILURE = ctx.throwOnFailure;
 
             //////////////////////////////////////////////////////////
             // Transform reflect<T>() and reify<T>()
@@ -189,6 +198,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 
                 console.error(`RTTI: Failed to build source file ${sourceFile.fileName}: ${e.message} [please report]`);
                 console.error(e);
+
+                if (globalThis.RTTI_THROW_ON_FAILURE)
+                    throw e;
             }
 
             sourceFile = ts.factory.updateSourceFile(
@@ -201,6 +213,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 sourceFile.libReferenceDirectives
             );
     
+            if (globalThis.RTTI_TRACE)
+                console.log(`RTTI: Finished transforming '${sourceFile.fileName}'`);
             return sourceFile;
         };
     }
