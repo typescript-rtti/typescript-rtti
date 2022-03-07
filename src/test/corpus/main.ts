@@ -59,6 +59,12 @@ const PACKAGES : Record<string, Package> = {
         url: 'https://github.com/capaj/decapi.git',
         ref: '1.0.0',
         commands: [ 'npm run -- test --runInBand --no-cache --ci ' ]
+    },
+    "typeorm/typeorm": {
+        enabled: false,
+        url: 'https://github.com/typeorm/typeorm.git',
+        ref: '0.2.45',
+        commands:  [ 'npm test' ]
     }
 };
 
@@ -77,7 +83,7 @@ function run(str : string, cwd? : string, context? : string) {
     if (globalThis.CORPUS_VERBOSE) {
         console.log(`corpus${context ? `: ${context}` : ``}: RUN: ${str}`);
     }
-
+    
     let result = shell.exec(str, { cwd: cwd ?? process.cwd(), silent: true });
     let runtime = (Date.now() - startedAt) / 1000.0;
 
@@ -155,6 +161,13 @@ async function main(args : string[]) {
     let hasTrace = args.some(x => x === '--trace');
     globalThis.CORPUS_VERBOSE = hasTrace;
 
+    let tsrttiDir = path.join(__dirname, '..', '..', '..');
+    let corpusDir = path.join(process.cwd(), '.corpus');
+
+    if (!await dirExists(corpusDir))
+        await fs.mkdir(corpusDir);
+    process.chdir(corpusDir);
+
     try {
         let hasOnly = Object.values(PACKAGES).some(x => x.only === true);
 
@@ -170,27 +183,29 @@ async function main(args : string[]) {
             for (let tsVersion of TYPESCRIPTS) {
                 try {
                     let context = `${pkgName} [typescript@${tsVersion}]`;
-                    let local = `corpus.${pkgName.replace(/\//g, '__')}`;
+                    let local = `${pkgName.replace(/\//g, '__')}`;
 
                     trace(`RUN: rm -Rf ${local}`, context);
                     await promisify(rimraf)(local);
 
                     run(`git clone ${pkg.url} ${local}`, undefined, context);
                     run(`git checkout ${pkg.ref}`, local, context);
-                    
+                    run(`cpy ${path.join(tsrttiDir, 'dist')} .tsrtti`, local, context);
+
                     // forced to allow for codebases that have not yet updated to
                     // npm@7 peer deps
+
+                    run(`npm install typescript@${tsVersion} --force`, local, context);
 
                     if (pkg.yarn) {
                         run(`yarn`, local, context);
                     } else {
                         run(`npm install --force`, local, context);
-                        run(`npm install typescript@${tsVersion} --force`, local, context);
                     }
 
                     trace(`Transforming project-level tsconfig.json...`, context);
                     await modify<{ compilerOptions : ts.CompilerOptions }>(path.join(local, 'tsconfig.json'), config => {
-                        (config.compilerOptions as any).plugins = [{ transform: path.join(__dirname, '..', '..', 'transformer') }];
+                        (config.compilerOptions as any).plugins = [{ transform: path.resolve(local, '.tsrtti', 'dist', 'transformer') }];
                     });
 
                     trace(`Transforming project-level package.json...`, context);
