@@ -9,6 +9,7 @@ import { legacyMetadataDecorator, metadataDecorator } from './metadata-decorator
 import { RttiContext } from './rtti-context';
 import { serialize } from './serialize';
 import { TypeEncoder } from './type-encoder';
+import { expressionForPropertyName } from './utils';
 
 /**
  * Extracts type metadata from various syntactic elements and outputs 
@@ -40,6 +41,10 @@ export class MetadataEncoder {
         return decs;
     }
 
+    private prepareElementNames(elementNames : ts.PropertyName[]): any[] {
+        return elementNames.map(elementName => literalNode(expressionForPropertyName(elementName)));
+    }
+
     class(klass : ts.ClassDeclaration | ts.InterfaceDeclaration, details : ClassDetails) {
         let type = this.checker.getTypeAtLocation(klass);
 
@@ -69,14 +74,14 @@ export class MetadataEncoder {
 
         if (details.propertyNames.length > 0) {
             if (ts.isClassDeclaration(klass))
-                decs.push(metadataDecorator('rt:SP', details.staticPropertyNames));
-            decs.push(metadataDecorator('rt:P', details.propertyNames));
+                decs.push(metadataDecorator('rt:SP', this.prepareElementNames(details.staticPropertyNames)));
+            decs.push(metadataDecorator('rt:P', this.prepareElementNames(details.propertyNames)));
         }
 
         if (details.methodNames.length > 0) {
             if (ts.isClassDeclaration(klass))
-                decs.push(metadataDecorator('rt:Sm', details.staticMethodNames));
-            decs.push(metadataDecorator('rt:m', details.methodNames));
+                decs.push(metadataDecorator('rt:Sm', this.prepareElementNames(details.staticMethodNames)));
+            decs.push(metadataDecorator('rt:m', this.prepareElementNames(details.methodNames)));
         }
 
         if (ts.isClassDeclaration(klass)) {

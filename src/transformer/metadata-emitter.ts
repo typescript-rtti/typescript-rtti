@@ -9,7 +9,8 @@ import { forwardRef } from "./forward-ref";
 import { literalNode } from "./literal-node";
 import { decorateFunctionExpression, directMetadataDecorator } from "./metadata-decorator";
 import { MetadataEncoder } from "./metadata-encoder";
-import { ExternalMetadataCollector, MetadataCollector } from "./metadata-collector";
+import { ExternalDecorator, ExternalMetadataCollector, MetadataCollector } from "./metadata-collector";
+import { expressionForPropertyName } from "./utils";
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile : ts.SourceFile, ctx : RttiContext): ts.SourceFile {
@@ -27,7 +28,7 @@ export class MetadataEmitter extends RttiVisitor {
      */
     outboardCollector : MetadataCollector
 
-    collectMetadata<T = any>(callback : () => T): { node: T, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator, direct: boolean }[] } {
+    collectMetadata<T = any>(callback : () => T): { node: T, decorators: ExternalDecorator[] } {
         let originalCollector = this.collector;
         let originalOutboardCollector = this.outboardCollector;
 
@@ -268,7 +269,7 @@ export class MetadataEmitter extends RttiVisitor {
                         ts.factory.createIdentifier(`IΦ${(decl as ts.InterfaceDeclaration).name.text}`), 
                         'prototype'
                     ),
-                    ts.factory.createStringLiteral(dec.property)
+                    expressionForPropertyName(dec.property)
                 ]))))
             ]
         });
@@ -383,10 +384,9 @@ export class MetadataEmitter extends RttiVisitor {
         return this.collector.collect(node, this.metadataEncoder.method(node));
     }
 
-    
     emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
         node : NodeT, 
-        outboardMetadata : { node: NodeT, decorators: { property? : string, node : ts.Node, decorator: ts.Decorator, direct: boolean }[] }
+        outboardMetadata : { node: NodeT, decorators: ExternalDecorator[] }
     ) {
         let nodes : ts.Node[] = [];
         let elementName = node.name.text;
@@ -410,12 +410,14 @@ export class MetadataEmitter extends RttiVisitor {
             
             if (dec.property) {
                 if (dec.direct) {
-                    host = ts.factory.createPropertyAccessExpression(host, dec.property);
-                    nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ host ])));
+                    host = ts.factory.createElementAccessExpression(host, expressionForPropertyName(dec.property));
+                    nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                        host 
+                    ])));
                 } else {
                     nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
                         host,
-                        ts.factory.createStringLiteral(dec.property)
+                        expressionForPropertyName(dec.property)
                     ])));
                 }
             } else {

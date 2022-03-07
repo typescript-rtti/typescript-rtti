@@ -1,3 +1,6 @@
+# vNext
+- Support for metadata on properties with computed names (including symbols)
+
 # v0.4.13
 - Added `reflect-metadata` as a peer dependency. It has always been required for the correct operation of 
   the transformer, but the peer dependency was missing until this version.

@@ -355,6 +355,95 @@ describe('rt:f', it => {
         expect(Reflect.getMetadata('rt:f', exports.C.prototype, 'baz')).not.to.contain(F_PRIVATE);
     });
 });
+describe('rt:P', it => {
+    it('properly refers to symbols', async () => {
+        let exports = await runSimple({
+            code: `
+                let sym = Symbol();
+                export class A {
+                    constructor(readonly bar = 'abc') { 
+                    };
+                
+                    [sym]: number = 123;
+                
+                    foo(faz : number) { 
+                        return 'works';
+                    } 
+                }
+
+                export const SYM = sym;
+            `
+        })
+
+        expect(Reflect.getMetadata('rt:P', exports.A)).to.include.all.members([exports.SYM, 'bar']);
+    })    
+    it('properly refers to exported symbols', async () => {
+        let exports = await runSimple({
+            code: `
+                export let sym = Symbol();
+                export class A {
+                    constructor(readonly bar = 'abc') { 
+                    };
+                
+                    [sym] : number = 123;
+                
+                    foo(faz : number) { 
+                        return 'works';
+                    } 
+                }
+            `
+        })
+
+        expect(Reflect.getMetadata('rt:P', exports.A)).to.include.all.members([exports.sym, 'bar']);
+    })
+});
+describe('rt:m', it => {
+    it('properly refers to symbols', async () => {
+        let exports = await runSimple({
+            code: `
+                let sym = Symbol();
+                export class A {
+                    constructor(readonly bar = 'abc') { 
+                    };
+                
+                    [sym]() {
+                        return 123;
+                    }
+                
+                    foo(faz : number) { 
+                        return 'works';
+                    } 
+                }
+
+                export const SYM = sym;
+            `
+        })
+
+        expect(Reflect.getMetadata('rt:m', exports.A)).to.include.all.members([exports.SYM, 'foo']);
+    })    
+    it('properly refers to exported symbols', async () => {
+        let exports = await runSimple({
+            code: `
+                export let sym = Symbol();
+
+                export class A {
+                    constructor(readonly bar = 'abc') { 
+                    };
+                
+                    [sym]() {
+                        return 123;
+                    }
+                
+                    foo(faz : number) { 
+                        return 'works';
+                    } 
+                }
+            `
+        })
+
+        expect(Reflect.getMetadata('rt:m', exports.A)).to.include.all.members([exports.sym, 'foo']);
+    })
+})
 describe('rt:p', it => {
     it('emits for ctor params', async () => {
         let exports = await runSimple({

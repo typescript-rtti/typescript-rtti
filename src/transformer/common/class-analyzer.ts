@@ -25,7 +25,7 @@ export class ClassAnalyzer extends VisitorBase {
         staticPropertyNames: []
     };
 
-    private addItem(list : string[], prop : string) {
+    private addItem<T>(list : T[], prop : T) {
         if (!list.includes(prop))
             list.push(prop);
     }
@@ -36,7 +36,7 @@ export class ClassAnalyzer extends VisitorBase {
             this.isStatic(decl) 
             ? this.details.staticPropertyNames 
             : this.details.propertyNames, 
-            decl.name.getText()
+            decl.name
         );
     }
 
@@ -46,7 +46,7 @@ export class ClassAnalyzer extends VisitorBase {
             this.isStatic(decl) 
             ? this.details.staticMethodNames 
             : this.details.methodNames, 
-            decl.name.getText()
+            decl.name
         );
     }
 
@@ -63,8 +63,19 @@ export class ClassAnalyzer extends VisitorBase {
                 )
             ;
 
-            if (isProperty)
-                this.addItem(this.details.propertyNames, param.name.getText());
+            if (isProperty) {
+                if (ts.isIdentifier(param.name)) {
+                    this.addItem(this.details.propertyNames, param.name);
+                } else {
+                    // This *should* be impossible, as it would have to be something like:
+                    // constructor(readonly [a, b]) which at the time this was written is not 
+                    // valid Typescript
+                    
+                    throw new Error(
+                        `Unexpected binding name as property in constructor for class ${decl.name.getText()}! Please file a bug!`
+                    );
+                }
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
+import ts from "typescript";
 
 export interface InterfaceDetails {
-    methodNames : string[];
-    propertyNames : string[];
+    methodNames : ts.PropertyName[];
+    propertyNames : ts.PropertyName[];
 }

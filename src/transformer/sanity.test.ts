@@ -75,4 +75,70 @@ describe('Sanity', it => {
         expect(typeof exports.C).to.equal('function');
         expect(typeof exports.C.prototype.foo).to.equal('function');
     });
+    it('prevails, do not crash on symbol methods', async () => {
+        let exports = await runSimple({
+            code: `
+                let sym = Symbol();
+                export class A {
+                    constructor(readonly bar = 'abc') { 
+                    };
+                
+                    [sym]() {
+                        return 123;
+                    }
+                
+                    foo(faz : number) { 
+                        return 'works';
+                    } 
+                }
+            `
+        })
+
+        expect(new exports.A().foo()).to.equal('works');
+    });
+    it('prevails, do not crash on symbol methods from property access', async () => {
+        let exports = await runSimple({
+            code: `
+                let foo = {
+                    sym: Symbol()
+                };
+
+                export class A {
+                    constructor(readonly bar = 'abc') { 
+                    };
+                
+                    [foo.sym]() {
+                        return 123;
+                    }
+                
+                    foo(faz : number) { 
+                        return 'works';
+                    } 
+                }
+            `
+        })
+
+        expect(new exports.A().foo()).to.equal('works');
+    });
+    it('prevails, do not crash on exported symbol methods in CommonJS', async () => {
+        let exports = await runSimple({
+            code: `
+                export let sym = Symbol();
+                export class A {
+                    constructor(readonly bar = 'abc') { 
+                    };
+                
+                    [sym]() {
+                        return 123;
+                    }
+                
+                    foo(faz : number) { 
+                        return 'works';
+                    } 
+                }
+            `
+        })
+
+        expect(new exports.A().foo()).to.equal('works');
+    });
 });

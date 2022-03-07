@@ -175,3 +175,13 @@ export function propertyPrepend(expr : ts.Expression, propAccess : ts.PropertyAc
         throw new Error(`Unsupported expression type '${ts.SyntaxKind[propAccess.kind]}'`);
     }
 }
+
+export function expressionForPropertyName(propName : ts.PropertyName) {
+    if (ts.isComputedPropertyName(propName)) {
+        return propName.expression; // TODO: reuse of node might not be a good idea, but it does work
+    } else if (ts.isIdentifier(propName)) {
+        return ts.factory.createStringLiteral(propName.text);
+    } else {
+        throw new Error(`Unexpected property name node of type '${ts.SyntaxKind[propName.kind]}'! Please file a bug!`);
+    }
+}

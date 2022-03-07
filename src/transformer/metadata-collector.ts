@@ -68,6 +68,7 @@ export class InlineMetadataCollector {
 }
 
 export interface ExternalDecorator {
+    property? : ts.PropertyName;
     node : ts.Node;
     decorator : ts.Decorator;
     direct : boolean;
@@ -78,22 +79,25 @@ export class ExternalMetadataCollector implements MetadataCollector {
     decorators : ExternalDecorator[] = [];
 
     collect<T extends ts.Node>(node : T, addedDecorators : ts.Decorator[]): T {
-        let property : string;
+        let property : ts.PropertyName;
 
-        if (ts.isMethodDeclaration(node)) {
-            property = node.name.getText();
-        } else if (ts.isPropertyDeclaration(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)) {
-            property = node.name.getText();
-        } else if (ts.isMethodSignature(node)) {
-            property = node.name.getText();
-        } else if (ts.isPropertySignature(node)) {
-            property = node.name.getText();
+        if (
+            ts.isMethodDeclaration(node) 
+            || ts.isPropertyDeclaration(node) 
+            || ts.isGetAccessor(node) 
+            || ts.isSetAccessor(node) 
+            || ts.isMethodSignature(node) 
+            || ts.isPropertySignature(node)
+        ) {
+            property = node.name;
         }
 
         let legacyDecorators = addedDecorators.filter(decorator => decorator['__Φlegacy']);
         let nonLegacyDecorators = addedDecorators.filter(decorator => !decorator['__Φlegacy']);
 
-        this.decorators.push(...nonLegacyDecorators.map(decorator => ({ property, node, decorator, direct: decorator['__Φdirect'] ?? false })));
+        this.decorators.push(...nonLegacyDecorators.map(decorator => (<ExternalDecorator>{ 
+            property, node, decorator, direct: decorator['__Φdirect'] ?? false 
+        })));
 
         // Only apply legacy decorators (inline) when there are other 
         // decorators to match TS' own semantics

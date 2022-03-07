@@ -19,18 +19,18 @@ export class InterfaceAnalyzer extends VisitorBase {
         }
     }
     
-    private addItem(array : string[], item : string) {
+    private addItem<T>(array : T[], item : T) {
         if (!array.includes(item))
             array.push(item);
     }
 
     @Visit(ts.SyntaxKind.PropertySignature)
     property(signature : ts.PropertySignature) {
-        this.addItem(this.details.propertyNames, signature.name.getText());
+        this.addItem(this.details.propertyNames, signature.name);
     }
 
     @Visit(ts.SyntaxKind.MethodSignature)
     method(signature : ts.MethodSignature) {
-        this.addItem(this.details.methodNames, signature.name.getText());
+        this.addItem(this.details.methodNames, signature.name);
     }
 }

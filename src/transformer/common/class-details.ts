@@ -1,7 +1,8 @@
+import ts from "typescript";
 
 export interface ClassDetails {
-    methodNames : string[];
-    propertyNames : string[];
-    staticPropertyNames : string[];
-    staticMethodNames : string[];
+    methodNames : ts.PropertyName[];
+    propertyNames : ts.PropertyName[];
+    staticPropertyNames : ts.PropertyName[];
+    staticMethodNames : ts.PropertyName[];
 }
