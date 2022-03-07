@@ -1,3 +1,7 @@
+# vNext
+- Fix for compile-time crash when mapped type has no `aliasTypeArguments`
+
+
 # v0.4.14
 - Support for metadata on properties with computed names (including symbols)
 

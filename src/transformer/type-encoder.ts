@@ -189,7 +189,7 @@ export class TypeEncoder {
                     return serialize({
                         TΦ: T_MAPPED,
                         t: literalNode(this.referToType(typeRef.typeParameter)),
-                        p: typeRef.aliasTypeArguments.map(t => literalNode(this.referToType(t)))
+                        p: typeRef.aliasTypeArguments?.map(t => literalNode(this.referToType(t))) ?? []
                     });
                 }
             } else if ((objectType.objectFlags & ts.ObjectFlags.Reference) !== 0) {
