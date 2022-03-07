@@ -109,15 +109,15 @@ export class MetadataEmitter extends RttiVisitor {
                 let rootSymbol = this.checker.getAliasedSymbol(localSymbol);
 
                 let type = this.checker.getTypeAtLocation(rootSymbol?.declarations?.[0]);
-                let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol.valueDeclaration;
-                let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+                let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol?.valueDeclaration;
+                let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
                 let isLocal = sourceFile === this.ctx.sourceFile;
 
                 if (!reifiedType && !isLocal) {
                     // Imported interface
 
                     let parents : ts.Symbol[] = [];
-                    let parent : ts.Symbol = type.symbol['parent'];
+                    let parent : ts.Symbol = type.symbol?.['parent'];
                     
                     while (parent) {
                         parents.push(parent);
@@ -128,10 +128,10 @@ export class MetadataEmitter extends RttiVisitor {
                     if (parents.length > 1) {
                         importName = parents[1].name
                     } else {
-                        importName = type.symbol.name;
+                        importName = type.symbol?.name;
                     }
 
-                    let modulePath = JSON.parse(parents[0].name);
+                    let modulePath = parents[0] ? JSON.parse(parents[0].name) : undefined;
 
                     if (localSymbol) {
                         let localDecl = localSymbol.declarations[0];
