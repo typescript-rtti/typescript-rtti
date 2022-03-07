@@ -6,8 +6,10 @@
 [NPM](https://npmjs.com/package/typescript-rtti) |
 [Github](https://github.com/typescript-rtti/typescript-rtti)
 
-> **NOTE**
-> This software is _beta quality_, semver 0.x.x. Transformer: Expect all codebases to build and operate the same as when the transformer is not present. Reflection API:  API is stable, expect only rare breaking changes on the way to major-stable semver.
+> **Status:**
+> This software is _release candidate_ quality
+> - Transformer: Expect **all** codebases to build and operate the same as when the transformer is not present. **Please** file a bug if you cannot build your codebase with the transformer enabled. All types are supported and emitted (except for mapped types).
+> - Reflection API: Stable, expect only rare breaking changes on the way to major-stable semver.
 
 A Typescript transformer to implement comprehensive runtime type information (RTTI).
 
@@ -23,17 +25,11 @@ Send a pull request to feature your project!
 - [phantomdi](https://github.com/rezonant/phantomdi) -- A dependency injector using runtime type information
   with advanced features like dynamic alterations of injectables
 
-# Requirements
+# Examples
 
-- Typescript 4.5.5 or newer (supports Typescript 4.6!)
-- Node.js v14 or newer (when using Node.js)
-
-# Introduction
+Classes
 
 ```typescript
-
-// Comprehensive support for classes
-
 class User {
     id : number;
     username? : string;
@@ -41,11 +37,20 @@ class User {
     doIt() { return 123; }
 }
 
-expect(reflect(User).getProperty('favoriteColor').type.is('union')).to.be.true;
-expect(reflect(User).getMethod('doIt').type.isClass(Number)).to.be.true;
+reflect(User)
+    .getProperty('favoriteColor')
+    .type.is('union');
+    // => true
 
-// Interfaces
+reflect(User)
+    .getMethod('doIt')
+    .type.isClass(Number);
+    // => true
+```
 
+Interfaces
+
+```typescript
 interface User {
     id : number;
     username? : string;
@@ -53,38 +58,65 @@ interface User {
     doIt() { return 123; }
 }
 
-let reflectedInterface = reflect<User>().as('interface').reflectedInterface;
-expect(reflectedInterface.getProperty('username').isOptional).to.be.true;
+reflect<User>().as('interface')
+    .reflectedInterface
+    .getProperty('username')
+    .isOptional
+    // => true
+```
 
-// Function declarations/expressions/arrow functions
+Functions
 
+```typescript
 function foo(id : number, username : string, protected favoriteColor? : number | string) {
     return id;
 }
 
-expect(reflect(foo).getParameter('username').type.isClass(String)).to.be.true;
-expect(reflect(foo).getParameter('favoriteColor').type.is('union')).to.be.true;
+reflect(foo)
+    .getParameter('username')
+    .type.isClass(String)
+    // => true
 
-// Call-site reflection
+reflect(foo)
+    .getParameter('favoriteColor')
+    .type.is('union')
+    // => true
+```
 
+Call sites
+
+```typescript
 import { CallSite } from 'typescript-rtti';
 function foo<T>(num : number, callSite? : CallSite) {
-    expect(reflect(callSite).typeParameters[0].isClass(Boolean)).to.be.true;
-    expect(reflect(callSite).parameters[0].isClass(Number)).to.be.true;
-    expect(reflect(callSite).parameters[0].is('literal')).to.be.true;
-    expect(reflect(callSite).parameters[0].as('literal').value).to.equal(123);
+    reflect(callSite)
+        .typeParameters[0]
+        .isClass(Boolean)
+        // => true
+    
+    reflect(callSite)
+        .parameters[0]
+        .isClass(Number)
+        // => true
+    
+    reflect(callSite)
+        .parameters[0]
+        .is('literal')
+        // => true
+    
+    reflect(callSite)
+        .parameters[0].as('literal')
+        .value
+        // => 123
 }
 
 // The call-site type information is automatically serialized
+
 foo<Boolean>(123);
-
-
 ```
 
 More examples:
 
 ```typescript
-// your code
 import { reflect } from 'typescript-rtti';
 
 class A {
@@ -103,40 +135,45 @@ class B {
     }
 }
 
-let aClass = reflect(A);
-console.log(aClass.parameterNames); // ["someValue", "someOtherValue"]
-console.log(aClass.parameters[0].name); // "someValue"
-console.log(aClass.getParameter('someValue').type); // Number
-console.log(aClass.getParameter('someOtherValue').type); // String
+let aClass = ;
+reflect(A).parameterNames                        // => ["someValue", "someOtherValue"]
+reflect(A).parameters[0].name                    // => "someValue"
+reflect(A).getParameter('someValue').type        // => Number
+reflect(A).getParameter('someOtherValue').type   // => String
 
 let bClass = reflect(B);
-console.log(bClass.propertyNames) // ["foo", "bar"]
-console.log(bClass.getProperty('foo').type) // A
-console.log(bClass.getProperty('foo').visibility) // "private"
-console.log(bClass.getProperty('bar').type) // Number
-console.log(bClass.methodNames) // [baz]
-console.log(bClass.getMethod('baz').returnType) // A
+reflect(B).propertyNames                         // => ["foo", "bar"]
+reflect(B).getProperty('foo').type               // => A
+reflect(B).getProperty('foo').visibility         // => "private"
+reflect(B).getProperty('bar').type               // => Number
+reflect(B).methodNames                           // => [baz]
+reflect(B).getMethod('baz').returnType           // => A
 
 // ...These are just a few of the facts you can introspect at runtime
 ```
 
-# Set up
+# Setup
+
+Prerequisites
+- Typescript 4.5.5 or newer (supports Typescript 4.6!)
+- Node.js v14 or newer (when using Node.js)
+
+Installation
+
 ```
 npm install typescript-rtti
 npm install ttypescript -D
 ```
 
+Setting up `tsconfig.json`
 ```jsonc
 // tsconfig.json
 "compilerOptions": {
     "plugins": [{ "transform": "typescript-rtti/dist/transformer" }]
 }
 ```
-This is all that's needed to configure rtti in a typescript project. 
 
-# Usage
-
-## ttypescript
+In order for the transformer to run during your build process, you must use `ttsc` instead of `tsc` (or use one of the case specific solutions below).
 
 ```jsonc
 // package.json
@@ -148,7 +185,7 @@ This is all that's needed to configure rtti in a typescript project.
 ```
 
 ## **ts-node**
-You can use ts-node, just pass `-C ttypescript` to make sure ts-node uses typescript compiler which respects compiler transforms.
+You can also use ts-node, just pass `-C ttypescript` to make sure ts-node uses typescript compiler which respects compiler transforms.
 
 ## **Webpack**  
  See [awesome-typescript-loader](https://github.com/s-panferov/awesome-typescript-loader)
@@ -346,3 +383,4 @@ what _Typescript_ sees.
 # Related/Similar Projects
 
 - [https://github.com/Hookyns/tst-reflect](Hookyns/tst-reflect)
+- [https://github.com/gfx/typescript-rtti](gfx/typescript-rtti) (No relation to this codebase)
