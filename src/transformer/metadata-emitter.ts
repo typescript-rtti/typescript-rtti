@@ -16,7 +16,7 @@ export class MetadataEmitter extends RttiVisitor {
     }
 
     metadataEncoder = new MetadataEncoder(this.ctx);
-    collector : MetadataCollector; // = new InlineMetadataCollector();
+    collector : MetadataCollector = new InlineMetadataCollector();
     
     /**
      * The outboard metadata collector is used for class elements which are compiled away in the 
