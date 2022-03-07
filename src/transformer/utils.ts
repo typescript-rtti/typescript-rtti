@@ -187,3 +187,7 @@ export function expressionForPropertyName(propName : ts.PropertyName) {
         throw new Error(`Unexpected property name node of type '${ts.SyntaxKind[propName.kind]}'! Please file a bug!`);
     }
 }
+
+export function hasModifier(modifiers : ts.ModifiersArray, modifier : ts.SyntaxKind) {
+    return modifiers?.some(x => x.kind === modifier) ?? false;
+}

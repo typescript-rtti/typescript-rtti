@@ -204,4 +204,16 @@ describe('Sanity', it => {
             `
         });
     });
+    it('emits properly for class expressions', async() => {
+        await runSimple({
+            code: `
+                /**
+                 * All types that relation can be.
+                 */
+                export const A = class { 
+                    private foo : number;
+                }
+            `
+        });
+    });
 });

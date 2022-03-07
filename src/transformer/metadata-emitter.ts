@@ -5,12 +5,10 @@ import { Visit } from "./common/visitor-base";
 import { ClassAnalyzer } from "./common/class-analyzer";
 import { ClassDetails } from "./common/class-details";
 import { InterfaceAnalyzer } from "./common/interface-analyzer";
-import { forwardRef } from "./forward-ref";
-import { literalNode } from "./literal-node";
-import { decorateFunctionExpression, directMetadataDecorator } from "./metadata-decorator";
+import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
 import { MetadataEncoder } from "./metadata-encoder";
-import { ExternalDecorator, ExternalMetadataCollector, MetadataCollector } from "./metadata-collector";
-import { expressionForPropertyName } from "./utils";
+import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
+import { expressionForPropertyName, hasModifier } from "./utils";
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile : ts.SourceFile, ctx : RttiContext): ts.SourceFile {
@@ -18,7 +16,7 @@ export class MetadataEmitter extends RttiVisitor {
     }
 
     metadataEncoder = new MetadataEncoder(this.ctx);
-    collector : MetadataCollector;
+    collector : MetadataCollector; // = new InlineMetadataCollector();
     
     /**
      * The outboard metadata collector is used for class elements which are compiled away in the 
@@ -47,7 +45,7 @@ export class MetadataEmitter extends RttiVisitor {
     }
 
 
-    scope<T = any>(nameScope : ts.ClassDeclaration | ts.InterfaceDeclaration, callback: () => T) {
+    scope<T = any>(nameScope : ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration, callback: () => T) {
         let originalScope = this.ctx.currentNameScope;
         this.ctx.currentNameScope = nameScope;
 
@@ -255,7 +253,7 @@ export class MetadataEmitter extends RttiVisitor {
                 result.node,
                 tokenDecl,
                 ...(
-                    (decl.modifiers && decl.modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword))
+                    hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword)
                     ? [this.exportInterfaceToken(decl.name.text)] 
                     : []
                 ),
@@ -345,17 +343,33 @@ export class MetadataEmitter extends RttiVisitor {
     functionExpr(decl : ts.FunctionExpression | ts.ArrowFunction) {
         return decorateFunctionExpression(this.visitEachChild(decl), this.metadataEncoder.method(decl));
     }
+    
+    @Visit(ts.SyntaxKind.ClassExpression)
+    classExpr(decl : ts.ClassExpression) {
+        let details = ClassAnalyzer.analyze(decl, this.context);
+        return this.scope(decl, () => {
+            let result = this.collectMetadata(() => {
+                try {
+                    decl = this.visitEachChild(decl);
+                } catch (e) {
+                    console.error(`RTTI: During metadata collection for class expression: ${e.message}`);
+                    throw e;
+                }
+            });
+
+            return decorateClassExpression(decl, this.metadataEncoder.class(decl, details), result.decorators);
+        });
+    }
 
     @Visit(ts.SyntaxKind.MethodDeclaration)
     method(decl : ts.MethodDeclaration) {
-        if (!decl.parent || !ts.isClassDeclaration(decl.parent))
+        if (!decl.parent || !(ts.isClassDeclaration(decl.parent) || ts.isClassExpression(decl.parent)))
             return;
         if (this.trace)
-            console.log(`Decorating class method ${decl.parent.name.text}#${decl.name.getText()}`);
+            console.log(`Decorating class method ${decl.parent.name?.text ?? '<anonymous>'}#${decl.name.getText()}`);
         
         let metadata = this.metadataEncoder.method(decl);
-        let name = decl.name.getText();
-        let isAbstract = (decl.modifiers ?? []).some(x => x.kind === ts.SyntaxKind.AbstractKeyword);
+        let isAbstract = hasModifier(decl.modifiers, ts.SyntaxKind.AbstractKeyword);
 
         if (isAbstract) {
             this.outboardCollector.collect(decl, metadata);
@@ -365,7 +379,7 @@ export class MetadataEmitter extends RttiVisitor {
 
             this.outboardCollector.collect(decl, [ 
                 directMetadataDecorator('rt:f', this.metadataEncoder.methodFlags(decl)),
-                directMetadataDecorator('rt:h', literalNode(forwardRef(decl.parent.name)))
+                hostMetadataDecorator()
             ]);
 
             decl = this.collector.collect(decl, metadata);
@@ -384,11 +398,11 @@ export class MetadataEmitter extends RttiVisitor {
         return this.collector.collect(node, this.metadataEncoder.method(node));
     }
 
-    emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
+    emitOutboardMetadataExpressions<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
         node : NodeT, 
         outboardMetadata : { node: NodeT, decorators: ExternalDecorator[] }
-    ) {
-        let nodes : ts.Node[] = [];
+    ): ts.Expression[] {
+        let nodes : ts.Expression[] = [];
         let elementName = node.name.text;
         for (let dec of outboardMetadata.decorators) {
             let host : ts.Expression = ts.factory.createIdentifier(elementName);
@@ -401,7 +415,7 @@ export class MetadataEmitter extends RttiVisitor {
             let isStatic = false;
 
             if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node) || ts.isGetAccessor(dec.node) || ts.isSetAccessor(dec.node))
-                isStatic = (dec.node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword);
+                isStatic = hasModifier(dec.node.modifiers, ts.SyntaxKind.StaticKeyword);
             if (ts.isClassDeclaration(dec.node))
                 isStatic = true;
             
@@ -411,22 +425,30 @@ export class MetadataEmitter extends RttiVisitor {
             if (dec.property) {
                 if (dec.direct) {
                     host = ts.factory.createElementAccessExpression(host, expressionForPropertyName(dec.property));
-                    nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                    nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
                         host 
-                    ])));
+                    ]));
                 } else {
-                    nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                    nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
                         host,
                         expressionForPropertyName(dec.property)
-                    ])));
+                    ]));
                 }
             } else {
-                nodes.push(ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
+                nodes.push(ts.factory.createCallExpression(dec.decorator.expression, undefined, [ 
                     host
-                ])));
+                ]));
             }
         }
 
         return nodes;
+    }
+
+    emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
+        node : NodeT, 
+        outboardMetadata : { node: NodeT, decorators: ExternalDecorator[] }
+    ) : ts.ExpressionStatement[] {
+        return this.emitOutboardMetadataExpressions(node, outboardMetadata)
+            .map(x => ts.factory.createExpressionStatement(x));
     }
 }

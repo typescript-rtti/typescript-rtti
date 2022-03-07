@@ -19,6 +19,18 @@ describe('rt:h', it => {
         let fooHost = Reflect.getMetadata('rt:h', exports.B.prototype.foo);
         expect(fooHost()).to.equal(exports.B);
     })
+    it('is emitted directly on a method of a class expression', async () => {
+        let exports = await runSimple({
+            code: `
+                export const B = class { 
+                    foo() { }
+                }
+            `
+        });
+
+        let fooHost = Reflect.getMetadata('rt:h', exports.B.prototype.foo);
+        expect(fooHost()).to.equal(exports.B);
+    })
 });
 describe('Central Libraries', it => {
     it('works correctly for class declarations within functions', async () => {
@@ -70,6 +82,17 @@ describe('rt:f', it => {
         let exports = await runSimple({
             code: `
                 export class A { }
+            `
+        });
+
+        let aFlags = Reflect.getMetadata('rt:f', exports.A);
+        expect(aFlags).to.contain(F_CLASS);
+        expect(aFlags).not.to.contain(F_INTERFACE);
+    });
+    it('identify class expressions', async () => {
+        let exports = await runSimple({
+            code: `
+                export let A = class { }
             `
         });
 
@@ -147,6 +170,21 @@ describe('rt:f', it => {
         let exports = await runSimple({
             code: `
                 export class B { 
+                    static foo() { }
+                    bar() { }
+                }
+            `
+        });
+
+        let fooFlags = Reflect.getMetadata('rt:f', exports.B, 'foo');
+        let barFlags = Reflect.getMetadata('rt:f', exports.B.prototype, 'bar');
+        expect(fooFlags).to.contain(F_STATIC);
+        expect(barFlags).not.to.contain(F_STATIC);
+    });
+    it('identifies static methods on class expressions', async () => {
+        let exports = await runSimple({
+            code: `
+                export const B = class { 
                     static foo() { }
                     bar() { }
                 }
@@ -459,6 +497,20 @@ describe('rt:p', it => {
         expect(params[0].t()).to.equal(exports.A);
         expect(params[0].n).to.equal('hello');
     });
+    it('emits for ctor params on class expression', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A { }
+                export const B = class {
+                    constructor(hello : A) { }
+                }
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:p', exports.B);
+        expect(params[0].t()).to.equal(exports.A);
+        expect(params[0].n).to.equal('hello');
+    });
     it('emits for inferred ctor params', async () => {
         let exports = await runSimple({
             code: `
@@ -616,6 +668,23 @@ describe('rt:p', it => {
         expect(params[1].t()).to.equal(exports.B);
         expect(params[1].n).to.equal('world');
     });
+    it('emits for method params on a class expression', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A { }
+                export class B { }
+                export const C = class {
+                    method(hello : A, world : B) { }
+                }
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:p', exports.C.prototype, 'method');
+        expect(params[0].t()).to.equal(exports.A);
+        expect(params[0].n).to.equal('hello');
+        expect(params[1].t()).to.equal(exports.B);
+        expect(params[1].n).to.equal('world');
+    });
     it('supports method param default value', async () => {
         let exports = await runSimple({
             code: `
@@ -672,6 +741,36 @@ describe('rt:p', it => {
     });
 });
 describe('rt:t', it => {
+    it('emits for a property of a class expression', async () => {
+        let exports = await runSimple({
+            code: `
+                export class B {}
+                export let C = class {
+                    property: B;
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'property');
+        let type = typeResolver();
+
+        expect(type).to.equal(exports.B);
+    });
+    it('emits for a static property of a class expression', async () => {
+        let exports = await runSimple({
+            code: `
+                export class B {}
+                export let C = class {
+                    static property: B;
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C, 'property');
+        let type = typeResolver();
+
+        expect(type).to.equal(exports.B);
+    });
     it('emits for a promise type', async () => {
         let exports = await runSimple({
             code: `
@@ -770,6 +869,20 @@ describe('rt:t', it => {
                 export class A { }
                 export class B { }
                 export class C {
+                    method(hello : A, world : B): B { return world; }
+                }
+            `
+        });
+
+        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        expect(type()).to.equal(exports.B);
+    })
+    it('emits for designed class return type on a class expression', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A { }
+                export class B { }
+                export const C = class {
                     method(hello : A, world : B): B { return world; }
                 }
             `

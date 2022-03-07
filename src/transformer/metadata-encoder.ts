@@ -45,7 +45,7 @@ export class MetadataEncoder {
         return elementNames.map(elementName => literalNode(expressionForPropertyName(elementName)));
     }
 
-    class(klass : ts.ClassDeclaration | ts.InterfaceDeclaration, details : ClassDetails) {
+    class(klass : ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration, details : ClassDetails) {
         let type = this.checker.getTypeAtLocation(klass);
 
         let decs : ts.Decorator[] = [
@@ -73,18 +73,18 @@ export class MetadataEncoder {
         ];
 
         if (details.propertyNames.length > 0) {
-            if (ts.isClassDeclaration(klass))
+            if (ts.isClassDeclaration(klass) || ts.isClassExpression(klass))
                 decs.push(metadataDecorator('rt:SP', this.prepareElementNames(details.staticPropertyNames)));
             decs.push(metadataDecorator('rt:P', this.prepareElementNames(details.propertyNames)));
         }
 
         if (details.methodNames.length > 0) {
-            if (ts.isClassDeclaration(klass))
+            if (ts.isClassDeclaration(klass) || ts.isClassExpression(klass))
                 decs.push(metadataDecorator('rt:Sm', this.prepareElementNames(details.staticMethodNames)));
             decs.push(metadataDecorator('rt:m', this.prepareElementNames(details.methodNames)));
         }
 
-        if (ts.isClassDeclaration(klass)) {
+        if (ts.isClassDeclaration(klass) || ts.isClassExpression(klass)) {
             let constructor = klass.members.find(x => ts.isConstructorDeclaration(x)) as ts.ConstructorDeclaration;
             if (constructor) {
                 decs.push(...this.params(constructor));
@@ -150,7 +150,7 @@ export class MetadataEncoder {
                                 }
                             } else {
                                 let interfaceDecl = decls.find(x => ts.isInterfaceDeclaration(x));
-                                let classDecl = decls.find(x => ts.isClassDeclaration(x));
+                                let classDecl = decls.find(x => ts.isClassDeclaration(x) || ts.isClassExpression(x));
 
                                 if (interfaceDecl && !classDecl)
                                     localName = `IΦ${localName}`;

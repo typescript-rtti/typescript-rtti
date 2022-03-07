@@ -7,7 +7,7 @@ export class ClassAnalyzer extends VisitorBase {
         return (decl.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword);
     }
 
-    static analyze(decl : ts.ClassDeclaration, context : ts.TransformationContext) {
+    static analyze(decl : ts.ClassDeclaration | ts.ClassExpression, context : ts.TransformationContext) {
         try {
             let analyzer = new ClassAnalyzer(context);
             analyzer.visitEachChild(decl);
