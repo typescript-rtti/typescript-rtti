@@ -216,4 +216,13 @@ describe('Sanity', it => {
             `
         });
     });
+    it('emits properly for private properties', async() => {
+        await runSimple({
+            code: `
+                export class A { 
+                    #foo : number;
+                }
+            `
+        });
+    });
 });

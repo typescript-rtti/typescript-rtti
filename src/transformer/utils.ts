@@ -183,6 +183,8 @@ export function expressionForPropertyName(propName : ts.PropertyName) {
         return ts.factory.createStringLiteral(propName.text);
     } else if (ts.isStringLiteral(propName)) {
         return ts.factory.createStringLiteral(propName.text);
+    } else if (ts.isPrivateIdentifier(propName)) {
+        return ts.factory.createStringLiteral(propName.text);
     } else {
         throw new Error(`Unexpected property name node of type '${ts.SyntaxKind[propName.kind]}'! Please file a bug!`);
     }

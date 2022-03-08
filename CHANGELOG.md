@@ -2,6 +2,7 @@
 - Fix for compile-time crash when mapped type has no `aliasTypeArguments`
 - Fix for properties which use a string literal name
 - Add missing support for class expressions
+- Add missing support for private identifiers (`#foo`)
 
 # v0.4.14
 - Support for metadata on properties with computed names (including symbols)
