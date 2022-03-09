@@ -126,7 +126,9 @@ export function decorateFunctionExpression(func : ts.FunctionExpression | ts.Arr
 export function decorateClassExpression(classExpr : ts.ClassExpression, decorators : ts.Decorator[], externalDecorators : ExternalDecorator[]) {
     let name = '';
 
-    if (classExpr.parent) {
+    if (classExpr.name) {
+        name = classExpr.name.text;
+    } else if (classExpr.parent) {
         // In JS, class expressions inherit the name of the property they are being assigned to.
         // Because we are inserting __RΦ.f(), this property will be lost unless we specifically patch the function's
         // name.
@@ -161,7 +163,7 @@ export function decorateClassExpression(classExpr : ts.ClassExpression, decorato
                         literalNode(x.decorator.expression)
                     ])
             ),
-            ts.factory.createStringLiteral(name)
+            name ? ts.factory.createStringLiteral(name) : ts.factory.createVoidZero()
         ]
     )
 }

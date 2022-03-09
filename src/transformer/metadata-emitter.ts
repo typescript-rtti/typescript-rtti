@@ -114,7 +114,7 @@ export class MetadataEmitter extends RttiVisitor {
                 let isLocal = sourceFile === this.ctx.sourceFile;
 
                 if (!reifiedType && !isLocal) {
-                    // Imported interface
+                    // Exported interface
 
                     let parents : ts.Symbol[] = [];
                     let parent : ts.Symbol = type.symbol?.['parent'];
@@ -139,17 +139,19 @@ export class MetadataEmitter extends RttiVisitor {
                         if (localDecl) {
                             if (ts.isExportSpecifier(localDecl)) {
                                 localSymbol = this.checker.getImmediateAliasedSymbol(localSymbol);
-                                localDecl = localSymbol.declarations[0];
+                                localDecl = localSymbol?.declarations[0];
                             }
 
-                            if (ts.isImportSpecifier(localDecl)) {
-                                let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
+                            if (localDecl) {
+                                if (ts.isImportSpecifier(localDecl)) {
+                                    let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
 
-                                let detectedImportPath = specifier.text;
-                                if (detectedImportPath)
-                                    modulePath = detectedImportPath;
-                            } else {
-                                throw new Error(`Unexpected declaration type '${ts.SyntaxKind[localDecl.kind]}'`);
+                                    let detectedImportPath = specifier.text;
+                                    if (detectedImportPath)
+                                        modulePath = detectedImportPath;
+                                } else {
+                                    continue;
+                                }
                             }
                         }
                     }

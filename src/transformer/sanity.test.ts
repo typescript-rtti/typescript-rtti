@@ -225,4 +225,67 @@ describe('Sanity', it => {
             `
         });
     });
+    it('emits properly for grouped exports', async() => {
+        await runSimple({
+            code: `
+                export {
+                    foo,
+                    Bar,
+                    Foobar
+                } from './registry';
+            `,
+            modules: {
+                './registry.ts': `
+                    export const foo = 123;
+                    export class Bar {};
+                    export type Foobar<T = any> = (data: any) => T | Promise<T>;
+                `
+            }
+        });
+    });
+    it('emits properly for type alias', async() => {
+        await runSimple({
+            code: `
+                export { HookExecutor } from './registry';
+            `,
+            modules: {
+                './registry.ts': `
+                    export type HookExecutor<Result> = string;
+                `,
+                './error.ts': `
+                    export class HookError {}
+                `
+            }
+        });
+    });
+    it('emits properly for exported variable', async() => {
+        await runSimple({
+            code: `
+                export { foo } from './registry';
+            `,
+            modules: {
+                './registry.ts': `
+                    export const foo = 123;
+                `
+            }
+        });
+    });
+    it.only('does not interfere with the name of a class expression', async() => {
+        let exports = await runSimple({
+            code: `
+                export let A = class B { };
+            `
+        });
+
+        expect(exports.A.name).to.equal('B');
+    });
+    it.only('supports implicit naming of a class expression', async() => {
+        let exports = await runSimple({
+            code: `
+                export let A = class { };
+            `
+        });
+
+        expect(exports.A.name).to.equal('A');
+    });
 });
