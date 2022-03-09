@@ -270,7 +270,7 @@ describe('Sanity', it => {
             }
         });
     });
-    it.only('does not interfere with the name of a class expression', async() => {
+    it('does not interfere with the name of a class expression', async() => {
         let exports = await runSimple({
             code: `
                 export let A = class B { };
@@ -279,7 +279,7 @@ describe('Sanity', it => {
 
         expect(exports.A.name).to.equal('B');
     });
-    it.only('supports implicit naming of a class expression', async() => {
+    it('supports implicit naming of a class expression', async() => {
         let exports = await runSimple({
             code: `
                 export let A = class { };
