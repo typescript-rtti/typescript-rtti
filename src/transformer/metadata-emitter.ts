@@ -74,6 +74,9 @@ export class MetadataEmitter extends RttiVisitor {
         let details = ClassAnalyzer.analyze(decl, this.context);
         let className = decl.name.getText();
 
+        if (hasModifier(decl.modifiers, ts.SyntaxKind.DeclareKeyword))
+            return decl;
+
         return this.scope(decl, () => {
             let outboardMetadata = this.collectMetadata(() => {
                 try {

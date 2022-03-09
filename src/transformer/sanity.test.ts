@@ -141,7 +141,7 @@ describe('Sanity', it => {
 
         expect(new exports.A().foo()).to.equal('works');
     });
-    it('emits properly with a file containing only a type', async() => {
+    it('prevails, emits properly with a file containing only a type', async() => {
         await runSimple({
             code: `
                 /**
@@ -151,7 +151,7 @@ describe('Sanity', it => {
             `
         });
     });
-    it('emits properly for mapped types with no type params', async() => {
+    it('prevails, emits properly for mapped types with no type params', async() => {
         await runSimple({
             code: `
                 /**
@@ -204,7 +204,7 @@ describe('Sanity', it => {
             `
         });
     });
-    it('emits properly for class expressions', async() => {
+    it('prevails, emits properly for class expressions', async() => {
         await runSimple({
             code: `
                 /**
@@ -216,7 +216,7 @@ describe('Sanity', it => {
             `
         });
     });
-    it('emits properly for private properties', async() => {
+    it('prevails, emits properly for private properties', async() => {
         await runSimple({
             code: `
                 export class A { 
@@ -225,7 +225,7 @@ describe('Sanity', it => {
             `
         });
     });
-    it('emits properly for grouped exports', async() => {
+    it('prevails, emits properly for grouped exports', async() => {
         await runSimple({
             code: `
                 export {
@@ -243,7 +243,7 @@ describe('Sanity', it => {
             }
         });
     });
-    it('emits properly for type alias', async() => {
+    it('prevails, emits properly for type alias', async() => {
         await runSimple({
             code: `
                 export { HookExecutor } from './registry';
@@ -258,7 +258,7 @@ describe('Sanity', it => {
             }
         });
     });
-    it('emits properly for exported variable', async() => {
+    it('prevails, emits properly for exported variable', async() => {
         await runSimple({
             code: `
                 export { foo } from './registry';
@@ -270,7 +270,7 @@ describe('Sanity', it => {
             }
         });
     });
-    it('does not interfere with the name of a class expression', async() => {
+    it('prevails, does not interfere with the name of a class expression', async() => {
         let exports = await runSimple({
             code: `
                 export let A = class B { };
@@ -279,7 +279,7 @@ describe('Sanity', it => {
 
         expect(exports.A.name).to.equal('B');
     });
-    it('supports implicit naming of a class expression', async() => {
+    it('prevails, supports implicit naming of a class expression', async() => {
         let exports = await runSimple({
             code: `
                 export let A = class { };
@@ -287,5 +287,18 @@ describe('Sanity', it => {
         });
 
         expect(exports.A.name).to.equal('A');
+    });
+    it.only('prevails, does not crush under the weight of a declared class', async() => {
+        await runSimple({
+            code: `
+                declare class A {
+                    foo() {
+
+                    }
+
+                    bar : number;
+                }
+            `
+        });
     });
 });

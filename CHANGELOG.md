@@ -1,3 +1,6 @@
+# vNext
+- Do not emit for `declare class`
+
 # v0.4.15
 - Fix for compile-time crash when mapped type has no `aliasTypeArguments`
 - Fix for properties which use a string literal name
