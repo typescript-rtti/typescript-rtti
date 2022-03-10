@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 import { RttiContext } from './rtti-context';
 import { AnonymousType } from './ts-internal-types';
-import { hasAnyFlag, hasFlag, isFlagType } from './utils';
+import { hasAnyFlag, hasFlag, isFlagType, referenceSymbol } from './utils';
 
 export class LegacyTypeEncoder {
     constructor(readonly ctx : RttiContext) {
@@ -54,7 +54,7 @@ export class LegacyTypeEncoder {
             } else if (type.isClassOrInterface()) { 
                 let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol.valueDeclaration;
                 if (reifiedType)
-                    return ts.factory.createIdentifier(type.symbol.name);
+                    return referenceSymbol(this.ctx, type.symbol.name, true);
             }
 
             return ts.factory.createIdentifier('Object');

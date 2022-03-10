@@ -9,7 +9,7 @@ import { legacyMetadataDecorator, metadataDecorator } from './metadata-decorator
 import { RttiContext } from './rtti-context';
 import { serialize } from './serialize';
 import { TypeEncoder } from './type-encoder';
-import { expressionForPropertyName } from './utils';
+import { expressionForPropertyName, hasFlag, referenceSymbol } from './utils';
 
 /**
  * Extracts type metadata from various syntactic elements and outputs 
@@ -91,89 +91,42 @@ export class MetadataEncoder {
             }
         }
 
-        if (klass.heritageClauses) {
-            for (let clause of klass.heritageClauses) {
-                if (clause.token === ts.SyntaxKind.ImplementsKeyword) {
+        // `implements`
 
-                    let typeRefs : ts.Expression[] = [];
+        let impls = klass.heritageClauses?.find(x => x.token === ts.SyntaxKind.ImplementsKeyword);
+        if (impls) {
+            let typeRefs : ts.Expression[] = [];
+            for (let heritageType of impls.types) {
+                let checker = this.checker;
+                let symbol = checker.getSymbolAtLocation(heritageType.expression);
+                let type = checker.getTypeAtLocation(heritageType.expression);
 
-                    for (let type of clause.types) {
-                        let checker = this.checker;
-                        let symbol = checker.getSymbolAtLocation(type.expression);
+                if (symbol) {
+                    let localName = heritageType.expression.getText();
+                    
+                    // let decls = symbol.getDeclarations();
+                    // let interfaceDecl = decls.find(x => ts.isInterfaceDeclaration(x));
+                    // let classDecl = decls.find(x => ts.isClassDeclaration(x) || ts.isClassExpression(x));
 
-                        if (symbol) {
-                            let symbolType = checker.getTypeOfSymbolAtLocation(symbol, type.expression);
-                            let decls = symbol.getDeclarations();
-                            let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
-                            let typeSpecifier : ts.TypeNode = type.typeArguments && type.typeArguments.length === 1 ? type.typeArguments[0] : null;
-                            let localName = type.expression.getText();
-                            let typeImport = this.importMap.get(localName);
+                    typeRefs.push(
+                        referenceSymbol(
+                            this.ctx, localName, 
+                            hasFlag(type.flags, ts.TypeFlags.Any) 
+                                ? undefined 
+                                : type.isClass()
+                        )
+                    );
 
-                            
-                            if (importSpecifier) {
-                                let modSpecifier = importSpecifier.parent.parent.parent.moduleSpecifier;
-                                if (ts.isStringLiteral(modSpecifier)) {
-                                    let modulePath = modSpecifier.text;
-                                    
-                                    let impo = this.importMap.get(`*:${typeImport.modulePath}`);
-                                    if (!impo) {
-                                        this.importMap.set(`*:${modulePath}`, impo = {
-                                            importDeclaration: importSpecifier?.parent?.parent?.parent,
-                                            isDefault: false,
-                                            isNamespace: true,
-                                            localName: `LΦ_${this.ctx.freeImportReference++}`,
-                                            modulePath: modulePath,
-                                            name: `*:${modulePath}`,
-                                            refName: '',
-                                            referenced: true
-                                        })
-                                    }
-
-                                    impo.referenced = true;
-                                    
-                                    symbol = checker.getExportSymbolOfSymbol(symbol);
-                                    if (symbolType.isClassOrInterface() && !symbolType.isClass()) {
-                                        localName = `IΦ${localName}`;
-                                    }
-
-                                    typeRefs.push(
-                                        ts.factory.createBinaryExpression(
-                                            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), localName),
-                                            ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
-                                            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), `IΦ${localName}`)
-                                        )
-                                    );
-
-                                    continue;
-                                } else {
-                                    console.error(`RTTI: Unexpected type for module specifier while processing class ${klass.name.text}: ${modSpecifier.getText()} [please report]`);
-                                }
-                            } else {
-                                let interfaceDecl = decls.find(x => ts.isInterfaceDeclaration(x));
-                                let classDecl = decls.find(x => ts.isClassDeclaration(x) || ts.isClassExpression(x));
-
-                                if (interfaceDecl && !classDecl)
-                                    localName = `IΦ${localName}`;
-                                
-                                // we're a local declaration
-                                typeRefs.push(ts.factory.createIdentifier(localName));
-                                continue;
-                            }
-                        } else {
-                            console.error(`RTTI: Cannot identify type ${type.getText()} on implements clause for class ${klass.name.text} [please report]`);
-                        }
-
-                        
-                        typeRefs.push(undefined);
-                    }
-
-                    decs.push(metadataDecorator('rt:i', typeRefs.map(tr => tr ? literalNode(forwardRef(tr)) : undefined)));
-
-                } else if (clause.token === ts.SyntaxKind.ExtendsKeyword) {
-                    // always at most one class
+                } else {
+                    console.error(`RTTI: Cannot identify type ${heritageType.getText()} on implements clause for class ${klass.name.text} [please report]`);
+                    typeRefs.push(undefined);
                 }
             }
+
+            decs.push(metadataDecorator('rt:i', typeRefs.map(tr => tr ? literalNode(forwardRef(tr)) : undefined)));
         }
+
+        // flags
 
         let fType = ts.isInterfaceDeclaration(klass) ? F_INTERFACE : F_CLASS;
         decs.push(metadataDecorator(

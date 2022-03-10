@@ -288,7 +288,7 @@ describe('Sanity', it => {
 
         expect(exports.A.name).to.equal('A');
     });
-    it.only('prevails, does not crush under the weight of a declared class', async() => {
+    it('prevails, does not crush under the weight of a declared class', async() => {
         await runSimple({
             code: `
                 declare class A {

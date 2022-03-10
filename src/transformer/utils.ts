@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import { RttiContext } from './rtti-context';
 
 export function getRootNameOfQualifiedName(qualifiedName : ts.QualifiedName): string {
     if (ts.isQualifiedName(qualifiedName.left))
@@ -192,4 +193,67 @@ export function expressionForPropertyName(propName : ts.PropertyName) {
 
 export function hasModifier(modifiers : ts.ModifiersArray, modifier : ts.SyntaxKind) {
     return modifiers?.some(x => x.kind === modifier) ?? false;
+}
+
+export function referenceSymbol(
+    ctx : RttiContext,
+    identifier : string,
+    hasValue? : boolean
+) {
+    let typeImport = ctx.importMap.get(identifier);
+    if (typeImport) {
+        return referenceImportedSymbol(
+            ctx, 
+            typeImport.modulePath,
+            identifier, hasValue, 
+            typeImport.importDeclaration
+        );
+    } else {
+        if (hasValue === false)
+            return ts.factory.createIdentifier(`IΦ${identifier}`);
+        else if (hasValue === true)
+            return ts.factory.createIdentifier(identifier);
+        
+        return ts.factory.createBinaryExpression(
+            ts.factory.createIdentifier(identifier),
+            ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
+            ts.factory.createIdentifier(`IΦ${identifier}`)
+        );
+    }
+}
+
+export function referenceImportedSymbol(
+    ctx : RttiContext, 
+    modulePath : string, 
+    identifier : string, 
+    hasValue? : boolean,
+    importDecl? : ts.ImportDeclaration
+) {
+    let impo = ctx.importMap.get(`*:${modulePath}`);
+    if (!impo) {
+        ctx.importMap.set(`*:${modulePath}`, impo = {
+            importDeclaration: importDecl,
+            isDefault: false,
+            isNamespace: true,
+            localName: `LΦ_${ctx.freeImportReference++}`,
+            modulePath: modulePath,
+            name: `*:${modulePath}`,
+            refName: '',
+            referenced: true
+        });
+    }
+    
+    impo.referenced = true;
+
+    if (hasValue === true) {
+        return ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), identifier);
+    } else if (hasValue === false) {
+        return ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), `IΦ${identifier}`)
+    }
+
+    return ts.factory.createBinaryExpression(
+        ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), identifier),
+        ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
+        ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), `IΦ${identifier}`)
+    );
 }

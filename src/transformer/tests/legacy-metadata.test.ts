@@ -130,6 +130,48 @@ describe('emitDecoratorMetadata=true: ', () => {
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
             expect(type).to.equal(Promise);
         });
+        it('emits properly with circular dependencies', async () => {
+            let exports = await runSimple({
+                code: `
+                    export { Post } from './post';
+                    export { PostDetails } from './post-details';
+                `,
+                modules: {
+                    './post.ts': `
+                        import { PostDetails } from './post-details';
+                        
+                        function noop() { return (t, ...a) => {} };
+
+                        export class Post {
+                            makeDetails() {
+                                this.details = new PostDetails();
+                            }
+                            @noop() details: PostDetails;
+                        }
+                    `,
+                    './post-details.ts': `
+                        import { Post } from './post';
+
+                        function noop() { return (t, ...a) => {} };
+                        
+                        export class PostDetails {
+                            makePost() {
+                                this.post = new Post();
+                            }
+                            @noop() post : Post;
+                        }
+                    `
+                },
+                compilerOptions: { 
+                    emitDecoratorMetadata: true 
+                }
+            });
+    
+            expect(Reflect.getMetadata('design:type', exports.Post.prototype, 'details'))
+                .to.equal(exports.PostDetails);
+            expect(Reflect.getMetadata('design:type', exports.PostDetails.prototype, 'post'))
+                .to.equal(undefined); // because of the circular reference
+        });
     })
     describe('design:paramtypes', it => {
         it('emits for ctor params', async () => {

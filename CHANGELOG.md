@@ -1,5 +1,6 @@
 # vNext
 - Do not emit for `declare class`
+- Fixes issues where legacy metadata (`design:*`) was output without generating a suitable import, leading to `TypeError` at runtime
 
 # v0.4.15
 - Fix for compile-time crash when mapped type has no `aliasTypeArguments`

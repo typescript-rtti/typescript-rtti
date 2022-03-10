@@ -74,7 +74,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 checker: program.getTypeChecker(),
                 currentNameScope: undefined,
                 freeImportReference: 0,
-                importMap: ImportAnalyzer.analyze(sourceFile, context),
+                importMap: new Map(),
                 sourceFile,
                 trace: settings?.trace ?? false,
                 throwOnFailure: settings?.throwOnFailure ?? false,
@@ -83,6 +83,8 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 emitStandardMetadata,
                 interfaceSymbols: []
             };
+
+            ImportAnalyzer.analyze(sourceFile, ctx);
 
             if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts')) {
                 if (ctx.trace)
