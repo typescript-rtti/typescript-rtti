@@ -121,7 +121,7 @@ describe('Transformer: Generic transience', it => {
             tp: [ String ],
         });
     });
-    it.only('reflects generic transience via JSDoc with other JSDoc', async () => {
+    it('reflects generic transience via JSDoc with other JSDoc', async () => {
         let exports = await runSimple({
             compilerOptions: {
                 declaration: true
