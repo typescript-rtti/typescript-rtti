@@ -61,7 +61,7 @@ const PACKAGES : Record<string, Package> = {
         commands: [ 'npm run -- test --runInBand --no-cache --ci ' ]
     },
     "typeorm/typeorm": {
-        enabled: false,
+        enabled: true,
         url: 'https://github.com/typeorm/typeorm.git',
         ref: '0.2.45',
         commands:  [ 'ttsc' ]
