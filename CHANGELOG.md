@@ -1,3 +1,7 @@
+# vNext
+- Add support for `@rtti:callsite` JSDoc tag as a way to opt in to receiving call-site reflection data
+  without directly referencing `typescript-rtti` types (useful for third parties to opt in and introspect on typescript-rtti's metadata)
+
 # v0.4.16
 - Do not emit for `declare class`
 - Fixes issues where legacy metadata (`design:*`) was output without generating a suitable import, leading to `TypeError` at runtime

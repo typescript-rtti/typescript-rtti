@@ -87,6 +87,78 @@ describe('Transformer: Generic transience', it => {
             tp: [ String ],
         });
     });
+    it('reflects generic transience via JSDoc', async () => {
+        let exports = await runSimple({
+            compilerOptions: {
+                declaration: true
+            },
+            code: `
+                import { reflect, CallSite } from 'typescript-rtti';
+
+                /**
+                 * @rtti:callsite 1
+                 */
+                export function a<T>(foo : number, call?) {
+                    return call;
+                }
+
+                export function b() {
+                    return a<String>(123);
+                }
+            `,
+            modules: {
+                'typescript-rtti': { 
+                    reflect: () => {}
+                }
+            }
+        });
+
+        expect(exports.b()).to.eql({ 
+            TΦ: 'c', 
+            t: undefined, 
+            p: [ 123 ], 
+            r: undefined,
+            tp: [ String ],
+        });
+    });
+    it.only('reflects generic transience via JSDoc with other JSDoc', async () => {
+        let exports = await runSimple({
+            compilerOptions: {
+                declaration: true
+            },
+            code: `
+                import { reflect, CallSite } from 'typescript-rtti';
+
+                /**
+                 * This is the thing
+                 * 
+                 * @param foo {string}
+                 * @foo 123
+                 * @rtti:callsite 1
+                 */
+                export function a<T>(foo : number, call?) {
+                    return call;
+                }
+
+                export function b() {
+                    return a<String>(123);
+                }
+            `,
+            modules: {
+                'typescript-rtti': { 
+                    reflect: () => {}
+                }
+            }
+        });
+
+        expect(exports.b()).to.eql({ 
+            TΦ: 'c', 
+            t: undefined, 
+            p: [ 123 ], 
+            r: undefined,
+            tp: [ String ],
+        });
+    });
     it('reflects generic transience via call-site reflection on function declarations', async () => {
         let exports = await runSimple({
             compilerOptions: {

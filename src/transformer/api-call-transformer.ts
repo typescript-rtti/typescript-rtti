@@ -82,6 +82,7 @@ export class ApiCallTransformer extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.CallExpression)
     callExpr(expr : ts.CallExpression) {
+        let symbol = this.checker.getSymbolAtLocation(expr.expression);
         let signature = this.checker.getResolvedSignature(expr);
 
         if (!signature) {
@@ -92,6 +93,19 @@ export class ApiCallTransformer extends RttiVisitor {
         let callSiteArgIndex = params.findIndex(
             x => this.isCallSiteParameter((x.valueDeclaration as ts.ParameterDeclaration))
         );
+
+        if (callSiteArgIndex < 0) {
+            let decl = symbol.declarations[0];
+            let jsDoc : ts.JSDoc = decl['jsDoc']?.[0];
+            
+            if (jsDoc?.tags) {
+                let tag = jsDoc.tags.find(x => x.tagName.text === 'rtti' && typeof x.comment === 'string' && x.comment.startsWith(':callsite '));
+                if (tag) {
+                    let comment = <string>tag.comment;
+                    callSiteArgIndex = Number(comment.replace(/:callsite /, ''));
+                }
+            }
+        }
 
         if (this.isRttiCall(expr, 'reflect') && callSiteArgIndex < 0) {
             callSiteArgIndex = 1;
