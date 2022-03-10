@@ -10,6 +10,8 @@ commands:
         type: string
     steps:
       - checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install python-dev python python-setuptools python-pip
       - restore_cache:
           keys:
           - v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
