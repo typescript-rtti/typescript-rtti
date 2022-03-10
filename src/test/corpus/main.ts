@@ -64,7 +64,7 @@ const PACKAGES : Record<string, Package> = {
         enabled: false,
         url: 'https://github.com/typeorm/typeorm.git',
         ref: '0.2.45',
-        commands:  [ 'npm test' ]
+        commands:  [ 'ttsc' ]
     }
 };
 
