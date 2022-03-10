@@ -161,7 +161,7 @@ Prerequisites
 Installation
 
 ```
-npm install typescript-rtti
+npm install typescript-rtti reflect-metadata
 npm install ttypescript -D
 ```
 
@@ -183,6 +183,13 @@ In order for the transformer to run during your build process, you must use `tts
     }
 }
 ```
+
+The type information is emitted using `reflect-metadata`. You'll need to import it as early in your application as 
+possible and ensure that it is imported only once. 
+
+```typescript
+import "reflect-metadata";
+````
 
 ## **ts-node**
 You can also use ts-node, just pass `-C ttypescript` to make sure ts-node uses typescript compiler which respects compiler transforms.
