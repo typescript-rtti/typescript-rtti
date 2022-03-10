@@ -2090,6 +2090,7 @@ export function matchesShape(value, interfaceType : InterfaceToken | Constructor
  * Get the reflected interface object for the given interface (identified by T)
  * @param callSite Do not pass a value here. This opts in to call site reflection.
  * @returns The reflected interface
+ * @rtti:callsite 1
  */
 export function reflect<T>(unused? : never, callSite? : CallSite) : ReflectedTypeRef;
 /**
@@ -2100,6 +2101,9 @@ export function reflect<T>(unused? : never, callSite? : CallSite) : ReflectedTyp
 export function reflect<T>(value : Constructor<T>) : ReflectedClass<Constructor<T>>;
 export function reflect<T extends Function>(value : T) : (ReflectedFunction<T> | ReflectedMethod<T>);
 export function reflect<T>(value : T) : ReflectedClass<Constructor<T>>;
+/**
+ * @rtti:callsite 1
+ */
 export function reflect(value : any = NotProvided, callSite? : CallSite) {
     if (value === NotProvided && !callSite) {
         throw new Error(`reflect<T>() can only be used when project is built with the typescript-rtti transformer`);

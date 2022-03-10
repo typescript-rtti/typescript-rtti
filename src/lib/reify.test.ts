@@ -2,20 +2,8 @@ import { expect } from "chai";
 import { describe } from "razmin";
 import { reify } from ".";
 import { T_UNDEFINED, T_UNION, T_VOID } from "../common";
-import { RunInvocation, runSimple } from "../runner.test";
 
 describe('reify<T>()', it => {
-
-    async function expectError(invocation : RunInvocation) {
-        try {
-            await runSimple(invocation);
-        } catch (e) {
-            return;
-        }
-
-        throw new Error(`Expected error`);
-    }
-
     it('extracts an InterfaceToken from a passed CallSite', () => {
         let IΦFoo = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
         expect(reify(<any>{ TΦ: 'c', tp: [ IΦFoo ]})).to.equal(IΦFoo);
