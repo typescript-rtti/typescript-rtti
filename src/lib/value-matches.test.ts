@@ -3,7 +3,7 @@ import { describe } from "razmin";
 import { reflect, ReflectedClass } from ".";
 
 describe('ReflectedClass#matchesValue()', it => {
-    it.only('works with simple interfaces', async () => {
+    it('works with simple interfaces', async () => {
         let IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
 
         Reflect.defineMetadata('rt:P', ['foo', 'bar', 'baz'], IΦA);
@@ -23,7 +23,7 @@ describe('ReflectedClass#matchesValue()', it => {
             baz: true
         })).to.be.false;
     });
-    it.only('supports literal types', async () => {
+    it('supports literal types', async () => {
         const IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)')};
         
         Reflect.defineMetadata('rt:P', ['foo'], IΦA);
