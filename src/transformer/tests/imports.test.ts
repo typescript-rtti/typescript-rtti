@@ -100,6 +100,30 @@ describe('Imports', it => {
                 expect(params.length).to.equal(1);
                 expect(params[0].t()).to.equal(exports.A);
             });
+            it.only('emits correctly for non-default re-export of a default export', async () => {
+                let exports = await runSimple({
+                    trace: true,
+                    moduleType,
+                    code: `
+                        import { A } from "./libf";
+                        export function f(a : A) { }
+                        export { A } from "./libf";
+                    `, 
+                    modules: {
+                        './libf.ts': `
+                            export { default as A } from './a'
+                        `,
+                        './a.ts': `
+                            export default class A {
+                                method(hello : lib.A) { return 123; }
+                            }
+                        `
+                    }
+                });
+        
+                let params = Reflect.getMetadata('rt:p', exports.f);
+                expect(params[0].t()).to.equal(exports.A);
+            });
         });
     }
 });
