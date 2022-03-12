@@ -1,10 +1,11 @@
 import ts from "typescript";
 import { T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_STAND_IN, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from "../common";
+import { getExportsForSymbol, getPreferredExportForImport } from "./get-exports-for-symbol";
 import { literalNode } from "./literal-node";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
 import { MappedType } from "./ts-internal-types";
-import { hasFlag, isFlagType, propertyPrepend, serializeEntityNameAsExpression } from "./utils";
+import { hasFlag, isFlagType, propertyPrepend, serializeEntityNameAsExpression, typeHasValue } from "./utils";
 
 export class TypeEncoder {
     constructor(
@@ -252,27 +253,6 @@ export class TypeEncoder {
                 return ts.factory.createIdentifier(`Function`);
             } else if (type.isClassOrInterface()) { 
                 let isCommonJS = this.program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
-                let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol?.valueDeclaration;
-                
-                // Acquire the list of parent symbols. This will be used for detecting imports.
-
-                let parents : ts.Symbol[] = [];
-                let parent : ts.Symbol = type.symbol?.['parent'];
-                
-                while (parent) {
-                    parents.push(parent);
-                    parent = parent['parent'];
-                }
-
-                let expr : ts.Identifier | ts.PropertyAccessExpression;
-
-                if (reifiedType) {
-                    let entityName = this.checker.symbolToEntityName(type.symbol, ts.SymbolFlags.Class, undefined, undefined);
-                    expr = serializeEntityNameAsExpression(entityName, this.sourceFile);
-                } else {
-                    let symbolName = `IΦ${type.symbol.name}`;
-                    expr = ts.factory.createIdentifier(symbolName); // TODO: qualified names
-                }
 
                 // If this symbol is imported, we need to handle it specially.
 
@@ -284,21 +264,29 @@ export class TypeEncoder {
                     isLocal = true;
                 }
 
-                if (!isLocal) {
-                    // This is imported
-                    
-                    let importName : string;
-                    if (parents.length > 1) {
-                        importName = parents[1].name
+                if (isLocal) {
+                    let expr : ts.Identifier | ts.PropertyAccessExpression;
+
+                    if (typeHasValue(type)) {
+                        let entityName = this.checker.symbolToEntityName(type.symbol, ts.SymbolFlags.Class, undefined, undefined);
+                        expr = serializeEntityNameAsExpression(entityName, this.sourceFile);
                     } else {
-                        importName = type.symbol.name;
+                        let symbolName = `IΦ${type.symbol.name}`;
+                        expr = ts.factory.createIdentifier(symbolName); // TODO: qualified names
                     }
 
+                    return expr;
+                } else {
+                    let symbol = type.symbol;
+
+                    // This is imported. The symbol we've been examining is going 
+                    // to be the one in the remote file.
+
                     let modulePath : string; //parents[0] ? JSON.parse(parents[0].name) : undefined;
+                    let isExportedAsDefault = symbol?.name === 'default';
 
                     if (typeNode) {
                         if (ts.isTypeReferenceNode(typeNode)) {
-                            let importIdentifier : ts.Identifier;
                             let typeName = typeNode.typeName;
                             while (ts.isQualifiedName(typeName))
                                 typeName = typeName.left;
@@ -307,16 +295,20 @@ export class TypeEncoder {
                             if (localSymbol) {
                                 let localDecl = localSymbol.declarations[0];
                                 if (localDecl) {
+                                    let detectedImportPath : string;
+
                                     if (ts.isImportClause(localDecl)) {
                                         let specifier = <ts.StringLiteral>localDecl.parent?.moduleSpecifier;
-                                        let detectedImportPath = specifier.text;
-                                        if (detectedImportPath)
-                                            modulePath = detectedImportPath;
+                                        detectedImportPath = specifier.text;
                                     } else if (ts.isImportSpecifier(localDecl)) {
                                         let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
-                                        let detectedImportPath = specifier.text;
-                                        if (detectedImportPath)
-                                            modulePath = detectedImportPath;
+                                        detectedImportPath = specifier.text;
+                                    }
+                                    
+                                    if (detectedImportPath) {
+                                        modulePath = detectedImportPath;
+                                        symbol = localSymbol;
+                                        isExportedAsDefault = this.checker.getImmediateAliasedSymbol(localSymbol)?.name === 'default';
                                     }
                                 }
                             }
@@ -327,7 +319,20 @@ export class TypeEncoder {
 
                     if (!modulePath) {
                         // The type is not directly imported in this file. 
+
                         let destFile = sourceFile.fileName;
+                        
+                        // Attempt to locate the "best" re-export for this symbol
+                        // This attempts to prevent reaching deep into a module
+                        // when a higher export is available, while also skipping 
+                        // any potential re-exports which are already above this file.
+
+                        let preferredExport = getPreferredExportForImport(this.program, this.sourceFile, symbol);
+                        if (preferredExport) {
+                            destFile = preferredExport.sourceFile.fileName;
+                            symbol = preferredExport.symbol;
+                            isExportedAsDefault = symbol?.name === 'default';
+                        }
                         
                         if (destFile.endsWith('.d.ts'))
                             destFile = destFile.replace(/\.d\.ts$/, '');
@@ -348,9 +353,7 @@ export class TypeEncoder {
                         }
                     }
 
-                    if (parents.length === 1 && type.symbol?.name === 'default') {
-                        // Default export 
-
+                    if (isExportedAsDefault) {
                         if (isCommonJS) {
                             return ts.factory.createPropertyAccessExpression(
                                 ts.factory.createCallExpression(
@@ -378,6 +381,17 @@ export class TypeEncoder {
                             return ts.factory.createIdentifier(impo.localName);
                         }
                     } else {
+                        // Named export
+
+                        let expr : ts.Identifier | ts.PropertyAccessExpression;
+    
+                        if (typeHasValue(type)) {
+                            let entityName = this.checker.symbolToEntityName(symbol, ts.SymbolFlags.Class, undefined, undefined);
+                            expr = serializeEntityNameAsExpression(entityName, this.sourceFile);
+                        } else {
+                            let symbolName = `IΦ${type.symbol.name}`;
+                            expr = ts.factory.createIdentifier(symbolName); // TODO: qualified names
+                        }
                         if (isCommonJS) {
                             return propertyPrepend(
                                 ts.factory.createCallExpression(
@@ -404,8 +418,6 @@ export class TypeEncoder {
                         }
                     }
                 }
-
-                return expr;
             }
 
             return ts.factory.createIdentifier('Object');

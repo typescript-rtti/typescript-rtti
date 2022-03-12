@@ -100,9 +100,8 @@ describe('Imports', it => {
                 expect(params.length).to.equal(1);
                 expect(params[0].t()).to.equal(exports.A);
             });
-            it.only('emits correctly for non-default re-export of a default export', async () => {
+            it('emits correctly for non-default re-export of a default export', async () => {
                 let exports = await runSimple({
-                    trace: true,
                     moduleType,
                     code: `
                         import { A } from "./libf";
