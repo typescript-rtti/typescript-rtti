@@ -1,3 +1,7 @@
+# v0.4.18
+- Fix for using `require()` for Node-specific imports breaks webpack builds though they are properly guarded (so that
+  the transformer can work properly in the browser)
+
 # v0.4.17
 - Add support for `@rtti:callsite` JSDoc tag as a way to opt in to receiving call-site reflection data
   without directly referencing `typescript-rtti` types (useful for third parties to opt in and introspect on typescript-rtti's metadata). This will be important for the new `@typescript-rtti/reflect` library.
