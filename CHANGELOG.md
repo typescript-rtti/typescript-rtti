@@ -1,3 +1,6 @@
+# v0.4.19
+- Fix for the new `@rtti:callsite 1` JSDoc optin
+
 # v0.4.18
 - Fix for using `require()` for Node-specific imports breaks webpack builds though they are properly guarded (so that
   the transformer can work properly in the browser)
