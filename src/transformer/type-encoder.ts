@@ -340,8 +340,13 @@ export class TypeEncoder {
                                 // the package.json.
 
                                 if (isNodeJS()) {
-                                    const fs : typeof nodeFsT = require('fs');
-                                    const path : typeof nodePathT = require('path');
+                                    let requireN = require;
+                                    function requireX(path) {
+                                        return requireN(path);
+                                    }
+
+                                    const fs : typeof nodeFsT = requireX('fs');
+                                    const path : typeof nodePathT = requireX('path');
 
                                     let pkgJsonPath = path.resolve(
                                         path.dirname(this.ctx.sourceFile.fileName), 
