@@ -1,11 +1,14 @@
 import ts from "typescript";
 import { T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_STAND_IN, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from "../common";
+import { findRelativePathToFile } from "./find-relative-path";
 import { getExportsForSymbol, getPreferredExportForImport } from "./get-exports-for-symbol";
 import { literalNode } from "./literal-node";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
 import { MappedType } from "./ts-internal-types";
-import { hasFlag, isFlagType, propertyPrepend, serializeEntityNameAsExpression, typeHasValue } from "./utils";
+import { hasFlag, isFlagType, isNodeJS, propertyPrepend, serializeEntityNameAsExpression, typeHasValue } from "./utils";
+import type * as nodePathT from 'path';
+import type * as nodeFsT from 'fs';
 
 export class TypeEncoder {
     constructor(
@@ -79,55 +82,6 @@ export class TypeEncoder {
                 ts.factory.createNumericLiteral(type['id'])
             ]
         )
-    }
-
-    private findRelativePathToFile(fromFile : string, toFile : string) {
-        fromFile = fromFile.replace(/\\/g, '/');
-        toFile = toFile.replace(/\\/g, '/');
-    
-        if (fromFile.startsWith('./'))
-            fromFile = fromFile.slice(2);
-        if (toFile.startsWith('./'))
-            toFile = toFile.slice(2);
-        
-        let fromAbsolute = /^[A-Za-z]:/.test(fromFile) || /^\//.test(fromFile);
-        let toAbsolute = /^[A-Za-z]:/.test(toFile) || /^\//.test(toFile);
-
-        if (fromAbsolute !== toAbsolute)
-            throw new Error(`Cannot determine relationship between an absolute and a relative path!`);
-        
-        if (!fromAbsolute && !toAbsolute) {
-            fromFile = `/${fromFile}`;
-            toFile = `/${toFile}`;
-        }
-
-        let from = fromFile.split('/');
-        let to = toFile.split('/');
-        let parents = 0;
-        let forwardPaths : string[] = [];
-    
-        // pop off the filenames
-        let fromFileName = from.pop();
-        let toFileName = to.pop();
-        
-        while (from.length > 0 && !to.join('/').startsWith(from.join('/'))) {
-            parents += 1;
-            from.pop();
-        }
-    
-        if (from.length === 0) {
-            // Could be different drive letters, ie C:/ vs D:/ -- in that case, we just have to 
-            // use the absolute path
-            return undefined;
-        } else {
-            if (parents > 0) {
-                return [ ...[Array(1 + parents).join('..')], ...to.slice(from.length), toFileName].join('/');
-            } else {
-                return ['.', ...to.slice(from.length), toFileName].join('/');
-            }
-        }
-    
-
     }
 
     /**
@@ -264,6 +218,13 @@ export class TypeEncoder {
                     isLocal = true;
                 }
 
+                // If this is a non-class from the standard library (ie lib.*.d.ts)
+                // output Object
+
+                if (this.program.isSourceFileDefaultLibrary(sourceFile) && !typeHasValue(type)) {
+                    return ts.factory.createIdentifier(`Object`);
+                }
+
                 if (isLocal) {
                     let expr : ts.Identifier | ts.PropertyAccessExpression;
 
@@ -304,7 +265,7 @@ export class TypeEncoder {
                                         let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
                                         detectedImportPath = specifier.text;
                                     }
-                                    
+
                                     if (detectedImportPath) {
                                         modulePath = detectedImportPath;
                                         symbol = localSymbol;
@@ -343,7 +304,89 @@ export class TypeEncoder {
                         // I think only a configuration option could fix this, in which case we 
                         // would append .js here
 
-                        let relativePath = this.findRelativePathToFile(this.ctx.sourceFile.fileName, destFile);
+                        let relativePath = findRelativePathToFile(this.ctx.sourceFile.fileName, destFile);
+                        
+                        console.log();
+                        console.log(`RELATIVE PATH BUILD:`);
+                        console.log(`  | FROM: ${this.ctx.sourceFile.fileName}`);
+                        console.log(`  |   TO: ${destFile}`);
+                        console.log(`  |-----> ${relativePath}`);
+                        console.log();
+
+                        // Find 'node_modules' in the resulting path and cut everything up to and including it out 
+                        // to ensure we allow node resolution algorithm to work at runtime. In theory this case could 
+                        // be hit when not using Node (or a Node-compatible bundler) but it seems exceedingly unlikely.
+                        // If this happens for you unexpectedly, please file a bug.
+
+                        let pathParts = relativePath.split('/');
+                        let nodeModulesIndex = pathParts.indexOf('node_modules');
+                        if (nodeModulesIndex >= 0) {
+                            let originalPath = relativePath;
+                            let pathToNodeModules = pathParts.slice(0, nodeModulesIndex + 1).join('/');
+                            let packagePath = pathParts.slice(nodeModulesIndex + 1)
+                            relativePath = packagePath.join('/');
+
+                            if (packagePath.length > 0) {
+                                let pathIntoPackageParts = packagePath.slice();
+                                let packageName = pathIntoPackageParts.shift();
+                                if (packageName.startsWith('@')) {
+                                    // assume its a scoped package
+                                    packageName += '/' + pathIntoPackageParts.shift();
+                                }
+
+                                // At this point, if we happen to be on Node.js, then it should be safe to introspect
+                                // the package.json.
+
+                                if (isNodeJS()) {
+                                    const fs : typeof nodeFsT = require('fs');
+                                    const path : typeof nodePathT = require('path');
+
+                                    console.log(`SRC: ${this.ctx.sourceFile.fileName}`);
+                                    console.log(`PATH TO NODE MODULES: ${pathToNodeModules}`);
+                                    console.log(`PKG NAME: ${packageName}`);
+                                    let pkgJsonPath = path.resolve(
+                                        path.dirname(this.ctx.sourceFile.fileName), 
+                                        pathToNodeModules, 
+                                        packageName, 
+                                        'package.json'
+                                    );
+
+                                    try {
+                                        let absPathToNodeModules = path.resolve(path.dirname(this.ctx.sourceFile.fileName), pathToNodeModules);
+                                        console.log(`LOOKING FOR ${pkgJsonPath}`);
+                                        if (fs.existsSync(pkgJsonPath)) {
+                                            let buf = fs.readFileSync(pkgJsonPath);
+                                            let json = JSON.parse(buf.toString('utf-8'));
+
+                                            let entrypoints = [ json.main, json.module, json.browser ].filter(x => x);
+
+                                            console.log(`Checking ${packageName}...`);
+                                            for (let entrypoint of entrypoints) {
+                                                let entrypointFile = path.resolve(path.dirname(pkgJsonPath), entrypoint);
+                                                let absolutePath = path.resolve(absPathToNodeModules, relativePath);
+
+                                                console.log(`ABS PATH: ${absPathToNodeModules} -> ${relativePath} => ${absolutePath}`);
+
+                                                console.log(`  ${entrypoint} -> '${entrypointFile}' vs '${absolutePath}'`);
+
+                                                if (entrypointFile === absolutePath) {
+                                                    console.log(`RTTI: Relative path '${relativePath}' equivalent to '${packageName}'`);
+                                                    relativePath = packageName;
+                                                    break;
+                                                }
+                                            }
+
+                                        }
+                                    } catch (e) {
+                                        console.error(`RTTI: Caught error while reading ${pkgJsonPath}: ${e.message}`);
+                                        console.error(`RTTI: Proceeding with potentially non-optimal import path '${relativePath}'`);
+                                    }
+                                }
+
+                            }
+                        }
+
+
                         if (relativePath) {
                             modulePath = relativePath;
                         } else { 

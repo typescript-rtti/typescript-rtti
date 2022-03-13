@@ -1306,3 +1306,7 @@ export function typeHasValue(type : ts.Type) {
         || !!type.symbol?.valueDeclaration
     ;
 }
+
+export function isNodeJS() {
+    return Object.prototype.toString.call(typeof process !== 'undefined' ? process : 0) === '[object process]';
+}
