@@ -28,20 +28,6 @@ commands:
       - store_artifacts:
           path: coverage
 jobs:
-  node-17:
-    docker:
-      - image: cimg/node:17.6
-    working_directory: ~/repo
-    steps:
-      - run_tests:
-          version: "17"
-  node-16:
-    docker:
-      - image: cimg/node:16.14
-    working_directory: ~/repo
-    steps:
-      - run_tests:
-          version: "16"
   node-14:
     docker:
       - image: cimg/node:14.19
@@ -49,6 +35,20 @@ jobs:
     steps:
       - run_tests:
           version: "14"
+  node-16:
+    docker:
+      - image: cimg/node:16.14
+    working_directory: ~/repo
+    steps:
+      - run_tests:
+          version: "16"
+  node-17:
+    docker:
+      - image: cimg/node:17.6
+    working_directory: ~/repo
+    steps:
+      - run_tests:
+          version: "17"
 
 workflows:
   version: 2
