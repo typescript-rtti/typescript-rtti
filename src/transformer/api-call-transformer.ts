@@ -82,29 +82,26 @@ export class ApiCallTransformer extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.CallExpression)
     callExpr(expr : ts.CallExpression) {
-        let symbol = this.checker.getSymbolAtLocation(expr.expression);
         let signature = this.checker.getResolvedSignature(expr);
-
         if (!signature) {
             debugger;
+            if (globalThis.RTTI_TRACE)
+                console.warn(`RTTI: Could not find signature for call expression '${expr.getText()}'`);
+            return expr;
         }
-        let params = signature.parameters;
 
+        let params = signature.parameters;
         let callSiteArgIndex = params.findIndex(
             x => this.isCallSiteParameter((x.valueDeclaration as ts.ParameterDeclaration))
         );
 
         if (callSiteArgIndex < 0) {
-            if (symbol) {
-                let decl = symbol.declarations[0];
-                let jsDoc : ts.JSDoc = decl['jsDoc']?.[0];
-                
-                if (jsDoc?.tags) {
-                    let tag = jsDoc.tags.find(x => x.tagName.text === 'rtti' && typeof x.comment === 'string' && x.comment.startsWith(':callsite '));
-                    if (tag) {
-                        let comment = <string>tag.comment;
-                        callSiteArgIndex = Number(comment.replace(/:callsite /, ''));
-                    }
+            let jsDocTags = signature.getJsDocTags();
+            if (jsDocTags) {
+                let tag = jsDocTags.find(x => x.name === 'rtti' && x.text[0]?.text.startsWith(':callsite '));
+                if (tag) {
+                    let comment = <string>tag.text[0].text;
+                    callSiteArgIndex = Number(comment.replace(/:callsite /, ''));
                 }
             }
         }
