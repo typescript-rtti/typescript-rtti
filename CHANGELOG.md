@@ -1,6 +1,14 @@
-# vNext
+# v0.4.17
 - Add support for `@rtti:callsite` JSDoc tag as a way to opt in to receiving call-site reflection data
-  without directly referencing `typescript-rtti` types (useful for third parties to opt in and introspect on typescript-rtti's metadata)
+  without directly referencing `typescript-rtti` types (useful for third parties to opt in and introspect on typescript-rtti's metadata). This will be important for the new `@typescript-rtti/reflect` library.
+- Overhauls handling of classes/interfaces defined external to the file being processed. This fixes a number of cases 
+  which were previously broken, such as those noted by #27 and #28. The transformer is now aware of `node_modules` in a 
+  much better way which can analyze `package.json` to simplify imports in cases where the best import found is the 
+  entrypoint of the library you are using (for instance import from `graphql` instead of `graphql/index`). These changes
+  are important to ensure that typescript-rtti does not cause dependencies on private details (ie filesystem layout) of 
+  packages, as those may change version-to-version without a semver major bump. 
+- Fixes issues where typescript-rtti tries to import interface tokens (`IΦ*`) from the Typescript standard library in the
+  vain hope that they exist.
 
 # v0.4.16
 - Do not emit for `declare class`
