@@ -90,7 +90,7 @@ function run(str : string, cwd? : string, context? : string) {
     if (result.code !== 0) {
         console.error(`corpus: Failed to run: '${str}': exit code ${result.code}`);
         console.error(`stdout:`);
-        console.error(result.stderr);
+        console.error(result.stdout);
         console.error();
         console.error(`stderr:`);
         console.error(result.stderr);
