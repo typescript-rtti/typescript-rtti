@@ -193,6 +193,7 @@ export class TypeEncoder {
                         })
                     } catch (e) {
                         console.error(`RTTI: Error while serializing type '${typeRef.symbol.name}': ${e.message}`);
+                        console.error(e);
                         throw e;
                     }
                 }
@@ -211,6 +212,14 @@ export class TypeEncoder {
                 // If this symbol is imported, we need to handle it specially.
 
                 let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+
+                if (!sourceFile) {
+                    // TODO: this has happened for TlsOptions from @types/node, typeorm 
+                    // [src/driver/cockroachdb/CockroachConnectionCredentialsOptions.ts]
+                    // ...but it shouldn't. Perhaps TS didn't have the type ready?
+                    return ts.factory.createIdentifier('Object');
+                }
+
                 let isLocal = sourceFile === this.ctx.sourceFile;
 
                 if (sourceFile.hasNoDefaultLib && /lib\.[^\.]+\.d\.ts/.test(sourceFile.fileName)) {
@@ -292,7 +301,7 @@ export class TypeEncoder {
                         if (preferredExport) {
                             destFile = preferredExport.sourceFile.fileName;
                             symbol = preferredExport.symbol;
-                            isExportedAsDefault = symbol?.name === 'default';
+                            isExportedAsDefault = symbol?.name === 'default' || !symbol;
                         }
                         
                         if (destFile.endsWith('.d.ts'))
@@ -305,13 +314,6 @@ export class TypeEncoder {
                         // would append .js here
 
                         let relativePath = findRelativePathToFile(this.ctx.sourceFile.fileName, destFile);
-                        
-                        console.log();
-                        console.log(`RELATIVE PATH BUILD:`);
-                        console.log(`  | FROM: ${this.ctx.sourceFile.fileName}`);
-                        console.log(`  |   TO: ${destFile}`);
-                        console.log(`  |-----> ${relativePath}`);
-                        console.log();
 
                         // Find 'node_modules' in the resulting path and cut everything up to and including it out 
                         // to ensure we allow node resolution algorithm to work at runtime. In theory this case could 
@@ -341,9 +343,6 @@ export class TypeEncoder {
                                     const fs : typeof nodeFsT = require('fs');
                                     const path : typeof nodePathT = require('path');
 
-                                    console.log(`SRC: ${this.ctx.sourceFile.fileName}`);
-                                    console.log(`PATH TO NODE MODULES: ${pathToNodeModules}`);
-                                    console.log(`PKG NAME: ${packageName}`);
                                     let pkgJsonPath = path.resolve(
                                         path.dirname(this.ctx.sourceFile.fileName), 
                                         pathToNodeModules, 
@@ -351,35 +350,51 @@ export class TypeEncoder {
                                         'package.json'
                                     );
 
-                                    try {
-                                        let absPathToNodeModules = path.resolve(path.dirname(this.ctx.sourceFile.fileName), pathToNodeModules);
-                                        console.log(`LOOKING FOR ${pkgJsonPath}`);
-                                        if (fs.existsSync(pkgJsonPath)) {
-                                            let buf = fs.readFileSync(pkgJsonPath);
-                                            let json = JSON.parse(buf.toString('utf-8'));
+                                    if (!pkgJsonPath) {
+                                        throw new Error(`Failed to resolve path for package.json [file='${this.ctx.sourceFile.fileName}', node_modules='${pathToNodeModules}', packageName='${packageName}']`);
+                                        debugger;
+                                    }
+                                    
+                                    let pkgJson : any;
 
-                                            let entrypoints = [ json.main, json.module, json.browser ].filter(x => x);
-
-                                            console.log(`Checking ${packageName}...`);
-                                            for (let entrypoint of entrypoints) {
-                                                let entrypointFile = path.resolve(path.dirname(pkgJsonPath), entrypoint);
-                                                let absolutePath = path.resolve(absPathToNodeModules, relativePath);
-
-                                                console.log(`ABS PATH: ${absPathToNodeModules} -> ${relativePath} => ${absolutePath}`);
-
-                                                console.log(`  ${entrypoint} -> '${entrypointFile}' vs '${absolutePath}'`);
-
-                                                if (entrypointFile === absolutePath) {
-                                                    console.log(`RTTI: Relative path '${relativePath}' equivalent to '${packageName}'`);
-                                                    relativePath = packageName;
-                                                    break;
-                                                }
+                                    if (this.ctx.pkgJsonMap.has(pkgJsonPath)) {
+                                        pkgJson = this.ctx.pkgJsonMap.get(pkgJsonPath);
+                                    } else {
+                                        try {
+                                            if (fs.existsSync(pkgJsonPath)) {
+                                                let buf = fs.readFileSync(pkgJsonPath);
+                                                let json = JSON.parse(buf.toString('utf-8'));
+                                                pkgJson = json;
+                                                this.ctx.pkgJsonMap.set(pkgJsonPath, pkgJson);
                                             }
-
+                                        } catch (e) {
+                                            console.error(`RTTI: Caught error while reading ${pkgJsonPath}: ${e.message}`);
+                                            console.error(e);
+                                            console.error(`RTTI: Proceeding with potentially non-optimal import path '${relativePath}'`);
                                         }
-                                    } catch (e) {
-                                        console.error(`RTTI: Caught error while reading ${pkgJsonPath}: ${e.message}`);
-                                        console.error(`RTTI: Proceeding with potentially non-optimal import path '${relativePath}'`);
+                                    }
+
+                                    if (pkgJson) {
+                                        let absPathToNodeModules = path.resolve(
+                                            path.dirname(this.ctx.sourceFile.fileName), 
+                                            pathToNodeModules
+                                        );
+                                        let entrypoints = [ pkgJson.main, pkgJson.module, pkgJson.browser ]
+                                            .filter(x => x);
+        
+                                        for (let entrypoint of entrypoints) {
+                                            if (typeof entrypoint !== 'string') {
+                                                // see typescript package.json 'browser' field
+                                                continue;
+                                            }
+                                            let entrypointFile = path.resolve(path.dirname(pkgJsonPath), entrypoint);
+                                            let absolutePath = path.resolve(absPathToNodeModules, relativePath);
+
+                                            if (entrypointFile === absolutePath) {
+                                                relativePath = packageName;
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
 
@@ -391,7 +406,7 @@ export class TypeEncoder {
                             modulePath = relativePath;
                         } else { 
                             if (globalThis.RTTI_TRACE)
-                            console.log(`RTTI: Cannot determine relative path from '${this.ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
+                            console.warn(`RTTI: Cannot determine relative path from '${this.ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
                             modulePath = destFile;
                         }
                     }

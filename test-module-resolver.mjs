@@ -8,8 +8,6 @@
  * @returns {Promise<{ url: string }>}
  */
 export async function resolve(url, context, defaultResolve) {
-    //console.log(`RTTI Test: ESM: Resolving '${url}'`);
-
     let filename = url;
     if (!filename.startsWith('data:')) {
         if (!filename.endsWith('.js'))
@@ -20,12 +18,8 @@ export async function resolve(url, context, defaultResolve) {
 
     let moduleOverrides = global['moduleOverrides'] || {};
 
-    if (!moduleOverrides[url] && !moduleOverrides[filename]) {
-        //console.log(`RTTI Test: ESM: Using default resolver.`);
+    if (!moduleOverrides[url] && !moduleOverrides[filename])
         return defaultResolve(url, context, defaultResolve);
-    }
-
-    //console.log(`RTTI Test: ESM: Using custom resolver.`);
 
     let override = moduleOverrides[filename] || moduleOverrides[url];
     let source;
@@ -48,10 +42,6 @@ export async function resolve(url, context, defaultResolve) {
             ${override}
         `
     }
-
-    // console.log(`Overriding module "${url}"...`);
-    // console.log(`Using source:`);
-    // console.log(source);
 
     return {
         url: `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`

@@ -73,6 +73,7 @@ export function getPreferredExportForImport(
     symbol : ts.Symbol
 ) {
     let exports = getExportsForSymbol(program, importingFile, symbol).slice();
+    exports = exports.filter(x => x.sourceFile);
     exports.sort((a, b) => {
         return a.sourceFile.fileName.length - b.sourceFile.fileName.length;
     });

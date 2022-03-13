@@ -114,8 +114,6 @@ export function compile(invocation : RunInvocation): Record<string,string> {
                 }
             }
 
-            // if (invocation.trace)
-            //     console.log(`Test: Typescript checked if file exists: '${fileName}' => ${exists}`);
             return exists;
         },
         readFile: () => "",

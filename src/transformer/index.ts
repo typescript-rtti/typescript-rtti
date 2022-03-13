@@ -58,6 +58,9 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
     if (globalThis.RTTI_TRACE)
         console.log(`RTTI: Entering program [emitDecoratorMetadata=${emitStandardMetadata}]`);
     
+    // Share a package.json cache across the whole program
+    let pkgJsonMap = new Map<string, any>();
+
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
         let settings = <RttiSettings> context.getCompilerOptions().rtti;
 
@@ -80,6 +83,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                 throwOnFailure: settings?.throwOnFailure ?? false,
                 transformationContext: context,
                 typeMap: new Map<number, ts.Expression>(),
+                pkgJsonMap,
                 emitStandardMetadata,
                 interfaceSymbols: []
             };

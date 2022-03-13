@@ -19,4 +19,5 @@ export interface RttiContext {
     currentNameScope : ts.ClassDeclaration | ts.InterfaceDeclaration | ts.ClassExpression;
     emitStandardMetadata : boolean;
     interfaceSymbols : InterfaceSymbol[];
+    pkgJsonMap : Map<string, any>;
 }
