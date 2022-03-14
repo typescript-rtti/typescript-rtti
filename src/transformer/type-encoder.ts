@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_STAND_IN, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from "../common";
+import { T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_STAND_IN, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from "../common/format";
 import { findRelativePathToFile } from "./find-relative-path";
 import { getExportsForSymbol, getPreferredExportForImport } from "./get-exports-for-symbol";
 import { literalNode } from "./literal-node";

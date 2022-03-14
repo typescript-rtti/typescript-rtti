@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe } from "razmin";
 import { reify } from ".";
-import { T_UNDEFINED, T_UNION, T_VOID } from "../common";
+import { T_UNDEFINED, T_UNION, T_VOID } from "../common/format";
 
 describe('reify<T>()', it => {
     it('extracts an InterfaceToken from a passed CallSite', () => {

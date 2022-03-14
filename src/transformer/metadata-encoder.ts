@@ -1,5 +1,6 @@
 import * as ts from 'typescript';
-import { F_ARROW_FUNCTION, F_CLASS, F_FUNCTION, F_INFERRED, F_INTERFACE, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, F_PROTECTED, F_PUBLIC, F_READONLY, F_STATIC, RtParameter, RtSerialized } from '../common';
+import { F_ARROW_FUNCTION, F_CLASS, F_FUNCTION, F_INFERRED, F_INTERFACE, F_METHOD, F_OPTIONAL, F_PRIVATE, F_PROPERTY, 
+         F_PROTECTED, F_PUBLIC, F_READONLY, F_STATIC, RtParameter, RtSerialized } from '../common/format';
 import { ClassDetails } from './common/class-details';
 import { getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef, functionForwardRef } from './forward-ref';

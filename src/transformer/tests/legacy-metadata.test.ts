@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import { runSimple } from '../../runner.test';
-import { F_INFERRED, F_METHOD, F_PUBLIC } from '../flags';
+import { F_INFERRED, F_METHOD, F_PUBLIC } from '../../common/format';
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
 function hasProperty(map: ts.MapLike<any>, key: string): boolean {

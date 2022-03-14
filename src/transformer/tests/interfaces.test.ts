@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe } from "razmin";
 import { runSimple } from "../../runner.test";
-import { T_UNION } from "../flags";
+import { T_UNION } from "../../common/format";
 import { reflect } from '../../lib';
 
 describe('Interface token', it => {

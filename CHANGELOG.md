@@ -1,3 +1,8 @@
+# vNext
+- Fixes for intrinsic type checks (isNull(), isUndefined(), isTrue(), isFalse())
+- Tighten type assertions in the reflection API to reduce
+  easy mistakes
+
 # v0.4.19
 - Fix for the new `@rtti:callsite 1` JSDoc optin
 

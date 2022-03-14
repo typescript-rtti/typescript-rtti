@@ -1,8 +1,7 @@
 import { describe } from "razmin";
 import { expect } from "chai";
 import { ReflectedClass } from "./reflect";
-import { InterfaceToken } from "../common";
-import * as flags from '../common/flags';
+import * as format from '../common/format';
 import { reflect, ReflectedFunction, ReflectedMethod } from "./reflect";
 
 
@@ -109,7 +108,7 @@ describe('ReflectedClass', it => {
         let refClass = ReflectedClass.new(A);
         expect(refClass.flags.isAbstract).to.be.false;
 
-        Reflect.defineMetadata('rt:f', `C${flags.F_ABSTRACT}`, A);
+        Reflect.defineMetadata('rt:f', `C${format.F_ABSTRACT}`, A);
         refClass = ReflectedClass.new(A);
         expect(refClass.flags.isAbstract).to.be.true;
     });
@@ -134,7 +133,7 @@ describe('ReflectedClass', it => {
         expect(refClass.getProperty('foo').type.isClass(Number)).to.be.true;
     });
     it('reflects reified interfaces', () => {
-        let IΦFoo : InterfaceToken = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
+        let IΦFoo : format.InterfaceToken = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
 
         Reflect.defineMetadata('rt:P', ['foobar', 'foobaz'], IΦFoo);
         Reflect.defineMetadata('rt:m', ['helloWorld'], IΦFoo);
@@ -216,7 +215,7 @@ describe('ReflectedMethod', it => {
             bar() { }
         }; undecorate(B.prototype, 'foo');
 
-        Reflect.defineMetadata('rt:f', flags.F_INFERRED, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', format.F_INFERRED, B.prototype, 'foo');
         Reflect.defineMetadata('rt:f', '', B.prototype, 'bar');
         Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
 
@@ -226,47 +225,47 @@ describe('ReflectedMethod', it => {
     })
     it('reflects public', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').visibility).to.equal('public');
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_PUBLIC}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PUBLIC}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').visibility).to.equal('public');
     })
     it('reflects protected', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').visibility).to.equal('public');
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_PROTECTED}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PROTECTED}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').visibility).to.equal('protected');
     })
     it('reflects private', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').visibility).to.equal('public');
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_PRIVATE}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PRIVATE}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').visibility).to.equal('private');
     })
     it('reflects async', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').isAsync).to.be.false
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_ASYNC}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_ASYNC}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').isAsync).to.be.true
     })
     it('reflects return type', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:t', () => Number, B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
         expect(ReflectedClass.new(B).getMethod('foo').returnType.isClass(Number)).to.be.true;
@@ -274,8 +273,8 @@ describe('ReflectedMethod', it => {
     })
     it('reflects generic return type', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
-        Reflect.defineMetadata('rt:t', () => ({ TΦ: flags.T_GENERIC, t: Promise, p: [ String ]}), B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_GENERIC, t: Promise, p: [ String ]}), B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
         expect(ReflectedClass.new(B).getMethod('foo').returnType.isClass(Promise)).to.be.false;
         expect(ReflectedClass.new(B).getMethod('foo').returnType.isGeneric(Promise)).to.be.true;
@@ -283,7 +282,7 @@ describe('ReflectedMethod', it => {
     })
     it('reflects static method return type', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B, 'foo');
         Reflect.defineMetadata('rt:t', () => Number, B, 'foo');
         Reflect.defineMetadata('rt:Sm', ['foo', 'bar'], B);
         expect(ReflectedClass.new(B).getStaticMethod('foo').returnType.isClass(Number)).to.be.true;
@@ -291,15 +290,15 @@ describe('ReflectedMethod', it => {
     })
     it('reflects function return type', () => {
         function B() { }
-        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}`, B);
+        Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, B);
         Reflect.defineMetadata('rt:t', () => Number, B);
         expect(ReflectedFunction.new(B).returnType.isClass(Number)).to.be.true;
     })
     it('reflects function async flag', () => {
         function A() { }
-        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}`, A);
+        Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, A);
         function B() { }
-        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}${flags.F_ASYNC}`, B);
+        Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}${format.F_ASYNC}`, B);
         expect(ReflectedFunction.new(A).isAsync).to.be.false;
         expect(ReflectedFunction.new(B).isAsync).to.be.true;
     })
@@ -326,7 +325,7 @@ describe('ReflectedMethod', it => {
     })
     it('reflects parameters', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:p', [{n:'a', t: () => String}, {n:'b', t: () => Boolean}], B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
         expect(ReflectedClass.new(B).getMethod('foo').parameters[0].name).to.equal('a');
@@ -341,8 +340,8 @@ describe('ReflectedMethod', it => {
     })
     it('reflects parameter optionality', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
-        Reflect.defineMetadata('rt:p', [{n:'a', t: () => String}, {n:'b', t: () => Boolean, f: `${flags.F_OPTIONAL}`}], B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:p', [{n:'a', t: () => String}, {n:'b', t: () => Boolean, f: `${format.F_OPTIONAL}`}], B.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
 
         expect(ReflectedClass.new(B).getMethod('foo').parameters[0].name).to.equal('a');
@@ -368,41 +367,41 @@ describe('ReflectedMethod', it => {
 describe('ReflectedProperty', it => {
     it('reflects public', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').visibility).to.equal('public');
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_PUBLIC}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PUBLIC}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').visibility).to.equal('public');
     })
     it('reflects protected', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').visibility).to.equal('public');
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_PROTECTED}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PROTECTED}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').visibility).to.equal('protected');
     })
     it('reflects private', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').visibility).to.equal('public');
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_PRIVATE}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PRIVATE}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').visibility).to.equal('private');
     })
     it('reflects readonly', () => {
         class B {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').isReadonly).to.be.false
         class A {}
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_READONLY}`, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_READONLY}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').isReadonly).to.be.true
     })
@@ -416,34 +415,34 @@ describe('ReflectedProperty', it => {
     })
     it('reflects null type as class Object and as null', () => {
         class B {}
-        Reflect.defineMetadata('rt:t', () => null, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_NULL }), B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
 
         let prop = ReflectedClass.new(B).getProperty('foo');
 
-        expect(prop.type.kind === 'literal').to.be.true;
+        expect(prop.type.kind === 'null').to.be.true;
 
         expect(prop.type.isClass(Object)).to.be.true;
         expect(prop.type.isClass(Number)).to.be.false;
-        expect(prop.type.isLiteral(null)).to.be.true;
-        expect(prop.type.isLiteral(true)).to.be.false;
+        expect(prop.type.isNull()).to.be.true;
+        expect(prop.type.isTrue()).to.be.false;
         expect(prop.type.isLiteral(123)).to.be.false;
     })
     it('reflects true type as class Boolean and as true', () => {
         class B {}
-        Reflect.defineMetadata('rt:t', () => true, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_TRUE }), B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
 
         expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Boolean)).to.be.true;
         expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Number)).to.be.false;
-        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(true)).to.be.true;
-        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(false)).to.be.false;
-        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(null)).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isTrue()).to.be.true;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isFalse()).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isNull()).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(123)).to.be.false;
     })
     it('reflects false type as class Boolean and as false', () => {
         class B {}
-        Reflect.defineMetadata('rt:t', () => false, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_FALSE }), B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
 
         expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Boolean)).to.be.true;
@@ -483,7 +482,7 @@ describe('ReflectedProperty', it => {
     })
     it('reflects undefined literal type as undefined', () => {
         class B {}
-        Reflect.defineMetadata('rt:t', () => undefined, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_UNDEFINED }), B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
 
         expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Object)).to.be.false;
@@ -491,7 +490,7 @@ describe('ReflectedProperty', it => {
         expect(ReflectedClass.new(B).getProperty('foo').type.isClass(String)).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Number)).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Boolean)).to.be.false;
-        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(undefined)).to.be.true;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isUndefined()).to.be.true;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral('undefined')).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(123)).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(false)).to.be.false;
@@ -500,7 +499,7 @@ describe('ReflectedProperty', it => {
     })
     it('reflects void type', () => {
         class B {}
-        Reflect.defineMetadata('rt:t', () => ({ TΦ: 'V' }), B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_VOID }), B.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], B);
 
         expect(ReflectedClass.new(B).getProperty('foo').type.kind).to.equal('void');
@@ -512,8 +511,8 @@ describe('ReflectedProperty', it => {
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(undefined)).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral('undefined')).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(123)).to.be.false;
-        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(false)).to.be.false;
-        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(true)).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isFalse()).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isTrue()).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(null)).to.be.false;
     })
     it('reflects static type', () => {
@@ -594,15 +593,15 @@ describe('reflect(value)', it => {
     });
     it('returns a ReflectedFunction when passing in a marked function', () => {
         function a() { }
-        Reflect.defineMetadata('rt:f', `${flags.F_FUNCTION}`, a);
+        Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, a);
         expect(reflect(a)).to.be.an.instanceOf(ReflectedFunction);
     });
     it('returns a ReflectedMethod when passing in a method', () => {
         class A { foo() { } }
 
         Reflect.defineMetadata('rt:m', ['foo'], A);
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A, 'foo');
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A.prototype.foo);
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, A, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, A.prototype.foo);
         Reflect.defineMetadata('rt:h', () => A, A.prototype.foo);
 
         expect(reflect(A.prototype.foo)).to.be.an.instanceOf(ReflectedMethod);
@@ -611,8 +610,8 @@ describe('reflect(value)', it => {
         class A { static foo() { } }
 
         Reflect.defineMetadata('rt:m', ['foo'], A);
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}`, A, 'foo');
-        Reflect.defineMetadata('rt:f', `${flags.F_METHOD}${flags.F_STATIC}`, A.foo);
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, A, 'foo');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_STATIC}`, A.foo);
         Reflect.defineMetadata('rt:h', () => A, A.foo);
 
         expect(reflect(A.foo)).to.be.an.instanceOf(ReflectedMethod);
@@ -621,4 +620,53 @@ describe('reflect(value)', it => {
         let a = () => {};
         expect(reflect(a)).to.be.an.instanceOf(ReflectedFunction);
     });
+});
+describe('Intrinsic types', it => {
+    it('reflects null type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_NULL }), B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isNull()).to.be.true;
+    })
+    it('reflects undefined type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_UNDEFINED }), B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isUndefined()).to.be.true;
+    })
+    it('reflects void type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_VOID }), B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isVoid()).to.be.true;
+    })
+    it('reflects any type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_ANY }), B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isAny()).to.be.true;
+    })
+    it('reflects false type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_FALSE }), B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isFalse()).to.be.true;
+    })
+    it('reflects true type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_TRUE }), B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isTrue()).to.be.true;
+    })
+    it('reflects unknown type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => ({ TΦ: format.T_UNKNOWN }), B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isUnknown()).to.be.true;
+    });
+    it('reflects implicit unknown type', () => {
+        class B {}
+        Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');
+        expect(ReflectedClass.new(B).getProperty('foo').type.isUnknown()).to.be.true;
+    })
 });

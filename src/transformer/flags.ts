@@ -1,6 +1,5 @@
 import ts from 'typescript';
-import { F_ABSTRACT, F_ASYNC, F_EXPORTED, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from '../common';
-export * from '../common/flags';
+import { F_ABSTRACT, F_ASYNC, F_EXPORTED, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from '../common/format';
 
 export function getVisibility(modifiers : ts.ModifiersArray) {
     if (modifiers) {
