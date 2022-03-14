@@ -1038,6 +1038,41 @@ describe('rt:t', it => {
         let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
     })
+    it('emits for array types', async () => {
+        let exports = await runSimple({
+            code: `
+                interface I {
+                    foo : number;
+                }
+
+                export class C {
+                    method(): Array<string> { return null; }
+                }
+            `
+        });
+
+        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
+    })
+    it.skip('emits for array types with noLib', async () => {
+        let exports = await runSimple({
+            code: `
+                interface I {
+                    foo : number;
+                }
+
+                export class C {
+                    method(): string[] { return null; }
+                }
+            `,
+            compilerOptions: {
+                noLib: true
+            }
+        });
+
+        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
+    })
     it('emits for double array types', async () => {
         let exports = await runSimple({
             code: `
