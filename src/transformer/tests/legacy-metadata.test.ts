@@ -69,6 +69,31 @@ describe('emitDecoratorMetadata=true: ', () => {
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
             expect(type).to.equal(exports.B);
         });
+        it.only('emits for property with type from a default export', async () => {
+            let exports = await runSimple({
+                code: `
+                    import B from './other';
+
+                    function noop() { return (t, ...a) => {} };
+                    export class C {
+                        @noop() property : B;
+                    }
+
+                    export const _B = B;
+                `, 
+                modules: {
+                    './other.ts': `
+                        export default class B { }
+                    `
+                },
+                compilerOptions: { 
+                    emitDecoratorMetadata: true 
+                }
+            });
+    
+            let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
+            expect(type).to.equal(exports._B);
+        });
         it('emits for property in a class within a function', async () => {
             let exports = await runSimple({
                 code: `
