@@ -1,4 +1,4 @@
-# vNext
+# v0.5.1
 - Fix for bug when accessing a type reference for a default-exported interface
 
 # v0.5.0
