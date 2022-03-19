@@ -199,12 +199,58 @@ export class TypeEncoder {
                 }
             }
 
+            // Special handling for case where the `Array` symbol is not available to the TS compiler
+            // (such as when `noLib` is enabled). If we have a typeNode available, we can still detect
+            // the array type and work around the lack of the Array symbol.
+
+            if (!type.symbol && typeNode && ts.isArrayTypeNode(typeNode)) {
+                let typeRef = this.checker.getTypeAtLocation(typeNode.elementType);
+                return serialize({
+                    TΦ: T_ARRAY, 
+                    e: literalNode(this.referToType(typeRef))
+                });
+            }
+
+            // Without the underlying symbol we cannot reason about whether we are looking at a function, a class
+            // or an interface.
+
+            if (!type.symbol) {
+                if (typeNode) {
+                    console.warn(`RTTI: Could not resolve symbol for type node '${typeNode.getText()}'.`);
+                } else {
+                    if (this.program.getCompilerOptions().noLib) {
+                        console.warn(
+                            `RTTI: ${this.sourceFile.fileName}: ${this.ctx.locationHint ?? 'unknown location'}: `
+                            + `Missing symbol for type with flags=${type.flags} without type node! `
+                            + `'Object' will be emitted for the type instead.`
+                        );
+
+                        if (!this.ctx['__warnedNoLib']) {
+                            console.warn(
+                                `RTTI: ^-- You are compiling with noLib enabled, which may interfere with inferred array types. `
+                                + `You may be able to work around this issue by explicitly declaring the array type instead `
+                                + `of relying on inference. This notice is shown only once.`
+                            );
+                            this.ctx['__warnedNoLib'] = true;
+                        }
+
+                    } else {
+                        console.warn(
+                            `RTTI: ${this.sourceFile.fileName}: ${this.ctx.locationHint ?? 'unknown location'}: `
+                            + `Missing symbol for type with flags=${type.flags} without type node! `
+                            + `'Object' will be emitted as the type instead. `
+                            + `[please report]`
+                        );
+                    }
+                }
+            }
+
             if (type.symbol?.name === '__object') {
                 // TODO: anonymous object type, not yet supported
                 return ts.factory.createIdentifier('Object');
             }
 
-            if ((type.symbol.flags & ts.SymbolFlags.Function) !== 0) {
+            if ((type.symbol?.flags & ts.SymbolFlags.Function) !== 0) {
                 return ts.factory.createIdentifier(`Function`);
             } else if (type.isClassOrInterface()) { 
                 let isCommonJS = this.program.getCompilerOptions().module === ts.ModuleKind.CommonJS;

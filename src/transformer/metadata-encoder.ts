@@ -10,7 +10,7 @@ import { legacyMetadataDecorator, metadataDecorator } from './metadata-decorator
 import { RttiContext } from './rtti-context';
 import { serialize } from './serialize';
 import { TypeEncoder } from './type-encoder';
-import { expressionForPropertyName, hasFlag, referenceSymbol } from './utils';
+import { expressionForPropertyName, hasFlag, hasModifier, referenceSymbol } from './utils';
 
 /**
  * Extracts type metadata from various syntactic elements and outputs 
@@ -138,6 +138,34 @@ export class MetadataEncoder {
         return decs;
     }
 
+    private getClassName(node : ts.Declaration) {
+        if (!node.parent)
+            return `unknown class/interface`;
+        
+        if (ts.isClassDeclaration(node.parent)) {
+            if (node.parent.name)
+                return `class ${node.parent.name.text}`;
+            else if (hasModifier(node.parent.modifiers, ts.SyntaxKind.DefaultKeyword))
+                return `default class`;
+            else
+                return `unknown class`;
+        } else if (ts.isClassExpression(node.parent)) {
+            if (node.parent.name)
+                return `class ${node.parent.name.text}`;
+            else
+                return `unnamed class expression`;
+        } else if (ts.isInterfaceDeclaration(node.parent)) {
+            if (node.parent.name)
+                return `interface ${node.parent.name.text}`;
+            else if (hasModifier(node.parent.modifiers, ts.SyntaxKind.DefaultKeyword))
+                return `default interface`;
+            else
+                return `unknown interface`;
+        }
+
+        return `unknown class`;
+    }
+
     property(
         node : ts.PropertyDeclaration | ts.PropertySignature 
                     | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration
@@ -146,6 +174,8 @@ export class MetadataEncoder {
         if (!type && ts.isSetAccessor(node) && node.parameters.length > 0) {
             type = node.parameters[0].type;
         }
+
+        this.ctx.locationHint = `Property '${node.name.getText()}' of ${this.getClassName(node)}`;
 
         return [
             ...this.typeNode(
@@ -179,6 +209,22 @@ export class MetadataEncoder {
     }
 
     method(node : ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction) {
+
+        if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
+            this.ctx.locationHint = `Method ${node.name?.getText() ?? '<unknown>'}() of ${this.getClassName(node)}`;
+        } else if (ts.isFunctionDeclaration(node)) {
+            this.ctx.locationHint = `Function ${node.name?.getText() ?? '<unknown>'}()`;
+        } else if (ts.isFunctionExpression(node)) {
+            if (node.name)
+                this.ctx.locationHint = `Function ${node.name.getText()}()`;
+            else
+                this.ctx.locationHint = `Unnamed function expression`;
+        } else if (ts.isArrowFunction(node)) {
+            this.ctx.locationHint = `Arrow function`
+        }
+
+        let methodHint = this.ctx.locationHint;
+
         let decs : ts.Decorator[] = [];
 
         if (this.emitStandardMetadata && ts.isMethodDeclaration(node) && node.decorators?.length > 0)
@@ -193,8 +239,10 @@ export class MetadataEncoder {
             decs.push(...this.typeNode(node.type, 'returntype', allowStandardMetadata));
         } else {
             let signature = this.checker.getSignatureFromDeclaration(node);
-            if (signature)
+            if (signature) {
+                this.ctx.locationHint = `[Return type of] ${methodHint}`;
                 decs.push(...this.type(signature.getReturnType(), undefined, 'returntype', allowStandardMetadata));
+            }
         }
 
         return decs;

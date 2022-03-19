@@ -20,4 +20,5 @@ export interface RttiContext {
     emitStandardMetadata : boolean;
     interfaceSymbols : InterfaceSymbol[];
     pkgJsonMap : Map<string, any>;
+    locationHint? : string;
 }

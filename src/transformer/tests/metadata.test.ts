@@ -1055,7 +1055,7 @@ describe('rt:t', it => {
         let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
     })
-    it.skip('emits for array types with noLib', async () => {
+    it('emits for array types with noLib', async () => {
         let exports = await runSimple({
             code: `
                 interface I {
@@ -1064,6 +1064,26 @@ describe('rt:t', it => {
 
                 export class C {
                     method(): string[] { return null; }
+                }
+            `,
+            compilerOptions: {
+                noLib: true
+            }
+        });
+
+        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
+    })
+    it.skip('emits for array types with noLib without type node', async () => {
+        let exports = await runSimple({
+            trace: true,
+            code: `
+                interface I {
+                    foo : number;
+                }
+
+                export class C {
+                    method() { return ['foo', 'bar']; }
                 }
             `,
             compilerOptions: {
