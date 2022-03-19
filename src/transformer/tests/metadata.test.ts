@@ -1076,7 +1076,6 @@ describe('rt:t', it => {
     })
     it.skip('emits for array types with noLib without type node', async () => {
         let exports = await runSimple({
-            trace: true,
             code: `
                 interface I {
                     foo : number;

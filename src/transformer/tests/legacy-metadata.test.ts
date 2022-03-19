@@ -69,7 +69,7 @@ describe('emitDecoratorMetadata=true: ', () => {
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
             expect(type).to.equal(exports.B);
         });
-        it.only('emits for property with type from a default export', async () => {
+        it('emits for property with type from a default export', async () => {
             let exports = await runSimple({
                 code: `
                     import B from './other';

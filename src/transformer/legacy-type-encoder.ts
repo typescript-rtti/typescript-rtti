@@ -1,6 +1,7 @@
 import * as ts from 'typescript';
 import { RttiContext } from './rtti-context';
 import { AnonymousType } from './ts-internal-types';
+import { typeLiteral } from './type-literal';
 import { hasAnyFlag, hasFlag, isFlagType, referenceSymbol } from './utils';
 
 export class LegacyTypeEncoder {
@@ -14,10 +15,10 @@ export class LegacyTypeEncoder {
     get checker() { return this.ctx.checker; }
     
     referToTypeNode(typeNode : ts.TypeNode): ts.Expression {
-        return this.referToType(this.checker.getTypeFromTypeNode(typeNode));
+        return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }
 
-    referToType(type : ts.Type): ts.Expression {
+    referToType(type : ts.Type, typeNode? : ts.TypeNode): ts.Expression {
         if (!type)
             return ts.factory.createIdentifier('Object');
         
@@ -41,7 +42,7 @@ export class LegacyTypeEncoder {
                     if (typeRef.target.symbol.name === 'Array' && typeRef.typeArguments.length === 1)
                         return ts.factory.createIdentifier('Array');
 
-                    return this.referToType(typeRef.target);
+                    return this.referToType(typeRef.target, typeNode);
                 }
             }
 
@@ -53,8 +54,9 @@ export class LegacyTypeEncoder {
 
             } else if (type.isClassOrInterface()) { 
                 let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol.valueDeclaration;
-                if (reifiedType)
-                    return referenceSymbol(this.ctx, type.symbol.name, true);
+                if (reifiedType) {
+                    return typeLiteral(this, type, typeNode, { hoistImportsInCommonJS: true });
+                }
             }
 
             return ts.factory.createIdentifier('Object');

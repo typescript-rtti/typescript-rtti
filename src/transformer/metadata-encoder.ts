@@ -38,7 +38,7 @@ export class MetadataEncoder {
         let decs : ts.Decorator[] = [];
         decs.push(metadataDecorator('rt:t', literalNode(forwardRef(this.typeEncoder.referToType(type, typeNode)))));
         if (this.emitStandardMetadata && allowStandardMetadata)
-            decs.push(legacyMetadataDecorator(`design:${standardName}`, literalNode(this.legacyTypeEncoder.referToType(type))));
+            decs.push(legacyMetadataDecorator(`design:${standardName}`, literalNode(this.legacyTypeEncoder.referToType(type, typeNode))));
         return decs;
     }
 
