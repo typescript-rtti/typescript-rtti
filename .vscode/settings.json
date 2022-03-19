@@ -8,5 +8,6 @@
     "editor.detectIndentation": false,
     "files.trimTrailingWhitespace": true,
     "typescript.format.semicolons": "insert",
-    "typescript.format.insertSpaceAfterTypeAssertion": false
+    "typescript.format.insertSpaceAfterTypeAssertion": false,
+    "gitlens.advanced.blame.customArguments": ["--ignore-revs-file", "${workspaceRoot}/.git-blame-ignore-revs"]
 }
