@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe } from "razmin";
 import { ReflectedTypeRef } from ".";
 import { runSimple } from "../runner.test";
-import { reify, reflect } from "./reflect";
+import { reify, reflect, ReflectedClass } from "./reflect";
 
 describe('reflect<T>()', it => {
     it('reifies and reflects', async () => {
@@ -66,5 +66,26 @@ describe('reflect<T>()', it => {
         expect(exports.value2).to.equal(123);
         expect(exports.value3).to.equal(123);
         expect(exports.value4).to.equal(123);
-    })
+    })    
+    it.only('reflects properly for a default export interface', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": { reify, reflect },
+                "./IMovable.ts": `
+                    export default interface IMovable {
+                        position: Array<number>
+                        readonly movementVelocity: Array<number>
+                    }
+                `
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                import IMovable from './command/move/IMovable';
+
+                export const reflectedInterface = reflect<IMovable>().as('interface').reflectedInterface;
+            `
+        })
+
+        expect((exports.reflectedInterface) instanceof ReflectedClass).to.be.true;
+    });
 });
