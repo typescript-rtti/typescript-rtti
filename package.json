@@ -34,6 +34,7 @@
     "build:cjs": "tsc -b",
     "build:esm": "tsc -b ./tsconfig.esm.json",
     "test": "npm run build && nyc node --experimental-loader ./test-module-resolver.mjs dist/test",
+    "test:nocov": "npm run build && node --experimental-loader ./test-module-resolver.mjs dist/test",
     "test:corpus": "npm run build && node ./dist/test/corpus/main",
     "test:corpus:trace": "npm run -- test:corpus -- --trace",
     "prepublishOnly": "npm test && npm run test:corpus",
