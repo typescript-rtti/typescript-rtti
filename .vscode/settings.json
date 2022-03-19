@@ -1,0 +1,12 @@
+{
+    "typescript.tsdk": "node_modules/typescript/lib",
+
+    // These code style settings should be synced with .editorconfig
+    "typescript.preferences.quoteStyle": "single",
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "files.trimTrailingWhitespace": true,
+    "typescript.format.semicolons": "insert",
+    "typescript.format.insertSpaceAfterTypeAssertion": false
+}
