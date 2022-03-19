@@ -67,7 +67,7 @@ describe('reflect<T>()', it => {
         expect(exports.value3).to.equal(123);
         expect(exports.value4).to.equal(123);
     })    
-    it.skip('reflects properly for a default export interface', async () => {
+    it('reflects properly for a default export interface', async () => {
         let exports = await runSimple({
             modules: {
                 "typescript-rtti": { reify, reflect },
