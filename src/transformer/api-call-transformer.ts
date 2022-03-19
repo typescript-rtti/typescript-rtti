@@ -6,6 +6,7 @@ import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
 import { TypeEncoder } from "./type-encoder";
 import { literalNode } from "./literal-node";
+import * as format from "../common/format";
 
 export class ApiCallTransformer extends RttiVisitor {
 
@@ -119,7 +120,7 @@ export class ApiCallTransformer extends RttiVisitor {
                 args.push(ts.factory.createVoidZero());
             }
 
-            args.push(serialize({
+            args.push(serialize(<format.RtSerialized<format.RtCallSite>>{
                 TΦ: 'c',
                 t: undefined, // TODO: this type
                 p: expr.arguments.map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x)))),

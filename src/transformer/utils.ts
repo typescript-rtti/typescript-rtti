@@ -195,6 +195,10 @@ export function hasModifier(modifiers : ts.ModifiersArray, modifier : ts.SyntaxK
     return modifiers?.some(x => x.kind === modifier) ?? false;
 }
 
+export function hasModifiers(modifiersArray : ts.ModifiersArray, modifiers : ts.SyntaxKind[]) {
+    return modifiers.every(modifier => hasModifier(modifiersArray, modifier));
+}
+
 export function referenceSymbol(
     ctx : RttiContext,
     identifier : string,

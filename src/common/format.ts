@@ -73,6 +73,26 @@ export type RtUnknownType      = RtIntrinsicType<typeof T_UNKNOWN>;
 export type RtAnyType          = RtIntrinsicType<typeof T_ANY>;
 export type RtThisType         = RtIntrinsicType<typeof T_THIS>;
 
+export interface RtCallSite {
+    TΦ: typeof T_CALLSITE;
+
+    /**
+     * Type of `this`. Not currently supported, always undefined.
+     */
+    t: RtType;
+
+    /**
+     * Parameter types of the call
+     */
+    p: RtType[];
+
+    /**
+     * Type parameters (generics)
+     */
+    tp: RtType[];
+    r: RtType;
+}
+
 export interface RtUnionType {
     TΦ : typeof T_UNION;
     t : RtType[];
@@ -113,9 +133,13 @@ export interface RtParameter {
 
 export interface LiteralSerializedNode {
     $__isTSNode: true;
-    node: ts.Node;
+    node: ts.Expression;
 }
 
-export type RtSerialized<T> = {
-    [K in keyof T] : T[K] | LiteralSerializedNode;
+export type RtSerialized<T> = T | {
+    [K in keyof T] : T[K] | (T[K] extends Array<any> ? LiteralSerializedNode[] : LiteralSerializedNode);
+}
+
+export function isLiteralNode<T>(node : T | LiteralSerializedNode): node is LiteralSerializedNode {
+    return !!node['$__isTSNode'];
 }

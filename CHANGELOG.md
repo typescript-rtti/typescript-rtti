@@ -1,4 +1,7 @@
 # vNext
+- Fix for bug when accessing a type reference for a default-exported interface
+
+# v0.5.0
 - Fixes for intrinsic type checks (isNull(), isUndefined(), isTrue(), isFalse())
 - Tighten type assertions in the reflection API to reduce
   easy mistakes

@@ -2153,20 +2153,12 @@ export interface CallSite {
     TΦ: 'c'
 }
 
-interface RtCallSite {
-    TΦ: typeof format.T_CALLSITE;
-    t: RtType;
-    p: RtType[];
-    tp: RtType[];
-    r: RtType;
-}
-
 export class ReflectedCallSite {
     constructor(callSite : CallSite) {
-        this.callSite = <RtCallSite>callSite;
+        this.callSite = <format.RtCallSite>callSite;
     }
 
-    private callSite : RtCallSite;
+    private callSite : format.RtCallSite;
 
     private _parameters : ReflectedTypeRef[];
 

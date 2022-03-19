@@ -8,7 +8,7 @@ import { InterfaceAnalyzer } from "./common/interface-analyzer";
 import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
-import { expressionForPropertyName, hasModifier } from "./utils";
+import { expressionForPropertyName, hasModifier, hasModifiers } from "./utils";
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile : ts.SourceFile, ctx : RttiContext): ts.SourceFile {
@@ -194,12 +194,15 @@ export class MetadataEmitter extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.InterfaceDeclaration)
     interface(decl : ts.InterfaceDeclaration) {
+        let emitName = decl.name.text;
+        if (hasModifiers(decl.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
+            emitName = 'default';
         
         let tokenDecl = ts.factory.createVariableStatement(
             [],
             ts.factory.createVariableDeclarationList(
                 [ts.factory.createVariableDeclaration(
-                    ts.factory.createIdentifier(`IΦ${decl.name.text}`),
+                    ts.factory.createIdentifier(`IΦ${emitName}`),
                     undefined,
                     undefined,
                     ts.factory.createObjectLiteralExpression([
@@ -259,17 +262,17 @@ export class MetadataEmitter extends RttiVisitor {
                 tokenDecl,
                 ...(
                     hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword)
-                    ? [this.exportInterfaceToken(decl.name.text)] 
+                    ? [this.exportInterfaceToken(emitName)] 
                     : []
                 ),
                 ...this.metadataEncoder.class(<ts.InterfaceDeclaration>decl, details)
                     .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
-                        ts.factory.createIdentifier(`IΦ${(decl as ts.InterfaceDeclaration).name.text}`)
+                        ts.factory.createIdentifier(`IΦ${emitName}`)
                     ]))),
                 ...this.emitOutboardMetadata(interfaceDecl, result),
                 ...(result.decorators.map(dec => ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [
                     ts.factory.createPropertyAccessExpression(
-                        ts.factory.createIdentifier(`IΦ${(decl as ts.InterfaceDeclaration).name.text}`), 
+                        ts.factory.createIdentifier(`IΦ${emitName}`), 
                         'prototype'
                     ),
                     expressionForPropertyName(dec.property)
@@ -409,11 +412,14 @@ export class MetadataEmitter extends RttiVisitor {
     ): ts.Expression[] {
         let nodes : ts.Expression[] = [];
         let elementName = node.name.text;
+        
         for (let dec of outboardMetadata.decorators) {
             let host : ts.Expression = ts.factory.createIdentifier(elementName);
 
             if (ts.isInterfaceDeclaration(node)) {
                 let interfaceName = `IΦ${node.name.text}`;
+                if (hasModifiers(node.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
+                    interfaceName = `IΦdefault`;
                 host = ts.factory.createIdentifier(interfaceName);
             }
 
