@@ -416,6 +416,10 @@ export class TypeEncoder {
                         }
                     }
 
+                    let exportedName = 'default';
+                    if (type.isClassOrInterface() && !type.isClass())
+                        exportedName = `IΦdefault`;
+
                     if (isExportedAsDefault) {
                         if (isCommonJS) {
                             return ts.factory.createPropertyAccessExpression(
@@ -424,24 +428,31 @@ export class TypeEncoder {
                                     [], [
                                         ts.factory.createStringLiteral(modulePath)
                                     ]
-                                ), 'default')
+                                ), exportedName)
                         } else {
                             
                             let impo = this.importMap.get(`*default:${modulePath}`);
                             if (!impo) {
                                 this.importMap.set(`*default:${modulePath}`, impo = {
                                     importDeclaration: undefined,
-                                    isDefault: true,
-                                    isNamespace: false,
+                                    isDefault: exportedName === 'default',
+                                    isNamespace: exportedName !== 'default',
                                     localName: `LΦ_${this.ctx.freeImportReference++}`,
                                     modulePath: modulePath,
-                                    name: `*default:${modulePath}`,
+                                    name: `*${exportedName}:${modulePath}`,
                                     refName: '',
                                     referenced: true
                                 })
                             }
                             
-                            return ts.factory.createIdentifier(impo.localName);
+                            if (exportedName === 'default') {
+                                return ts.factory.createIdentifier(impo.localName);
+                            } else {
+                                return ts.factory.createPropertyAccessExpression(
+                                    ts.factory.createIdentifier(impo.localName),
+                                    exportedName
+                                );
+                            }
                         }
                     } else {
                         // Named export
