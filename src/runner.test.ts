@@ -121,15 +121,20 @@ export function compile(invocation : RunInvocation): Record<string,string> {
         getDirectories: () => []
     });
 
-    let optionsDiags = program.getOptionsDiagnostics();
-    let syntacticDiags = program.getSyntacticDiagnostics();
-
     if (invocation.trace) {
-        for (let diag of optionsDiags) {
-            console.log(diag);
-        }
-        for (let diag of syntacticDiags) {
-            console.log(diag);
+        // TODO: All tests should have this enabled
+        
+        let optionsDiags = program.getOptionsDiagnostics();
+        let syntacticDiags = program.getSyntacticDiagnostics();
+        let semanticDiags = program.getSemanticDiagnostics();
+        let diags = ([] as ts.Diagnostic[]).concat(optionsDiags, syntacticDiags, semanticDiags);
+
+        if (diags.length > 0) {
+            throw new Error(`Typescript did not compile this test correctly. Errors: ${JSON.stringify(diags.map(x => ts.formatDiagnostic(x, {
+                getCanonicalFileName: fileName => fileName,
+                getCurrentDirectory: () => './test',
+                getNewLine: () => `\n`
+            })))}`);
         }
     }
 
