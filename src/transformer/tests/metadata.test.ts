@@ -1,6 +1,7 @@
 
 import { expect } from 'chai';
 import { describe } from 'razmin';
+import ts from 'typescript';
 import { F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION, 
          F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE, 
          T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, 
@@ -1054,7 +1055,7 @@ describe('rt:t', it => {
         let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
     })
-    it.skip('emits for array types with noLib', async () => {
+    it('emits for array types with noLib', async () => {
         let exports = await runSimple({
             code: `
                 interface I {
@@ -1073,6 +1074,54 @@ describe('rt:t', it => {
         let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
     })
+    it.skip('emits for array types with noLib without type node', async () => {
+        let exports = await runSimple({
+            trace: true,
+            code: `
+                interface I {
+                    foo : number;
+                }
+
+                export class C {
+                    method() { return ['foo', 'bar']; }
+                }
+            `,
+            compilerOptions: {
+                noLib: true
+            }
+        });
+
+        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
+    })
+
+    it('emits for array types with specific tsconfig', async () => {
+        let exports = await runSimple({
+            code: `
+                interface I {
+                    foo : number;
+                }
+
+                export class C {
+                    method(): string[] { return null; }
+                }
+            `,
+            moduleType: 'esm',
+            compilerOptions: {
+                moduleResolution: ts.ModuleResolutionKind.NodeJs,
+                module: ts.ModuleKind.ES2020,
+                target: ts.ScriptTarget.ES2020,
+                strict: true,
+                removeComments: true,
+                sourceMap: true,
+                experimentalDecorators: true
+            }
+        });
+
+        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        expect(type()).to.eql({ TΦ: T_ARRAY, e: String });
+    })
+
     it('emits for double array types', async () => {
         let exports = await runSimple({
             code: `

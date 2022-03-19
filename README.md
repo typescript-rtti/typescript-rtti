@@ -195,7 +195,18 @@ import "reflect-metadata";
 You can also use ts-node, just pass `-C ttypescript` to make sure ts-node uses typescript compiler which respects compiler transforms.
 
 ## **Webpack**  
- See [awesome-typescript-loader](https://github.com/s-panferov/awesome-typescript-loader)
+See [awesome-typescript-loader](https://github.com/s-panferov/awesome-typescript-loader)
+
+## **Parcel**
+
+Unfortunately, because Parcel processes each Typescript file individually, it is currently not possible to use RTTI for 
+projects that are transpiled directly by Parcel, even if you use a Parcel transformer that supports Typescript transformers.
+We are actively investigating improvements to this situation, but it will likely require writing a new Parcel transformer
+which builds your Typescript files as a complete compilation unit, and it is not yet clear if that is feasible given the 
+design decisions that Parcel has made. 
+
+In the mean time, you may be able to work around this by [first compiling using `ttsc` and then feeding the result into
+Parcel](https://github.com/parcel-bundler/parcel/issues/3645#issuecomment-542309714).
 
 ## **Jest**
 See https://github.com/rezonant/typescript-rtti-jest for a sample repo with jest setup.
@@ -288,6 +299,17 @@ the Typescript team decides to further advance runtime metadata, it is likely to
 
 Enabling `emitDecoratorMetadata` causes `typescript-rtti` to emit both the `design:*` style of metadata as well as its 
 own `rt:*` format. Disabling it causes only `rt:*` metadata to be emitted.
+
+# Unsupported Scenarios
+
+Some Typescript options are incompatible with `typescript-rtti`:
+
+- `noLib` -- While this will work for most cases, specifically there is currently an incompatibility when dealing with 
+  array types because Typescript cannot look up the appropriate symbol (`Array` from `lib.d.ts`). You can work around 
+  this by using `Array<T>` instead of `T[]`.
+- `transpileOnly` -- For build solutions which provide it note that `transpileOnly` will not work correctly as 
+  `typescript-rtti` relies on Typescript's semantic analysis which is not performed when performing a direct 
+  transpilation.
 
 # Backward Compatibility
 
@@ -386,6 +408,18 @@ automatically collapses to `number`. When you have it enabled, `number | null` i
 `typescript-rtti`. We are [investigating](https://github.com/typescript-rtti/typescript-rtti/issues/19) how to enable
 observing `number | null` without requiring `strictNullChecks` to be available, but the current behavior matches 
 what _Typescript_ sees.
+
+## Q: I receive `RTTI: Failed to build source file: Cannot read properties of undefined (reading 'flags')`
+
+There are several potential causes of this and certainly one of those potential causes is that you've discovered a bug
+in the transformer. However, there are a few cases where this is known to occur in the current version:
+
+- When you are using Parcel (see notes above)
+- When you are using `noLib` (see notes above)
+- When you are using `transpileOnly` (see notes above)
+
+Ideally `typescript-rtti` should fail gracefully under these conditions, but for now it will help avoid duplicate issue
+reports as the above are all already tracked in existing issues.
 
 # Related/Similar Projects
 

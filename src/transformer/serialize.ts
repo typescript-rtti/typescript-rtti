@@ -1,6 +1,7 @@
 import ts from 'typescript';
+import { isLiteralNode, RtSerialized } from '../common';
 
-export function serialize(object : any): ts.Expression {
+export function serialize<T>(object : T | RtSerialized<T>): ts.Expression {
     if (object === null)
         return ts.factory.createNull();
     if (object === undefined)
@@ -16,7 +17,7 @@ export function serialize(object : any): ts.Expression {
         return object ? ts.factory.createTrue() : ts.factory.createFalse();
     if (typeof object === 'function')
         throw new Error(`Cannot serialize a function`);
-    if (object.$__isTSNode)
+    if (isLiteralNode(object))
         return object.node;
     
     let props : ts.ObjectLiteralElementLike[] = [];

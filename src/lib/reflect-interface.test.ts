@@ -1,8 +1,10 @@
 import { expect } from "chai";
 import { describe } from "razmin";
 import { ReflectedTypeRef } from ".";
+import * as format from "../common/format";
 import { runSimple } from "../runner.test";
-import { reify, reflect } from "./reflect";
+import { MODULE_TYPES } from "../transformer/tests/module-types.test";
+import { reify, reflect, ReflectedClass } from "./reflect";
 
 describe('reflect<T>()', it => {
     it('reifies and reflects', async () => {
@@ -67,4 +69,37 @@ describe('reflect<T>()', it => {
         expect(exports.value3).to.equal(123);
         expect(exports.value4).to.equal(123);
     })
+
+    for (let moduleType of MODULE_TYPES) {
+        it(`[${moduleType}] reflects properly for a default export interface`, async () => {
+            let exports = await runSimple({
+                moduleType,
+                modules: {
+                    "./IMovable.ts": `
+                        export default interface IMovable {
+                            position: Array<number>
+                            readonly movementVelocity: Array<number>
+                        }
+                    `
+                },
+                code: `
+                    import IMovable from './IMovable';
+
+                    /**
+                     * @rtti:callsite 1
+                     */
+                    function reflect<T>(_?, callsite?) {
+                        return callsite;
+                    }
+
+                    export const callsite = reflect<IMovable>();
+                `
+            })
+
+            let callsite = <format.RtCallSite> exports.callsite;
+            expect(callsite.TΦ).to.equal(format.T_CALLSITE);
+            let token = (callsite.tp[0] as format.InterfaceToken);
+            expect(token.name).to.equal('IMovable');
+        });
+    }
 });

@@ -1,4 +1,12 @@
 # vNext
+- Fixes some failures where array types are used with `noLib` enabled
+- Ensures that `Object` will be emitted when encountering types with missing symbols
+- Provide better DX for cases where `noLib` causes problems
+
+# v0.5.1
+- Fix for bug when accessing a type reference for a default-exported interface
+
+# v0.5.0
 - Fixes for intrinsic type checks (isNull(), isUndefined(), isTrue(), isFalse())
 - Tighten type assertions in the reflection API to reduce
   easy mistakes
