@@ -4,7 +4,7 @@ import { RttiVisitor } from "../rtti-visitor-base";
 import { RttiContext } from "../rtti-context";
 
 export class ImportAnalyzer extends RttiVisitor {
-    static analyze(file : ts.SourceFile, ctx : RttiContext) {
+    static analyze(file: ts.SourceFile, ctx: RttiContext) {
         let analyzer = new ImportAnalyzer(ctx);
         try {
             analyzer.visitEachChild(file);
@@ -15,7 +15,7 @@ export class ImportAnalyzer extends RttiVisitor {
     }
 
     @Visit(ts.SyntaxKind.ImportDeclaration)
-    import(decl : ts.ImportDeclaration) {
+    import(decl: ts.ImportDeclaration) {
         if (decl.importClause) {
             let bindings = decl.importClause.namedBindings;
 
@@ -30,7 +30,7 @@ export class ImportAnalyzer extends RttiVisitor {
                     isNamespace: false,
                     isDefault: true,
                     importDeclaration: decl
-                })
+                });
             } else if (bindings) {
                 if (ts.isNamedImports(bindings)) {
                     for (let binding of bindings.elements) {
@@ -66,8 +66,8 @@ export class ImportAnalyzer extends RttiVisitor {
                         isNamespace: true,
                         isDefault: false,
                         importDeclaration: decl
-                    })
-                    bindings.name
+                    });
+                    bindings.name;
                 }
             }
         }

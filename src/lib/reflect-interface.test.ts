@@ -17,13 +17,13 @@ describe('reflect<T>()', it => {
                 export interface Something {}
                 export const reflectedTypeRef = reflect<Something>();
             `
-        })
+        });
 
         expect((exports.reflectedTypeRef as ReflectedTypeRef).as('interface').token)
             .to.equal(exports.IΦSomething);
     });
     it(`doesn't rewrite other calls into typescript-rtti`, async () => {
-        let exports = await runSimple({ 
+        let exports = await runSimple({
             modules: {
                 'typescript-rtti': {
                     other(passed?) {
@@ -41,9 +41,9 @@ describe('reflect<T>()', it => {
 
         expect(exports.value1).to.equal(123);
         expect(exports.value2).to.equal(123);
-    })
+    });
     it(`doesn't rewrite any calls for other libraries`, async () => {
-        let exports = await runSimple({ 
+        let exports = await runSimple({
             modules: {
                 'other': {
                     reflect(passed?) {
@@ -68,7 +68,7 @@ describe('reflect<T>()', it => {
         expect(exports.value2).to.equal(123);
         expect(exports.value3).to.equal(123);
         expect(exports.value4).to.equal(123);
-    })
+    });
 
     for (let moduleType of MODULE_TYPES) {
         it(`[${moduleType}] reflects properly for a default export interface`, async () => {
@@ -94,9 +94,9 @@ describe('reflect<T>()', it => {
 
                     export const callsite = reflect<IMovable>();
                 `
-            })
+            });
 
-            let callsite = <format.RtCallSite> exports.callsite;
+            let callsite = <format.RtCallSite>exports.callsite;
             expect(callsite.TΦ).to.equal(format.T_CALLSITE);
             let token = (callsite.tp[0] as format.InterfaceToken);
             expect(token.name).to.equal('IMovable');

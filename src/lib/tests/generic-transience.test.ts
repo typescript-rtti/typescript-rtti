@@ -5,13 +5,13 @@ import { CallSite, reflect } from "../reflect";
 describe('Library: Generic transience', it => {
     it('reflects upon callsites', async () => {
 
-        let callSite = reflect(<CallSite>{ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ 123, Boolean ], 
+        let callSite = reflect(<CallSite>{
+            TΦ: 'c',
+            t: undefined,
+            p: [123, Boolean],
             r: undefined,
-            tp: [ String, 321 ],
-        })
+            tp: [String, 321],
+        });
 
         expect(callSite.parameters.length).to.equal(2);
         expect(callSite.parameters[0].isClass(Number)).to.be.true;

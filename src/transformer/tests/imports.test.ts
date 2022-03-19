@@ -11,7 +11,7 @@ describe('Imports', it => {
                     moduleType,
                     code: `
                         import "foo";
-                        
+
                         export class A { }
                         export class B {
                             constructor(hello : A) { }
@@ -27,7 +27,7 @@ describe('Imports', it => {
                     moduleType,
                     code: `
                         import foo from "foo";
-                        
+
                         export class A { }
                         export class B {
                             constructor(hello : A) { }
@@ -55,7 +55,7 @@ describe('Imports', it => {
                         `
                     }
                 });
-        
+
                 let params = Reflect.getMetadata('rt:p', exports.C.prototype, 'method');
                 expect(params[0].t()).to.equal(exports.A);
             });
@@ -67,14 +67,14 @@ describe('Imports', it => {
                         export class C {
                             method(hello : lib.A) { return 123; }
                         }
-                    `, 
+                    `,
                     modules: {
                         './libf.ts': `
                             export class A { }
                         `
                     }
                 });
-        
+
                 let params = Reflect.getMetadata('rt:p', exports.C.prototype, 'method');
                 expect(params[0].t()).to.exist;
             });
@@ -90,7 +90,7 @@ describe('Imports', it => {
                     `,
                     modules: {
                         './foo.ts': `
-                            export default class A { } 
+                            export default class A { }
                         `
                     }
                 });
@@ -107,7 +107,7 @@ describe('Imports', it => {
                         import { A } from "./libf";
                         export function f(a : A) { }
                         export { A } from "./libf";
-                    `, 
+                    `,
                     modules: {
                         './libf.ts': `
                             export { default as A } from './a'
@@ -119,7 +119,7 @@ describe('Imports', it => {
                         `
                     }
                 });
-        
+
                 let params = Reflect.getMetadata('rt:p', exports.f);
                 expect(params[0].t()).to.equal(exports.A);
             });

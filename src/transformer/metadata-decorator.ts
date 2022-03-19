@@ -5,17 +5,17 @@ import { ExternalDecorator } from './metadata-collector';
 import { serialize } from './serialize';
 import { expressionForPropertyName, hasFlag, hasModifier } from './utils';
 
-export function metadataDecorator(key : string, object : any) {
+export function metadataDecorator(key: string, object: any) {
     return ts.factory.createDecorator(
         ts.factory.createCallExpression(
-            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('__RΦ'), 'm'), 
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('__RΦ'), 'm'),
             [],
             [
                 ts.factory.createStringLiteral(key),
                 serialize(object)
             ]
         )
-    )
+    );
 }
 
 export function hostMetadataDecorator() {
@@ -88,17 +88,17 @@ export function hostMetadataDecorator() {
     return dec;
 }
 
-export function legacyMetadataDecorator(key : string, object : any) {
+export function legacyMetadataDecorator(key: string, object: any) {
     return legacyDecorator(metadataDecorator(key, object));
 }
 
-export function directMetadataDecorator(key : string, object : any) {
-    let dec = metadataDecorator(key, object)
+export function directMetadataDecorator(key: string, object: any) {
+    let dec = metadataDecorator(key, object);
     dec['__Φdirect'] = true;
     return dec;
 }
 
-export function decorateFunctionExpression(func : ts.FunctionExpression | ts.ArrowFunction, decorators : ts.Decorator[]) {
+export function decorateFunctionExpression(func: ts.FunctionExpression | ts.ArrowFunction, decorators: ts.Decorator[]) {
     let name = '';
 
     if (func.parent) {
@@ -116,14 +116,14 @@ export function decorateFunctionExpression(func : ts.FunctionExpression | ts.Arr
             'f'
         ),
         [], [
-            func,
-            ts.factory.createArrayLiteralExpression(decorators.map(d => d.expression)),
-            ts.factory.createStringLiteral(name)
-        ]
-    )
+        func,
+        ts.factory.createArrayLiteralExpression(decorators.map(d => d.expression)),
+        ts.factory.createStringLiteral(name)
+    ]
+    );
 }
 
-export function decorateClassExpression(classExpr : ts.ClassExpression, decorators : ts.Decorator[], externalDecorators : ExternalDecorator[]) {
+export function decorateClassExpression(classExpr: ts.ClassExpression, decorators: ts.Decorator[], externalDecorators: ExternalDecorator[]) {
     let name = '';
 
     if (classExpr.name) {
@@ -147,23 +147,23 @@ export function decorateClassExpression(classExpr : ts.ClassExpression, decorato
             'c'
         ),
         [], [
-            classExpr,
-            serialize(decorators.map(d => literalNode(d.expression))), // on class
-            serialize(
-                instancePropDecorators
-                    .map(x => [ 
-                        literalNode(expressionForPropertyName(x.property)), 
-                        literalNode(x.decorator.expression)
-                    ])
-            ),
-            serialize(
-                staticPropDecorators
-                    .map(x => [ 
-                        literalNode(expressionForPropertyName(x.property)), 
-                        literalNode(x.decorator.expression)
-                    ])
-            ),
-            name ? ts.factory.createStringLiteral(name) : ts.factory.createVoidZero()
-        ]
-    )
+        classExpr,
+        serialize(decorators.map(d => literalNode(d.expression))), // on class
+        serialize(
+            instancePropDecorators
+                .map(x => [
+                    literalNode(expressionForPropertyName(x.property)),
+                    literalNode(x.decorator.expression)
+                ])
+        ),
+        serialize(
+            staticPropDecorators
+                .map(x => [
+                    literalNode(expressionForPropertyName(x.property)),
+                    literalNode(x.decorator.expression)
+                ])
+        ),
+        name ? ts.factory.createStringLiteral(name) : ts.factory.createVoidZero()
+    ]
+    );
 }

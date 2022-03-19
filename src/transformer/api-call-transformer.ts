@@ -12,35 +12,35 @@ export class ApiCallTransformer extends RttiVisitor {
 
     typeEncoder = new TypeEncoder(this.ctx);
 
-    static transform<T extends ts.Node>(node : T, ctx : RttiContext) {
+    static transform<T extends ts.Node>(node: T, ctx: RttiContext) {
         let transformer = new ApiCallTransformer(ctx);
         return transformer.visitNode(node);
     }
 
-    private isRttiCall(expr : ts.CallExpression, name? : string) {
-        return ts.isIdentifier(expr.expression) 
+    private isRttiCall(expr: ts.CallExpression, name?: string) {
+        return ts.isIdentifier(expr.expression)
             && this.isAnyImportedSymbol(
-                this.checker.getSymbolAtLocation(expr.expression), 
+                this.checker.getSymbolAtLocation(expr.expression),
                 'typescript-rtti', name ? [name] : ['reify', 'reflect']
             )
-        ;
+            ;
     }
 
-    isAnyImportedSymbol(symbol : ts.Symbol, packageName : string, names : string[]) {
+    isAnyImportedSymbol(symbol: ts.Symbol, packageName: string, names: string[]) {
         if (!symbol || !names.includes(symbol.name))
             return false;
-        
+
         return this.isSymbolFromPackage(symbol, packageName);
     }
 
-    isImportedSymbol(symbol : ts.Symbol, packageName : string, name : string) {
-        return this.isAnyImportedSymbol(symbol, packageName, [ name ])
+    isImportedSymbol(symbol: ts.Symbol, packageName: string, name: string) {
+        return this.isAnyImportedSymbol(symbol, packageName, [name]);
     }
 
-    isSymbolFromPackage(symbol : ts.Symbol, packageName : string) {
+    isSymbolFromPackage(symbol: ts.Symbol, packageName: string) {
         let decls = Array.from(symbol.getDeclarations());
         let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
-        
+
         if (!importSpecifier)
             return false;
 
@@ -49,23 +49,23 @@ export class ApiCallTransformer extends RttiVisitor {
         if (!ts.isStringLiteral(modSpecifier))
             return false;
 
-        return modSpecifier.text === packageName 
-            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.js$`)) 
-            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.ts$`)) 
+        return modSpecifier.text === packageName
+            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.js$`))
+            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.ts$`))
             || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/?$`))
-        ;
+            ;
     }
 
-    isCallSiteTypeRef(typeNode : ts.TypeNode) {
+    isCallSiteTypeRef(typeNode: ts.TypeNode) {
         if (!typeNode)
             return false;
-        
+
         if (typeNode.kind === ts.SyntaxKind.TypeReference) {
             let typeRef = <ts.TypeReferenceNode>typeNode;
             if (!typeRef.typeName)
                 return false;
             if (typeRef.typeName.kind === ts.SyntaxKind.Identifier && typeRef.typeName.text === 'CallSite') {
-                let symbol = this.checker.getSymbolAtLocation(typeRef.typeName)
+                let symbol = this.checker.getSymbolAtLocation(typeRef.typeName);
                 return this.isImportedSymbol(symbol, 'typescript-rtti', 'CallSite');
             }
         }
@@ -73,16 +73,16 @@ export class ApiCallTransformer extends RttiVisitor {
         return false;
     }
 
-    isCallSiteParameter(param : ts.ParameterDeclaration) {
+    isCallSiteParameter(param: ts.ParameterDeclaration) {
         return !!param?.questionToken && this.isCallSiteTypeRef(param?.type);
     }
 
-    typeOfParamSymbol(symbol : ts.Symbol): ts.Type {
+    typeOfParamSymbol(symbol: ts.Symbol): ts.Type {
         return this.checker.getTypeOfSymbolAtLocation(symbol, symbol.getDeclarations()[0]);
     }
 
     @Visit(ts.SyntaxKind.CallExpression)
-    callExpr(expr : ts.CallExpression) {
+    callExpr(expr: ts.CallExpression) {
         let signature = this.checker.getResolvedSignature(expr);
         if (!signature) {
             debugger;
@@ -134,7 +134,7 @@ export class ApiCallTransformer extends RttiVisitor {
         }
     }
 
-    private referToType(type : ts.Type) {
+    private referToType(type: ts.Type) {
         if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
             let symbol = type.symbol;
             let decl = symbol.declarations[0];
@@ -146,7 +146,7 @@ export class ApiCallTransformer extends RttiVisitor {
                         let callSiteArgIndex = parentDecl.parameters.findIndex(p => this.isCallSiteParameter(p));
                         if (callSiteArgIndex >= 0) {
                             let callSiteArg = parentDecl.parameters[callSiteArgIndex];
-        
+
                             if (ts.isIdentifier(callSiteArg.name)) {
                                 let callSiteName = callSiteArg.name.text;
                                 return ts.factory.createElementAccessExpression(
@@ -155,7 +155,7 @@ export class ApiCallTransformer extends RttiVisitor {
                                         'tp'
                                     ),
                                     typeIndex
-                                )
+                                );
                             }
                         }
                     }

@@ -1,33 +1,33 @@
 /// <reference types="reflect-metadata" />
 /**
  * RTTI Transformer
- * 
+ *
  * This Typescript transformer does two things:
- * 1. When emitDecoratorMetadata is enabled, this emits Typescript's "design:*" metadata on all syntactic 
+ * 1. When emitDecoratorMetadata is enabled, this emits Typescript's "design:*" metadata on all syntactic
  *    elements processed during a compilation, regardless of whether a decorator is originally present on the element.
  *    NOTE: You may not want this, because design:* has a number of flaws. If you disable emitDecoratorMetadata this
  *    transformer will still output the rt:* metadata items instead.
  * 2. Emits "rt:*" metadata on each syntactic element which describes compile-time semantics of an element,
- *    which encodes element type, public, private, protected, abstract, readonly, async, optional, lists of 
- *    method names and property names for classes, and lists of parameter names, types, and modifiers for methods 
+ *    which encodes element type, public, private, protected, abstract, readonly, async, optional, lists of
+ *    method names and property names for classes, and lists of parameter names, types, and modifiers for methods
  *    and classes (ie constructors).
- * 
+ *
  * - The "rt:f" metadata item holds a string of flags, where each character indicates the positive presence of a flag.
  *   For the list of available flags, see src/common/flags.ts
- * - The "rt:i" metadata item contains an array of type references which point to interface objects representing the 
+ * - The "rt:i" metadata item contains an array of type references which point to interface objects representing the
  *   interfaces found in the "implements" clause of a class
  * - The "rt:t" metadata item represents the "type" of an item. This is the type of a property, the return type of a method,
  *   or Function in the case of a class (similar to "design:type" for a class).
- * - The "rt:p" metadata item represents parameters of a method or a class (ie constructor). It is an array of objects which 
- *   each have n (name : string), t (type : Function), and optionally f (flags : string) options. The meaning of flags is 
+ * - The "rt:p" metadata item represents parameters of a method or a class (ie constructor). It is an array of objects which
+ *   each have n (name : string), t (type : Function), and optionally f (flags : string) options. The meaning of flags is
  *   as above.
  * - The "rt:P" metadata item represents an array of property names
  * - The "rt:m" metadata item represents an array of method names
  * - The "rt:SP" metadata item represents an array of static property names
  * - The "rt:Sm" metadata item represents an array of static method names
- * - The "rt:h" metadata item represents the "host" of the element. For methods, this is the class constructor 
- *   or interface token of the enclosing class/interface. 
- * 
+ * - The "rt:h" metadata item represents the "host" of the element. For methods, this is the class constructor
+ *   or interface token of the enclosing class/interface.
+ *
  */
 
 import { rtStore } from './rt-helper';
@@ -40,11 +40,11 @@ import { MetadataEmitter } from './metadata-emitter';
 import { DeclarationsEmitter } from './declarations-emitter';
 
 export interface RttiSettings {
-    trace? : boolean;
-    throwOnFailure? : boolean;
+    trace?: boolean;
+    throwOnFailure?: boolean;
 }
 
-const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program : ts.Program) => {
+const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program: ts.Program) => {
     let compilerOptions = program.getCompilerOptions();
 
     if (typeof compilerOptions['rtti$emitStandardMetadata'] === 'undefined') {
@@ -57,22 +57,22 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
     if (globalThis.RTTI_TRACE)
         console.log(`RTTI: Entering program [emitDecoratorMetadata=${emitStandardMetadata}]`);
-    
+
     // Share a package.json cache across the whole program
     let pkgJsonMap = new Map<string, any>();
 
-    const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context : ts.TransformationContext) => {
-        let settings = <RttiSettings> context.getCompilerOptions().rtti;
+    const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context: ts.TransformationContext) => {
+        let settings = <RttiSettings>context.getCompilerOptions().rtti;
 
         if (globalThis.RTTI_TRACE)
             console.log(`RTTI: Transformer setup`);
-    
+
         return sourceFile => {
 
             if (globalThis.RTTI_TRACE)
                 console.log(`RTTI: Transforming '${sourceFile.fileName}'`);
 
-            let ctx : RttiContext = {
+            let ctx: RttiContext = {
                 program,
                 checker: program.getTypeChecker(),
                 currentNameScope: undefined,
@@ -107,7 +107,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
 
             sourceFile = ApiCallTransformer.transform(sourceFile, ctx);
 
-            function generateInterfaceSymbols(statements : ts.Statement[]): ts.Statement[] {
+            function generateInterfaceSymbols(statements: ts.Statement[]): ts.Statement[] {
                 for (let iface of ctx.interfaceSymbols) {
                     let impoIndex = statements.indexOf(iface.interfaceDecl);
                     if (impoIndex >= 0) {
@@ -115,31 +115,31 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                     } else {
                         statements.push(...iface.symbolDecl);
                     }
-                    
+
                 }
 
                 return statements;
             }
 
-            function generateImports(statements : ts.Statement[]): ts.Statement[] {
-                let imports : ts.ImportDeclaration[] = [];
+            function generateImports(statements: ts.Statement[]): ts.Statement[] {
+                let imports: ts.ImportDeclaration[] = [];
                 let isCommonJS = context.getCompilerOptions().module === ts.ModuleKind.CommonJS;
 
                 for (let impo of ctx.importMap.values()) {
                     if (!impo.referenced)
                         continue;
 
-                    // for commonjs we only add extra imports for namespace imports 
+                    // for commonjs we only add extra imports for namespace imports
                     // (ie import * as x from 'y') and default imports. regular bound imports are handled
                     // with a direct require anyway.
 
                     if (isCommonJS && !impo.isNamespace && !impo.isDefault)
                         continue;
-                       
+
                     if (ctx.trace)
                         console.log(`RTTI: Generating owned import for '${impo.modulePath}'`);
 
-                    let ownedImpo : ts.ImportDeclaration;
+                    let ownedImpo: ts.ImportDeclaration;
 
                     if (impo.isDefault) {
                         ownedImpo = ts.factory.createImportDeclaration(
@@ -153,12 +153,12 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
                         );
                     } else {
                         ownedImpo = ts.factory.createImportDeclaration(
-                            undefined, 
-                            undefined, 
+                            undefined,
+                            undefined,
                             ts.factory.createImportClause(
-                                false, undefined, 
+                                false, undefined,
 
-                                impo.isNamespace 
+                                impo.isNamespace
                                     ? ts.factory.createNamespaceImport(ts.factory.createIdentifier(impo.localName))
                                     : ts.factory.createNamedImports(
                                         [
@@ -188,11 +188,11 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             try {
                 sourceFile = MetadataEmitter.emit(sourceFile, ctx);
                 sourceFile = ts.factory.updateSourceFile(
-                    sourceFile, 
+                    sourceFile,
                     [
                         ...generateInterfaceSymbols(generateImports(Array.from(sourceFile.statements))),
-                    ], 
-                    sourceFile.isDeclarationFile, 
+                    ],
+                    sourceFile.isDeclarationFile,
                     sourceFile.referencedFiles,
                     sourceFile.typeReferenceDirectives,
                     sourceFile.hasNoDefaultLib,
@@ -201,7 +201,7 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             } catch (e) {
                 if (e instanceof CompileError)
                     throw e;
-                
+
                 console.error(`RTTI: Failed to build source file ${sourceFile.fileName}: ${e.message} [please report]`);
                 console.error(e);
 
@@ -210,20 +210,20 @@ const transformer: (program : ts.Program) => ts.TransformerFactory<ts.SourceFile
             }
 
             sourceFile = ts.factory.updateSourceFile(
-                sourceFile, 
-                [ rtStore(ctx.typeMap), ...sourceFile.statements ], 
-                sourceFile.isDeclarationFile, 
+                sourceFile,
+                [rtStore(ctx.typeMap), ...sourceFile.statements],
+                sourceFile.isDeclarationFile,
                 sourceFile.referencedFiles,
                 sourceFile.typeReferenceDirectives,
                 sourceFile.hasNoDefaultLib,
                 sourceFile.libReferenceDirectives
             );
-    
+
             if (globalThis.RTTI_TRACE)
                 console.log(`RTTI: Finished transforming '${sourceFile.fileName}'`);
             return sourceFile;
         };
-    }
+    };
 
     return rttiTransformer;
 };

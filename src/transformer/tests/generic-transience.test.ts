@@ -20,18 +20,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.b()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ ], 
+        expect(exports.b()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('is supported at the top level', async () => {
@@ -52,12 +52,12 @@ describe('Transformer: Generic transience', it => {
             }
         });
 
-        expect(exports.t).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ ], 
+        expect(exports.t).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('is supported in function calls', async () => {
@@ -79,12 +79,12 @@ describe('Transformer: Generic transience', it => {
             }
         });
 
-        expect(exports.t).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ ], 
+        expect(exports.t).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('reflects generic transience via JSDoc', async () => {
@@ -107,18 +107,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.b()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ 123 ], 
+        expect(exports.b()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [123],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('reflects generic transience via JSDoc with other JSDoc', async () => {
@@ -131,7 +131,7 @@ describe('Transformer: Generic transience', it => {
 
                 /**
                  * This is the thing
-                 * 
+                 *
                  * @param foo {string}
                  * @foo 123
                  * @rtti:callsite 1
@@ -145,18 +145,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.b()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ 123 ], 
+        expect(exports.b()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [123],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('reflects generic transience via call-site reflection on function declarations', async () => {
@@ -175,18 +175,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.b()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ 123 ], 
+        expect(exports.b()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [123],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('reflects nsted generic transience via call-site reflection on function expressions', async () => {
@@ -209,18 +209,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.c()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ 123 ], 
+        expect(exports.c()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [123],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('reflects nested generic transience via call-site reflection on arrow functions', async () => {
@@ -243,18 +243,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.c()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ Number ], 
+        expect(exports.c()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [Number],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('reflects generic transience to reflect<T>()', async () => {
@@ -273,7 +273,7 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
+                'typescript-rtti': {
                     reflect
                 }
             }
@@ -307,18 +307,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.c()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ Number ], 
+        expect(exports.c()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [Number],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
     });
     it('does not output call-site metadata unless opted in', async () => {
@@ -337,8 +337,8 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
@@ -352,7 +352,7 @@ describe('Transformer: Generic transience', it => {
             },
             code: `
                 import { reflect, CallSite } from 'typescript-rtti';
-                
+
                 export function a<T>(foo : number, call? : CallSite) {
                     return call;
                 }
@@ -366,18 +366,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.c()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ Number ], 
+        expect(exports.c()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [Number],
             r: undefined,
-            tp: [ String ],
+            tp: [String],
         });
 
     });
@@ -388,7 +388,7 @@ describe('Transformer: Generic transience', it => {
             },
             code: `
                 import { reflect, CallSite } from 'typescript-rtti';
-                
+
                 export function a<T>(foo : number, call? : CallSite) {
                     return call;
                 }
@@ -402,18 +402,18 @@ describe('Transformer: Generic transience', it => {
                 }
             `,
             modules: {
-                'typescript-rtti': { 
-                    reflect: () => {}
+                'typescript-rtti': {
+                    reflect: () => { }
                 }
             }
         });
 
-        expect(exports.c()).to.eql({ 
-            TΦ: 'c', 
-            t: undefined, 
-            p: [ Number ], 
+        expect(exports.c()).to.eql({
+            TΦ: 'c',
+            t: undefined,
+            p: [Number],
             r: undefined,
-            tp: [ Object ],
+            tp: [Object],
         });
 
     });

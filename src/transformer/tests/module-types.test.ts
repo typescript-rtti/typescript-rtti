@@ -1,4 +1,4 @@
-export const MODULE_TYPES : ('commonjs' | 'esm')[] = [
-    'commonjs', 
+export const MODULE_TYPES: ('commonjs' | 'esm')[] = [
+    'commonjs',
     'esm'
 ];

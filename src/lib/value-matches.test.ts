@@ -16,7 +16,7 @@ describe('ReflectedClass#matchesValue()', it => {
             bar: 123,
             baz: true
         })).to.be.true;
-        
+
         expect(reflect(IΦA).matchesValue({
             foo: 1111,
             bar: 123,
@@ -24,8 +24,8 @@ describe('ReflectedClass#matchesValue()', it => {
         })).to.be.false;
     });
     it('supports literal types', async () => {
-        const IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)')};
-        
+        const IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
+
         Reflect.defineMetadata('rt:P', ['foo'], IΦA);
         Reflect.defineMetadata('rt:t', () => 'hello', IΦA.prototype, 'foo');
         expect(reflect(IΦA).matchesValue({ foo: 'hello' })).to.be.true;

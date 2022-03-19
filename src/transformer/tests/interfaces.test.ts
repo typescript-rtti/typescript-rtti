@@ -19,7 +19,7 @@ describe('Interface token', it => {
         let exports = await runSimple({
             code: `
                 import { Foo } from './foo';
-                export interface Bar { 
+                export interface Bar {
                     foo : Foo;
                 }
             `,
@@ -56,7 +56,7 @@ describe('Interface token', it => {
         let exports = await runSimple({
             code: `
                 import { Foo } from './foo2';
-                export interface Bar { 
+                export interface Bar {
                     foo : Foo;
                 }
             `,
@@ -88,7 +88,7 @@ describe('Interface token', it => {
                     operation : 'foo' | 'bar';
                     items? : string[];
                 }
-                
+
                 (0, doStuff)();
             `,
             modules: {
@@ -106,7 +106,7 @@ describe('Interface token', it => {
                     operation : 'foo' | 'bar';
                     items? : string[];
                 }
-                
+
                 export const trueErrors = [];
                 export const trueResult = reflect<Request>().matchesValue({ operation : 'bar' }, trueErrors);
                 export const falseResult = reflect<Request>().matchesValue({ operation : 'baz' });
@@ -133,7 +133,7 @@ describe('Interface token', it => {
     it('collects type metadata', async () => {
         let exports = await runSimple({
             code: `
-                export interface Foo { 
+                export interface Foo {
                     method(foo : number): boolean;
                     field : string;
                     blah : string | number;

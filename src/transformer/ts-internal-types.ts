@@ -15,10 +15,10 @@ export const enum TypeMapKind {
 }
 
 export type TypeMapper =
-    | { kind: TypeMapKind.Simple, source: ts.Type, target: ts.Type }
-    | { kind: TypeMapKind.Array, sources: readonly ts.Type[], targets: readonly ts.Type[] | undefined }
-    | { kind: TypeMapKind.Function, func: (t: ts.Type) => ts.Type }
-    | { kind: TypeMapKind.Composite | TypeMapKind.Merged, mapper1: TypeMapper, mapper2: TypeMapper };
+    | { kind: TypeMapKind.Simple, source: ts.Type, target: ts.Type; }
+    | { kind: TypeMapKind.Array, sources: readonly ts.Type[], targets: readonly ts.Type[] | undefined; }
+    | { kind: TypeMapKind.Function, func: (t: ts.Type) => ts.Type; }
+    | { kind: TypeMapKind.Composite | TypeMapKind.Merged, mapper1: TypeMapper, mapper2: TypeMapper; };
 
 // An instantiated anonymous type has a target and a mapper
 export interface AnonymousType extends ts.ObjectType {

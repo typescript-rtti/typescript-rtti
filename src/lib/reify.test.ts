@@ -6,7 +6,7 @@ import { T_UNDEFINED, T_UNION, T_VOID } from "../common/format";
 describe('reify<T>()', it => {
     it('extracts an InterfaceToken from a passed CallSite', () => {
         let IΦFoo = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
-        expect(reify(<any>{ TΦ: 'c', tp: [ IΦFoo ]})).to.equal(IΦFoo);
+        expect(reify(<any>{ TΦ: 'c', tp: [IΦFoo] })).to.equal(IΦFoo);
     });
 
     it('is an error to call it with an invalid type', () => {
@@ -22,8 +22,8 @@ describe('reify<T>()', it => {
                 throw new Error(`Expected an exception when running: ${func.toString()}`);
         }
 
-        badCall(() => reify(<any>{ TΦ: 'c', tp: [ { TΦ: T_UNION, e: [String,Number] } ]}));
-        badCall(() => reify(<any>{ TΦ: 'c', tp: [ { TΦ: T_VOID } ]}));
-        badCall(() => reify(<any>{ TΦ: 'c', tp: [ { TΦ: T_UNDEFINED } ]}));
+        badCall(() => reify(<any>{ TΦ: 'c', tp: [{ TΦ: T_UNION, e: [String, Number] }] }));
+        badCall(() => reify(<any>{ TΦ: 'c', tp: [{ TΦ: T_VOID }] }));
+        badCall(() => reify(<any>{ TΦ: 'c', tp: [{ TΦ: T_UNDEFINED }] }));
     });
 });

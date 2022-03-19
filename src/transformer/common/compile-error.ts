@@ -1,2 +1,2 @@
 
-export class CompileError extends Error {}
+export class CompileError extends Error { }

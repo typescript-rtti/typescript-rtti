@@ -7,7 +7,7 @@ describe('Sanity', it => {
         let exports = await runSimple({
             code: `
                 export let foo = false;
-                if (false) 
+                if (false)
                     function a() { return 321; }
                 else
                     foo = true;
@@ -31,7 +31,7 @@ describe('Sanity', it => {
         let exports = await runSimple({
             code: `
                 export let foo = false;
-                if (true) 
+                if (true)
                     function a() { return 321; }
                 else
                     foo = true;
@@ -68,7 +68,7 @@ describe('Sanity', it => {
                 export function B() { }
                 export class C { foo() { } }
             `
-        })
+        });
 
         expect(typeof exports.IΦA.identity).to.equal('symbol');
         expect(typeof exports.B).to.equal('function');
@@ -80,19 +80,19 @@ describe('Sanity', it => {
             code: `
                 let sym = Symbol();
                 export class A {
-                    constructor(readonly bar = 'abc') { 
+                    constructor(readonly bar = 'abc') {
                     };
-                
+
                     [sym]() {
                         return 123;
                     }
-                
-                    foo(faz : number) { 
+
+                    foo(faz : number) {
                         return 'works';
-                    } 
+                    }
                 }
             `
-        })
+        });
 
         expect(new exports.A().foo()).to.equal('works');
     });
@@ -104,19 +104,19 @@ describe('Sanity', it => {
                 };
 
                 export class A {
-                    constructor(readonly bar = 'abc') { 
+                    constructor(readonly bar = 'abc') {
                     };
-                
+
                     [foo.sym]() {
                         return 123;
                     }
-                
-                    foo(faz : number) { 
+
+                    foo(faz : number) {
                         return 'works';
-                    } 
+                    }
                 }
             `
-        })
+        });
 
         expect(new exports.A().foo()).to.equal('works');
     });
@@ -125,23 +125,23 @@ describe('Sanity', it => {
             code: `
                 export let sym = Symbol();
                 export class A {
-                    constructor(readonly bar = 'abc') { 
+                    constructor(readonly bar = 'abc') {
                     };
-                
+
                     [sym]() {
                         return 123;
                     }
-                
-                    foo(faz : number) { 
+
+                    foo(faz : number) {
                         return 'works';
-                    } 
+                    }
                 }
             `
-        })
+        });
 
         expect(new exports.A().foo()).to.equal('works');
     });
-    it('prevails, emits properly with a file containing only a type', async() => {
+    it('prevails, emits properly with a file containing only a type', async () => {
         await runSimple({
             code: `
                 /**
@@ -151,7 +151,7 @@ describe('Sanity', it => {
             `
         });
     });
-    it('prevails, emits properly for mapped types with no type params', async() => {
+    it('prevails, emits properly for mapped types with no type params', async () => {
         await runSimple({
             code: `
                 /**
@@ -193,7 +193,7 @@ describe('Sanity', it => {
                     $bitsAnySet?: Object;
                     [key: string]: any;
                 };
-                
+
                 export type FilterQuery<T> = {
                     [P in keyof T]?: T[P] | Condition<T, P>;
                 } | { [key: string]: any };
@@ -204,28 +204,28 @@ describe('Sanity', it => {
             `
         });
     });
-    it('prevails, emits properly for class expressions', async() => {
+    it('prevails, emits properly for class expressions', async () => {
         await runSimple({
             code: `
                 /**
                  * All types that relation can be.
                  */
-                export const A = class { 
+                export const A = class {
                     private foo : number;
                 }
             `
         });
     });
-    it('prevails, emits properly for private properties', async() => {
+    it('prevails, emits properly for private properties', async () => {
         await runSimple({
             code: `
-                export class A { 
+                export class A {
                     #foo : number;
                 }
             `
         });
     });
-    it('prevails, emits properly for grouped exports', async() => {
+    it('prevails, emits properly for grouped exports', async () => {
         await runSimple({
             code: `
                 export {
@@ -243,7 +243,7 @@ describe('Sanity', it => {
             }
         });
     });
-    it('prevails, emits properly for type alias', async() => {
+    it('prevails, emits properly for type alias', async () => {
         await runSimple({
             code: `
                 export { HookExecutor } from './registry';
@@ -258,7 +258,7 @@ describe('Sanity', it => {
             }
         });
     });
-    it('prevails, emits properly for exported variable', async() => {
+    it('prevails, emits properly for exported variable', async () => {
         await runSimple({
             code: `
                 export { foo } from './registry';
@@ -270,7 +270,7 @@ describe('Sanity', it => {
             }
         });
     });
-    it('prevails, does not interfere with the name of a class expression', async() => {
+    it('prevails, does not interfere with the name of a class expression', async () => {
         let exports = await runSimple({
             code: `
                 export let A = class B { };
@@ -279,7 +279,7 @@ describe('Sanity', it => {
 
         expect(exports.A.name).to.equal('B');
     });
-    it('prevails, supports implicit naming of a class expression', async() => {
+    it('prevails, supports implicit naming of a class expression', async () => {
         let exports = await runSimple({
             code: `
                 export let A = class { };
@@ -288,7 +288,7 @@ describe('Sanity', it => {
 
         expect(exports.A.name).to.equal('A');
     });
-    it('prevails, does not crush under the weight of a declared class', async() => {
+    it('prevails, does not crush under the weight of a declared class', async () => {
         await runSimple({
             code: `
                 declare class A {
@@ -301,7 +301,7 @@ describe('Sanity', it => {
             `
         });
     });
-    it('prevails, does not crash for default class', async() => {
+    it('prevails, does not crash for default class', async () => {
         await runSimple({
             code: `
                 export default class IoC {
@@ -309,7 +309,7 @@ describe('Sanity', it => {
                         return 0
                     }
                 }
-                
+
                 IoC.resolve(['text'])
             `
         });

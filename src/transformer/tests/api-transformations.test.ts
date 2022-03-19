@@ -23,7 +23,7 @@ describe('API transformations', it => {
             expect(typeof identity).to.equal('symbol');
             expect(exports.IΦFoo).to.eql({ name: 'Foo', prototype: {}, identity });
             expect(exports.ReifiedFoo).to.equal(exports.IΦFoo);
-        })
+        });
         for (let moduleType of MODULE_TYPES) {
             if (moduleType !== 'esm') continue;
             describe(` [${moduleType}]`, it => {
@@ -45,7 +45,7 @@ describe('API transformations', it => {
                     expect(exports.ReifiedFoo.name).to.equal('Foo');
                     expect(exports.ReifiedFoo.prototype).to.exist;
                     expect(exports.ReifiedFoo.identity).to.exist;
-                })
+                });
                 it('will error at runtime if the imported interface has no type metadata', async () => {
                     let exports = await runSimple({
                         moduleType: moduleType,
@@ -58,7 +58,7 @@ describe('API transformations', it => {
                             }
                         `,
                         modules: {
-                            "typescript-rtti": { 
+                            "typescript-rtti": {
                                 reify
                             },
                             "another2": {}

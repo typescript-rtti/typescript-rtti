@@ -10,27 +10,27 @@ function hasProperty(map: ts.MapLike<any>, key: string): boolean {
     return hasOwnProperty.call(map, key);
 }
 
-const MODULE_TYPES : ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
+const MODULE_TYPES: ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
 
 describe('emitDecoratorMetadata=true: ', () => {
     describe('design:type', it => {
-        
+
         it('emits for method', async () => {
             let exports = await runSimple({
                 code: `
                     function noop() { return (t, ...a) => {} };
-                    
+
                     export class A { }
                     export class B { }
                     export class C {
                         @noop() method(parm : A, parm2 : B) { }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'method');
             expect(type).to.equal(Function);
         });
@@ -42,12 +42,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         @foo() prop;
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'prop');
             expect(type).to.equal(Object);
         });
@@ -60,12 +60,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         @noop() property : B;
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
             expect(type).to.equal(exports.B);
         });
@@ -80,17 +80,17 @@ describe('emitDecoratorMetadata=true: ', () => {
                     }
 
                     export const _B = B;
-                `, 
+                `,
                 modules: {
                     './other.ts': `
                         export default class B { }
                     `
                 },
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
             expect(type).to.equal(exports._B);
         });
@@ -107,12 +107,12 @@ describe('emitDecoratorMetadata=true: ', () => {
 
                         return C;
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let C = exports.a();
             let type = Reflect.getMetadata('design:type', C.prototype, 'property');
             expect(type).to.equal(exports.B);
@@ -126,12 +126,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         @noop() get property : B { return null; }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let C = exports.C;
             let type = Reflect.getMetadata('design:type', C.prototype, 'property');
             expect(type).to.equal(exports.B);
@@ -146,12 +146,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         @noop() property : Promise<B>;
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:type', exports.C.prototype, 'property');
             expect(type).to.equal(Promise);
         });
@@ -164,7 +164,7 @@ describe('emitDecoratorMetadata=true: ', () => {
                 modules: {
                     './post.ts': `
                         import { PostDetails } from './post-details';
-                        
+
                         function noop() { return (t, ...a) => {} };
 
                         export class Post {
@@ -178,7 +178,7 @@ describe('emitDecoratorMetadata=true: ', () => {
                         import { Post } from './post';
 
                         function noop() { return (t, ...a) => {} };
-                        
+
                         export class PostDetails {
                             makePost() {
                                 this.post = new Post();
@@ -187,17 +187,17 @@ describe('emitDecoratorMetadata=true: ', () => {
                         }
                     `
                 },
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             expect(Reflect.getMetadata('design:type', exports.Post.prototype, 'details'))
                 .to.equal(exports.PostDetails);
             expect(Reflect.getMetadata('design:type', exports.PostDetails.prototype, 'post'))
                 .to.equal(undefined); // because of the circular reference
         });
-    })
+    });
     describe('design:paramtypes', it => {
         it('emits for ctor params', async () => {
             let exports = await runSimple({
@@ -209,12 +209,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     @noop() export class C {
                         constructor(hello : A, world : B) { }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let params = Reflect.getMetadata('design:paramtypes', exports.C);
             expect(params).to.eql([exports.A, exports.B]);
         });
@@ -222,18 +222,18 @@ describe('emitDecoratorMetadata=true: ', () => {
             let exports = await runSimple({
                 code: `
                     function noop() { return (t, ...a) => {} };
-                    
+
                     export class A { }
                     export class B { }
                     export class C {
                         @noop() method(parm : A, parm2 : B) { }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let params = Reflect.getMetadata('design:paramtypes', exports.C.prototype, 'method');
             expect(params).to.eql([exports.A, exports.B]);
         });
@@ -247,14 +247,14 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         @noop() method(a : string, b : number, c : boolean, d : Function, e : RegExp) { }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let params = Reflect.getMetadata('design:paramtypes', exports.C.prototype, 'method');
-            
+
             expect(params[0]).to.equal(String);
             expect(params[1]).to.equal(Number);
             expect(params[2]).to.equal(Boolean);
@@ -268,20 +268,20 @@ describe('emitDecoratorMetadata=true: ', () => {
             let exports = await runSimple({
                 code: `
                     function noop() { return (t, ...a) => {} };
-                    
-                    export enum Foo { 
+
+                    export enum Foo {
                         one = 'one',
                         two = 'two'
                     }
                     export class C {
                         @noop() method(): Foo { return Foo.one; }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
             expect(type).to.equal(String);
         });
@@ -289,20 +289,20 @@ describe('emitDecoratorMetadata=true: ', () => {
             let exports = await runSimple({
                 code: `
                     function noop() { return (t, ...a) => {} };
-                    
-                    export enum Foo { 
+
+                    export enum Foo {
                         one = 1,
                         two = 2
                     }
                     export class C {
                         @noop() method(): Foo { return Foo.one; }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
             expect(type).to.equal(Number);
         });
@@ -310,20 +310,20 @@ describe('emitDecoratorMetadata=true: ', () => {
             let exports = await runSimple({
                 code: `
                     function noop() { return (t, ...a) => {} };
-                    
-                    export enum Foo { 
+
+                    export enum Foo {
                         one = 'one',
                         two = 2
                     }
                     export class C {
                         @noop() method(): Foo { return Foo.one; }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
             expect(type).to.equal(Object);
         });
@@ -337,12 +337,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         @noop() method(parm : A, parm2 : B): B { return null; }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let params = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
             expect(params).to.equal(exports.B);
         });
@@ -350,24 +350,24 @@ describe('emitDecoratorMetadata=true: ', () => {
             let exports = await runSimple({
                 code: `
                     function noop() { return (t, ...a) => {} };
-                    
+
                     export class A { }
                     export class B { }
                     export class C {
-                        @noop() async method(hello : A, world : B) { 
-                            return 123; 
+                        @noop() async method(hello : A, world : B) {
+                            return 123;
                         }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let type = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
 
             expect(type).to.equal(Promise);
-        })
+        });
         it('emits void 0 on a method returning nothing', async () => {
             let exports = await runSimple({
                 code: `
@@ -378,12 +378,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         @noop() method(parm : A, parm2 : B) { }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let params = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
             expect(params).to.equal(void 0);
         });
@@ -395,12 +395,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         method(parm : A, parm2 : B) { return 123; }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let params = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
             expect(params).to.equal(void 0);
         });
@@ -412,12 +412,12 @@ describe('emitDecoratorMetadata=true: ', () => {
                     export class C {
                         method(parm : A, parm2 : B) { return new B(); }
                     }
-                `, 
-                compilerOptions: { 
-                    emitDecoratorMetadata: true 
+                `,
+                compilerOptions: {
+                    emitDecoratorMetadata: true
                 }
             });
-    
+
             let params = Reflect.getMetadata('design:returntype', exports.C.prototype, 'method');
             expect(params).to.equal(void 0);
         });
@@ -431,9 +431,9 @@ describe('emitDecoratorMetadata=false: ', it => {
                 export class B {
                     constructor(hello : A) { }
                 }
-            `, 
-            compilerOptions: { 
-                emitDecoratorMetadata: false 
+            `,
+            compilerOptions: {
+                emitDecoratorMetadata: false
             }
         });
 
@@ -448,9 +448,9 @@ describe('emitDecoratorMetadata=false: ', it => {
                 export class C {
                     method(hello : A, world : B) { }
                 }
-            `, 
-            compilerOptions: { 
-                emitDecoratorMetadata: false 
+            `,
+            compilerOptions: {
+                emitDecoratorMetadata: false
             }
         });
 
@@ -465,9 +465,9 @@ describe('emitDecoratorMetadata=false: ', it => {
                 export class C {
                     method(hello : A, world : B) { }
                 }
-            `, 
-            compilerOptions: { 
-                emitDecoratorMetadata: false 
+            `,
+            compilerOptions: {
+                emitDecoratorMetadata: false
             }
         });
 
@@ -482,9 +482,9 @@ describe('emitDecoratorMetadata=false: ', it => {
                 export class C {
                     public method(hello : A, world : B) { }
                 }
-            `, 
-            compilerOptions: { 
-                emitDecoratorMetadata: false 
+            `,
+            compilerOptions: {
+                emitDecoratorMetadata: false
             }
         });
 

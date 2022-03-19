@@ -11,15 +11,15 @@ import type * as nodeFsT from 'fs';
 import { RttiContext } from './rtti-context';
 
 export interface TypeEncoderImpl {
-    ctx : RttiContext;
-    referToType(type : ts.Type) : ts.Expression;
+    ctx: RttiContext;
+    referToType(type: ts.Type): ts.Expression;
 }
 
 export interface TypeLiteralOptions {
     hoistImportsInCommonJS?: boolean;
 }
 
-export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode? : ts.TypeNode, options? : TypeLiteralOptions): ts.Expression {
+export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: ts.TypeNode, options?: TypeLiteralOptions): ts.Expression {
 
     let ctx = encoder.ctx;
     let containingSourceFile = ctx.sourceFile;
@@ -29,12 +29,12 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
 
     if (!type)
         return ts.factory.createIdentifier('Object');
-    
+
     if ((type.flags & ts.TypeFlags.String) !== 0) {
         return ts.factory.createIdentifier('String');
     } else if ((type.flags & ts.TypeFlags.Number) !== 0) {
         return ts.factory.createIdentifier('Number');
-    } else if ((type.flags & ts.TypeFlags.Boolean) !== 0) { 
+    } else if ((type.flags & ts.TypeFlags.Boolean) !== 0) {
         return ts.factory.createIdentifier('Boolean');
     } else if ((type.flags & ts.TypeFlags.Void) !== 0) {
         return serialize({ TΦ: T_VOID });
@@ -67,9 +67,9 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
     } else if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
         if (type['isThisType'])
             return serialize({ TΦ: T_THIS });
-        
+
         // TODO
-        return ts.factory.createIdentifier('Object'); 
+        return ts.factory.createIdentifier('Object');
     } else if ((type.flags & ts.TypeFlags.Object) !== 0) {
         let objectType = <ts.ObjectType>type;
         let isMapped = hasFlag(objectType.objectFlags, ts.ObjectFlags.Mapped);
@@ -96,38 +96,38 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                         TΦ: T_TUPLE,
                         e: typeRef.typeArguments.map((e, i) => {
                             if (tupleType.labeledElementDeclarations) {
-                                return { 
+                                return {
                                     n: tupleType.labeledElementDeclarations[i].name.getText(),
                                     t: literalNode(encoder.referToType(e))
-                                }
+                                };
                             } else {
                                 return {
                                     t: literalNode(encoder.referToType(e))
-                                }
+                                };
                             }
                         })
-                    })
+                    });
                 }
 
                 if (!typeRef.symbol)
                     debugger;
-                    
+
                 if (!typeRef.target.symbol)
                     debugger;
-                
+
                 if (typeRef.target.symbol.name === 'Array' && typeRef.typeArguments.length === 1) {
                     return serialize({
-                        TΦ: T_ARRAY, 
+                        TΦ: T_ARRAY,
                         e: literalNode(encoder.referToType(typeRef.typeArguments[0]))
-                    })
+                    });
                 }
 
                 try {
                     return serialize({
-                        TΦ: T_GENERIC, 
+                        TΦ: T_GENERIC,
                         t: literalNode(encoder.referToType(typeRef.target)),
                         p: (typeRef.typeArguments ?? []).map(x => literalNode(encoder.referToType(x)))
-                    })
+                    });
                 } catch (e) {
                     console.error(`RTTI: Error while serializing type '${typeRef.symbol.name}': ${e.message}`);
                     console.error(e);
@@ -143,7 +143,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
         if (!type.symbol && typeNode && ts.isArrayTypeNode(typeNode)) {
             let typeRef = checker.getTypeAtLocation(typeNode.elementType);
             return serialize({
-                TΦ: T_ARRAY, 
+                TΦ: T_ARRAY,
                 e: literalNode(encoder.referToType(typeRef))
             });
         }
@@ -189,7 +189,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
 
         if ((type.symbol?.flags & ts.SymbolFlags.Function) !== 0) {
             return ts.factory.createIdentifier(`Function`);
-        } else if (type.isClassOrInterface()) { 
+        } else if (type.isClassOrInterface()) {
             let isCommonJS = program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
 
             // If this symbol is imported, we need to handle it specially.
@@ -197,7 +197,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
             let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
 
             if (!sourceFile) {
-                // TODO: this has happened for TlsOptions from @types/node, typeorm 
+                // TODO: this has happened for TlsOptions from @types/node, typeorm
                 // [src/driver/cockroachdb/CockroachConnectionCredentialsOptions.ts]
                 // ...but it shouldn't. Perhaps TS didn't have the type ready?
                 return ts.factory.createIdentifier('Object');
@@ -218,7 +218,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
             }
 
             if (isLocal) {
-                let expr : ts.Identifier | ts.PropertyAccessExpression;
+                let expr: ts.Identifier | ts.PropertyAccessExpression;
 
                 if (typeHasValue(type)) {
                     let entityName = checker.symbolToEntityName(type.symbol, ts.SymbolFlags.Class, undefined, undefined);
@@ -232,10 +232,10 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
             } else {
                 let symbol = type.symbol;
 
-                // This is imported. The symbol we've been examining is going 
+                // This is imported. The symbol we've been examining is going
                 // to be the one in the remote file.
 
-                let modulePath : string; //parents[0] ? JSON.parse(parents[0].name) : undefined;
+                let modulePath: string; //parents[0] ? JSON.parse(parents[0].name) : undefined;
                 let isExportedAsDefault = symbol?.name === 'default';
 
                 if (typeNode) {
@@ -243,12 +243,12 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                         let typeName = typeNode.typeName;
                         while (ts.isQualifiedName(typeName))
                             typeName = typeName.left;
-                        
+
                         let localSymbol = checker.getSymbolAtLocation(typeNode.typeName);
                         if (localSymbol) {
                             let localDecl = localSymbol.declarations[0];
                             if (localDecl) {
-                                let detectedImportPath : string;
+                                let detectedImportPath: string;
 
                                 if (ts.isImportClause(localDecl)) {
                                     let specifier = <ts.StringLiteral>localDecl.parent?.moduleSpecifier;
@@ -271,13 +271,13 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                 }
 
                 if (!modulePath) {
-                    // The type is not directly imported in this file. 
+                    // The type is not directly imported in this file.
 
                     let destFile = sourceFile.fileName;
-                    
+
                     // Attempt to locate the "best" re-export for this symbol
                     // This attempts to prevent reaching deep into a module
-                    // when a higher export is available, while also skipping 
+                    // when a higher export is available, while also skipping
                     // any potential re-exports which are already above this file.
 
                     let preferredExport = getPreferredExportForImport(program, containingSourceFile, symbol);
@@ -286,20 +286,20 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                         symbol = preferredExport.symbol;
                         isExportedAsDefault = symbol?.name === 'default' || !symbol;
                     }
-                    
+
                     if (destFile.endsWith('.d.ts'))
                         destFile = destFile.replace(/\.d\.ts$/, '');
                     else if (destFile.endsWith('.ts'))
                         destFile = destFile.replace(/\.ts$/, '');
 
                     // TODO: The import now has no extension, but for Deno it is required.
-                    // I think only a configuration option could fix this, in which case we 
+                    // I think only a configuration option could fix this, in which case we
                     // would append .js here
 
                     let relativePath = findRelativePathToFile(ctx.sourceFile.fileName, destFile);
 
-                    // Find 'node_modules' in the resulting path and cut everything up to and including it out 
-                    // to ensure we allow node resolution algorithm to work at runtime. In theory this case could 
+                    // Find 'node_modules' in the resulting path and cut everything up to and including it out
+                    // to ensure we allow node resolution algorithm to work at runtime. In theory this case could
                     // be hit when not using Node (or a Node-compatible bundler) but it seems exceedingly unlikely.
                     // If this happens for you unexpectedly, please file a bug.
 
@@ -308,7 +308,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                     if (nodeModulesIndex >= 0) {
                         let originalPath = relativePath;
                         let pathToNodeModules = pathParts.slice(0, nodeModulesIndex + 1).join('/');
-                        let packagePath = pathParts.slice(nodeModulesIndex + 1)
+                        let packagePath = pathParts.slice(nodeModulesIndex + 1);
                         relativePath = packagePath.join('/');
 
                         if (packagePath.length > 0) {
@@ -328,13 +328,13 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                                     return requireN(path);
                                 }
 
-                                const fs : typeof nodeFsT = requireX('fs');
-                                const path : typeof nodePathT = requireX('path');
+                                const fs: typeof nodeFsT = requireX('fs');
+                                const path: typeof nodePathT = requireX('path');
 
                                 let pkgJsonPath = path.resolve(
-                                    path.dirname(ctx.sourceFile.fileName), 
-                                    pathToNodeModules, 
-                                    packageName, 
+                                    path.dirname(ctx.sourceFile.fileName),
+                                    pathToNodeModules,
+                                    packageName,
                                     'package.json'
                                 );
 
@@ -342,8 +342,8 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                                     throw new Error(`Failed to resolve path for package.json [file='${ctx.sourceFile.fileName}', node_modules='${pathToNodeModules}', packageName='${packageName}']`);
                                     debugger;
                                 }
-                                
-                                let pkgJson : any;
+
+                                let pkgJson: any;
 
                                 if (ctx.pkgJsonMap.has(pkgJsonPath)) {
                                     pkgJson = ctx.pkgJsonMap.get(pkgJsonPath);
@@ -364,12 +364,12 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
 
                                 if (pkgJson) {
                                     let absPathToNodeModules = path.resolve(
-                                        path.dirname(ctx.sourceFile.fileName), 
+                                        path.dirname(ctx.sourceFile.fileName),
                                         pathToNodeModules
                                     );
-                                    let entrypoints = [ pkgJson.main, pkgJson.module, pkgJson.browser ]
+                                    let entrypoints = [pkgJson.main, pkgJson.module, pkgJson.browser]
                                         .filter(x => x);
-    
+
                                     for (let entrypoint of entrypoints) {
                                         if (typeof entrypoint !== 'string') {
                                             // see typescript package.json 'browser' field
@@ -392,9 +392,9 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
 
                     if (relativePath) {
                         modulePath = relativePath;
-                    } else { 
+                    } else {
                         if (globalThis.RTTI_TRACE)
-                        console.warn(`RTTI: Cannot determine relative path from '${ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
+                            console.warn(`RTTI: Cannot determine relative path from '${ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
                         modulePath = destFile;
                     }
                 }
@@ -409,11 +409,11 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                             ts.factory.createCallExpression(
                                 ts.factory.createIdentifier('require'),
                                 [], [
-                                    ts.factory.createStringLiteral(modulePath)
-                                ]
-                            ), exportedName)
+                                ts.factory.createStringLiteral(modulePath)
+                            ]
+                            ), exportedName);
                     } else {
-                        
+
                         let impo = importMap.get(`*default:${modulePath}`);
                         if (!impo) {
                             importMap.set(`*default:${modulePath}`, impo = {
@@ -425,9 +425,9 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                                 name: `*${exportedName}:${modulePath}`,
                                 refName: '',
                                 referenced: true
-                            })
+                            });
                         }
-                        
+
                         if (exportedName === 'default') {
                             return ts.factory.createIdentifier(impo.localName);
                         } else {
@@ -440,7 +440,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                 } else {
                     // Named export
 
-                    let expr : ts.Identifier | ts.PropertyAccessExpression;
+                    let expr: ts.Identifier | ts.PropertyAccessExpression;
 
                     if (typeHasValue(type)) {
                         let entityName = checker.symbolToEntityName(symbol, ts.SymbolFlags.Class, undefined, undefined);
@@ -449,7 +449,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                         let symbolName = `IΦ${type.symbol.name}`;
                         expr = ts.factory.createIdentifier(symbolName); // TODO: qualified names
                     }
-                    
+
                     // This is used in the legacy type encoder to ensure matching semantics to Typescript's own
                     // implementation. The import (ie require()) must be hoisted to the top of the file to ensure
                     // that circular dependencies resolve the same way.
@@ -458,7 +458,7 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                         return propertyPrepend(
                             ts.factory.createCallExpression(
                                 ts.factory.createIdentifier('require'),
-                                [], [ ts.factory.createStringLiteral(modulePath) ]
+                                [], [ts.factory.createStringLiteral(modulePath)]
                             ), expr
                         );
                     } else {
@@ -473,9 +473,9 @@ export function typeLiteral(encoder : TypeEncoderImpl, type : ts.Type, typeNode?
                                 name: `*:${modulePath}`,
                                 refName: '',
                                 referenced: true
-                            })
+                            });
                         }
-                        
+
                         return propertyPrepend(ts.factory.createIdentifier(impo.localName), expr);
                     }
                 }

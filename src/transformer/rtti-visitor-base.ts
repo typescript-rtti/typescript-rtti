@@ -3,7 +3,7 @@ import { VisitorBase } from "./common/visitor-base";
 
 export class RttiVisitor extends VisitorBase {
     constructor(
-        readonly ctx : RttiContext
+        readonly ctx: RttiContext
     ) {
         super(ctx.transformationContext);
     }

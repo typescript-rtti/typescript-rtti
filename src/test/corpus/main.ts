@@ -9,62 +9,62 @@ import { Stats } from 'fs';
 import ts from 'typescript';
 
 interface Package {
-    enabled : boolean;
-    only? : boolean;
-    yarn? : boolean;
-    acceptFailure? : boolean;
-    url : string;
-    ref : string;
-    commands : string[];
+    enabled: boolean;
+    only?: boolean;
+    yarn?: boolean;
+    acceptFailure?: boolean;
+    url: string;
+    ref: string;
+    commands: string[];
 }
 
 /**
- * What open source packages should be compiled by corpus using the local build of 
+ * What open source packages should be compiled by corpus using the local build of
  * the typescript-rtti transformer. Failure to build is a failure for the corpus test.
  */
-const PACKAGES : Record<string, Package> = {
+const PACKAGES: Record<string, Package> = {
     "rezonant/razmin": {
         enabled: true,
         url: 'https://github.com/rezonant/razmin.git',
         ref: '2b643273035cdf2efcab41315562e6e1a49bb16a',
-        commands: [ 'npm run build', 'npm test' ]
+        commands: ['npm run build', 'npm test']
     },
     "@astronautlabs/bitstream": {
         enabled: true,
         url: 'https://github.com/astronautlabs/bitstream.git',
         ref: 'main',
-        commands: [ 'npm run build', 'npm test' ]
+        commands: ['npm run build', 'npm test']
     },
     "@astronautlabs/jwt": {
         enabled: false,
         url: 'https://github.com/astronautlabs/jwt.git',
         ref: 'v1.0.1',
-        commands: [ 'npm run build', 'npm test' ]
+        commands: ['npm run build', 'npm test']
     },
     "alterior-mvc/alterior": {
         enabled: false,
         url: 'https://github.com/alterior-mvc/alterior.git',
         ref: '1e6e462dc50bdbe045281cae50b7c3fd21c16b82',
-        commands: [ 'npm install tslib@latest', 'lerna bootstrap', 'lerna link', 'npm test' ]
+        commands: ['npm install tslib@latest', 'lerna bootstrap', 'lerna link', 'npm test']
     },
     "rezonant/typescript-rtti": {
         enabled: true, // 🎉
         url: 'https://github.com/rezonant/typescript-rtti.git',
         ref: 'eec152929c840a13fdbbfd2f13bf524067c8d379',
-        commands: [ 'npm run build', 'npm test' ]
+        commands: ['npm run build', 'npm test']
     },
     "capaj/decapi": {
         enabled: true,
         yarn: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: '1.0.0',
-        commands: [ 'npm run -- test --runInBand --no-cache --ci ' ]
+        commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
     "typeorm/typeorm": {
         enabled: true,
         url: 'https://github.com/typeorm/typeorm.git',
         ref: '0.2.45',
-        commands:  [ 'ttsc' ]
+        commands: ['ttsc']
     }
 };
 
@@ -72,18 +72,18 @@ const PACKAGES : Record<string, Package> = {
  * What Typescript versions should be tested (git tags)
  */
 const TYPESCRIPTS = [
-    '4.5', 
+    '4.5',
     '4.6',
     //'4', 'latest', 'next', 'beta', 'rc', 'insiders'
 ];
 
-function run(str : string, cwd? : string, context? : string) {
+function run(str: string, cwd?: string, context?: string) {
     let startedAt = Date.now();
 
     if (globalThis.CORPUS_VERBOSE) {
         console.log(`corpus${context ? `: ${context}` : ``}: RUN: ${str}`);
     }
-    
+
     let result = shell.exec(str, { cwd: cwd ?? process.cwd(), silent: true });
     let runtime = (Date.now() - startedAt) / 1000.0;
 
@@ -103,17 +103,17 @@ function run(str : string, cwd? : string, context? : string) {
     }
 }
 
-function trace(message : string, context? : string) {
+function trace(message: string, context?: string) {
     if (globalThis.CORPUS_VERBOSE)
         console.log(`corpus${context ? `: ${context}` : ``}: ${message}`);
 }
 
-async function modify<T = any>(filename : string, modifier : (t : T) => void) {
+async function modify<T = any>(filename: string, modifier: (t: T) => void) {
 
     if (filename.endsWith('.js')) {
         let config = require(path.resolve(process.cwd(), filename));
         modifier(config);
-        await fs.writeFile(filename, `module.exports = ${JSON.stringify(config, undefined, 2)};`)
+        await fs.writeFile(filename, `module.exports = ${JSON.stringify(config, undefined, 2)};`);
     } else if (filename.endsWith('.json')) {
 
         try {
@@ -129,8 +129,8 @@ async function modify<T = any>(filename : string, modifier : (t : T) => void) {
     }
 }
 
-async function fileExists(file : string) {
-    let stat : fst.Stats;
+async function fileExists(file: string) {
+    let stat: fst.Stats;
     try {
         stat = await fs.stat(file);
     } catch (e) {
@@ -139,12 +139,12 @@ async function fileExists(file : string) {
 
     if (!stat)
         return false;
-    
+
     return stat.isFile();
 }
 
-async function dirExists(file : string) {
-    let stat : fst.Stats;
+async function dirExists(file: string) {
+    let stat: fst.Stats;
     try {
         stat = await fs.stat(file);
     } catch (e) {
@@ -153,11 +153,11 @@ async function dirExists(file : string) {
 
     if (!stat)
         return false;
-    
+
     return stat.isDirectory();
 }
 
-async function main(args : string[]) {
+async function main(args: string[]) {
     let hasTrace = args.some(x => x === '--trace');
     globalThis.CORPUS_VERBOSE = hasTrace;
 
@@ -176,7 +176,7 @@ async function main(args : string[]) {
 
             if (!pkg.enabled)
                 continue;
-            
+
             if (hasOnly && !pkg.only)
                 continue;
 
@@ -204,7 +204,7 @@ async function main(args : string[]) {
                     }
 
                     trace(`Transforming project-level tsconfig.json...`, context);
-                    await modify<{ compilerOptions : ts.CompilerOptions }>(path.join(local, 'tsconfig.json'), config => {
+                    await modify<{ compilerOptions: ts.CompilerOptions; }>(path.join(local, 'tsconfig.json'), config => {
                         (config.compilerOptions as any).plugins = [{ transform: path.resolve(local, '.tsrtti', 'dist', 'transformer') }];
                     });
 
@@ -212,7 +212,7 @@ async function main(args : string[]) {
                     await modify(path.join(local, 'package.json'), pkg => {
                         for (let key of Object.keys(pkg.scripts)) {
                             let command = (pkg.scripts[key] ?? '');
-                            
+
                             command = command.replace(/\btsc\b/g, 'ttsc');
                             command = command.replace(/\brm -rf\b/ig, 'rimraf');
 
@@ -220,9 +220,9 @@ async function main(args : string[]) {
                         }
 
                     });
-                    
+
                     if (await fileExists(path.join(local, 'jest.config.js'))) {
-                        trace(`Transforming jest config...`, context)
+                        trace(`Transforming jest config...`, context);
                         await modify(path.join(local, 'jest.config.js'), jestConfig => {
                             jestConfig.globals ??= {};
                             jestConfig.globals['ts-jest'] ??= {};
@@ -233,8 +233,8 @@ async function main(args : string[]) {
                     // Patch all subpackage package.jsons
 
                     let pkgDir = path.join(local, 'packages');
-                    let stat : Stats;
-                    
+                    let stat: Stats;
+
                     if (await dirExists(pkgDir)) {
                         let packages = await fs.readdir(pkgDir);
                         for (let pkg of packages) {

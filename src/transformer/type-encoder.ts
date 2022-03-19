@@ -7,7 +7,7 @@ import { typeLiteral } from "./type-literal";
 
 export class TypeEncoder {
     constructor(
-        readonly ctx : RttiContext,
+        readonly ctx: RttiContext,
     ) {
     }
 
@@ -17,18 +17,18 @@ export class TypeEncoder {
     get importMap() { return this.ctx.importMap; }
     get checker() { return this.ctx.checker; }
 
-    referToTypeOfInitializer(initializer : ts.Expression, typeNode? : ts.TypeNode) {
+    referToTypeOfInitializer(initializer: ts.Expression, typeNode?: ts.TypeNode) {
         if (typeNode)
             return this.referToTypeNode(typeNode);
 
         return this.referToType(this.checker.getTypeAtLocation(initializer), typeNode);
     }
 
-    referToTypeNode(typeNode : ts.TypeNode): ts.Expression {
+    referToTypeNode(typeNode: ts.TypeNode): ts.Expression {
         return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }
 
-    referToType(type : ts.Type, typeNode? : ts.TypeNode): ts.Expression {
+    referToType(type: ts.Type, typeNode?: ts.TypeNode): ts.Expression {
         if (!type['id'])
             throw new Error(`Type does not have an ID!`);
 
@@ -48,8 +48,8 @@ export class TypeEncoder {
 
             if (useStandIn) {
                 // The class or interface may not be defined at the top level of the module.
-                // If it is defined in a function for instance then outputting a reference to 
-                // it is not valid. We'll put the real reference into the map at runtime when the 
+                // If it is defined in a function for instance then outputting a reference to
+                // it is not valid. We'll put the real reference into the map at runtime when the
                 // class/interface declaration is executed.
                 this.typeMap.set(type['id'], serialize({
                     TΦ: T_STAND_IN,
@@ -59,11 +59,11 @@ export class TypeEncoder {
                 this.typeMap.set(type['id'], serialize({
                     [propName]: literalNode(ts.factory.createArrowFunction(
                         [], [], [
-                            ts.factory.createParameterDeclaration(
-                                [], [], undefined, 't', undefined, undefined, 
-                                undefined
-                            )
-                        ], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expr
+                        ts.factory.createParameterDeclaration(
+                            [], [], undefined, 't', undefined, undefined,
+                            undefined
+                        )
+                    ], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expr
                     ))
                 }));
             }
@@ -74,8 +74,8 @@ export class TypeEncoder {
                 ts.factory.createIdentifier(`__RΦ`),
                 'a'
             ), [], [
-                ts.factory.createNumericLiteral(type['id'])
-            ]
-        )
+            ts.factory.createNumericLiteral(type['id'])
+        ]
+        );
     }
 }
