@@ -301,7 +301,7 @@ describe('Sanity', it => {
             `
         });
     });
-    it.only('prevails, does not crash for default class', async() => {
+    it('prevails, does not crash for default class', async() => {
         await runSimple({
             code: `
                 export default class IoC {
