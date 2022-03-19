@@ -39,6 +39,9 @@ export function compile(invocation : RunInvocation): Record<string,string> {
         }, 
         ...invocation.compilerOptions || {},
     };
+
+    if (options.noLib)
+        delete options.lib;
     
     let inputs : Record<string,ts.SourceFile> = {
         './main.ts': ts.createSourceFile('./main.ts', invocation.code, options.target!)
