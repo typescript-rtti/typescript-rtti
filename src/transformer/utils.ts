@@ -125,8 +125,8 @@ export function serializeEntityNameAsExpression(node: ts.EntityName, currentLexi
             // Create a clone of the name with a new parent, and treat it as if it were
             // a source tree node for the purposes of the checker.
 
-            const name = setParent(ts.setTextRange(<typeof node>ts.factory['cloneNode'](node), node), node.parent);
-            name['original'] = undefined;
+            const name = setParent(ts.setTextRange(<typeof node>(ts.factory as any)['cloneNode'](node), node), node.parent);
+            (name as any)['original'] = undefined;
             setParent(name, ts.getParseTreeNode(currentLexicalScope)); // ensure the parent is set to a parse tree node.
             return name;
 
@@ -150,15 +150,16 @@ export function dottedNameToExpr(dottedName: string): ts.Identifier | ts.Propert
     return dottedName
         .split('.')
         .map(ident => ts.factory.createIdentifier(ident) as (ts.Identifier | ts.PropertyAccessExpression))
-        .reduce((pv, cv: ts.Identifier) =>
+        .reduce((pv, cv) =>
             pv
+                // @ts-ignore TODO
                 ? ts.factory.createPropertyAccessExpression(pv, cv)
                 : cv
         )
         ;
 }
 
-export function propertyPrepend(expr: ts.Expression, propAccess: ts.PropertyAccessExpression | ts.Identifier) {
+export function propertyPrepend(expr: ts.Expression, propAccess: ts.PropertyAccessExpression | ts.Identifier): ts.Expression {
     if (ts.isIdentifier(propAccess)) {
         return ts.factory.createPropertyAccessExpression(expr, propAccess);
     } else if (ts.isPropertyAccessExpression(propAccess.expression)) {
@@ -191,11 +192,11 @@ export function expressionForPropertyName(propName: ts.PropertyName) {
     }
 }
 
-export function hasModifier(modifiers: ts.ModifiersArray, modifier: ts.SyntaxKind) {
+export function hasModifier(modifiers: ts.ModifiersArray | undefined, modifier: ts.SyntaxKind) {
     return modifiers?.some(x => x.kind === modifier) ?? false;
 }
 
-export function hasModifiers(modifiersArray: ts.ModifiersArray, modifiers: ts.SyntaxKind[]) {
+export function hasModifiers(modifiersArray: ts.ModifiersArray | undefined, modifiers: ts.SyntaxKind[]) {
     return modifiers.every(modifier => hasModifier(modifiersArray, modifier));
 }
 
@@ -263,10 +264,10 @@ export function referenceImportedSymbol(
 }
 
 export function isExternalOrCommonJsModule(file: ts.SourceFile): boolean {
-    return (file['externalModuleIndicator'] || file['commonJsModuleIndicator']) !== undefined;
+    return ((file as any)['externalModuleIndicator'] || (file as any)['commonJsModuleIndicator']) !== undefined;
 }
 
-export function* externalModules(program: ts.Program): Generator<[ts.Symbol, ts.SourceFile]> {
+export function* externalModules(program: ts.Program): Generator<[ts.Symbol, ts.SourceFile?]> {
     let checker = program.getTypeChecker();
 
     for (const ambient of checker.getAmbientModules()) {
@@ -274,7 +275,7 @@ export function* externalModules(program: ts.Program): Generator<[ts.Symbol, ts.
     }
     for (const sourceFile of program.getSourceFiles()) {
         if (isExternalOrCommonJsModule(sourceFile)) {
-            yield [checker['getMergedSymbol'](sourceFile['symbol']), sourceFile];
+            yield [(checker as any)['getMergedSymbol']((sourceFile as any)['symbol']), sourceFile];
         }
     }
 }
@@ -566,7 +567,7 @@ export function normalizeSlashes(path: string): string {
 }
 
 export function getParentOfSymbol(symbol: ts.Symbol): ts.Symbol {
-    return symbol['parent'];
+    return (symbol as any)['parent'];
 }
 
 export const enum ImportKind {
@@ -581,7 +582,7 @@ export function getDefaultLikeExportInfo(
     moduleSymbol: ts.Symbol,
     checker: ts.TypeChecker,
     compilerOptions: ts.CompilerOptions,
-): { readonly symbol: ts.Symbol, readonly symbolForMeaning: ts.Symbol, readonly name: string, readonly kind: ImportKind; } | undefined {
+): { readonly symbol: ts.Symbol, readonly symbolForMeaning: ts.Symbol, readonly name?: string, readonly kind: ImportKind; } | undefined {
     const exported = getDefaultLikeExportWorker(importingFile, moduleSymbol, checker, compilerOptions);
     if (!exported) return undefined;
     const { symbol, kind } = exported;
@@ -589,7 +590,7 @@ export function getDefaultLikeExportInfo(
     return info && { symbol, kind, ...info };
 }
 
-function getDefaultExportInfoWorker(defaultExport: ts.Symbol, checker: ts.TypeChecker, compilerOptions: ts.CompilerOptions): { readonly symbolForMeaning: ts.Symbol, readonly name: string; } | undefined {
+function getDefaultExportInfoWorker(defaultExport: ts.Symbol, checker: ts.TypeChecker, compilerOptions: ts.CompilerOptions): { readonly symbolForMeaning: ts.Symbol, readonly name?: string; } | undefined {
     const localSymbol = getLocalSymbolForExportDefault(defaultExport);
     if (localSymbol) return { symbolForMeaning: localSymbol, name: localSymbol.name };
 
@@ -633,6 +634,10 @@ function getSymbolParentOrFail(symbol: ts.Symbol) {
 export function getNameForExportedSymbol(symbol: ts.Symbol, scriptTarget: ts.ScriptTarget | undefined) {
     if (!(symbol.flags & ts.SymbolFlags.Transient) && (symbol.escapedName === ts.InternalSymbolName.ExportEquals || symbol.escapedName === ts.InternalSymbolName.Default)) {
         // Name of "export default foo;" is "foo". Name of "export default 0" is the filename converted to camelCase.
+
+        if (!symbol.declarations)
+            return undefined;
+
         for (let d of symbol.declarations) {
             if (isExportAssignment(d)) {
                 let expr = skipOuterExpressions(d.expression);
@@ -674,7 +679,7 @@ export function getDefaultLikeExportWorker(
     checker: ts.TypeChecker, compilerOptions: ts.CompilerOptions): { readonly symbol: ts.Symbol, readonly kind: ImportKind; } | undefined {
     const defaultExport = checker.tryGetMemberInModuleExports(ts.InternalSymbolName.Default, moduleSymbol);
     if (defaultExport) return { symbol: defaultExport, kind: ImportKind.Default };
-    const exportEquals: ts.Symbol = checker['resolveExternalModuleSymbol'](moduleSymbol);
+    const exportEquals: ts.Symbol = (checker as any).resolveExternalModuleSymbol(moduleSymbol);
     return exportEquals === moduleSymbol ? undefined : { symbol: exportEquals, kind: getExportEqualsImportKind(importingFile, compilerOptions) };
 }
 
@@ -726,18 +731,23 @@ export function isInJSFile(node: ts.Node | undefined): boolean {
 }
 
 export function isExternalModule(file: ts.SourceFile): boolean {
-    return file['externalModuleIndicator'] !== undefined;
+    return (file as any).externalModuleIndicator !== undefined;
 }
 
 export function getLocalSymbolForExportDefault(symbol: ts.Symbol) {
     if (!isExportDefaultSymbol(symbol)) return undefined;
+    if (!symbol.declarations)
+        return undefined;
+
     for (const decl of symbol.declarations) {
-        if (decl['localSymbol']) return decl['localSymbol'];
+        if ((decl as any).localSymbol) return (decl as any).localSymbol;
     }
     return undefined;
 }
 
 export function isExportDefaultSymbol(symbol: ts.Symbol): boolean {
+    if (!symbol.declarations)
+        return false;
     return symbol && (symbol.declarations?.length ?? 0) > 0 && hasModifier(symbol.declarations[0].modifiers, ts.SyntaxKind.DefaultKeyword);
 }
 
@@ -1019,7 +1029,7 @@ export function isKeyword(token: ts.SyntaxKind): boolean {
     return ts.SyntaxKind.FirstKeyword <= token && token <= ts.SyntaxKind.LastKeyword;
 }
 export function isContextualKeyword(token: ts.SyntaxKind): boolean {
-    return ts.SyntaxKind['FirstContextualKeyword'] <= token && token <= ts.SyntaxKind['LastContextualKeyword'];
+    return (ts.SyntaxKind as any).FirstContextualKeyword <= token && token <= (ts.SyntaxKind as any).LastContextualKeyword;
 }
 export interface MapLike<T> {
     [index: string]: T;
@@ -1313,3 +1323,12 @@ export function typeHasValue(type: ts.Type) {
 export function isNodeJS() {
     return Object.prototype.toString.call(typeof process !== 'undefined' ? process : 0) === '[object process]';
 }
+
+export function hasGlobalFlag(name: string) {
+    return !!(globalThis as any)[name];
+}
+
+export function setGlobalFlag(name: string, value: any) {
+    (globalThis as any)[name] = value;
+}
+

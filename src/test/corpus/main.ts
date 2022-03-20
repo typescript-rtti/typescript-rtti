@@ -7,6 +7,7 @@ import rimraf from 'rimraf';
 import { promisify } from 'util';
 import { Stats } from 'fs';
 import ts from 'typescript';
+import { hasGlobalFlag, setGlobalFlag } from '../../transformer/utils';
 
 interface Package {
     enabled: boolean;
@@ -80,7 +81,7 @@ const TYPESCRIPTS = [
 function run(str: string, cwd?: string, context?: string) {
     let startedAt = Date.now();
 
-    if (globalThis.CORPUS_VERBOSE) {
+    if (hasGlobalFlag('CORPUS_VERBOSE')) {
         console.log(`corpus${context ? `: ${context}` : ``}: RUN: ${str}`);
     }
 
@@ -98,13 +99,13 @@ function run(str: string, cwd?: string, context?: string) {
         throw new Error(`Failed to run '${str}': exit code ${result.code} after ${runtime} seconds`);
     }
 
-    if (globalThis.CORPUS_VERBOSE) {
+    if (hasGlobalFlag('CORPUS_VERBOSE')) {
         console.log(`corpus${context ? `: ${context}` : ``}: FINISHED: ${str} after ${runtime} seconds`);
     }
 }
 
 function trace(message: string, context?: string) {
-    if (globalThis.CORPUS_VERBOSE)
+    if (hasGlobalFlag('CORPUS_VERBOSE'))
         console.log(`corpus${context ? `: ${context}` : ``}: ${message}`);
 }
 
@@ -121,7 +122,7 @@ async function modify<T = any>(filename: string, modifier: (t: T) => void) {
             let obj = JSON.parse(stripJsonComments(jsonString));
             modifier(obj);
             await fs.writeFile(filename, JSON.stringify(obj, undefined, 2));
-        } catch (e) {
+        } catch (e : any) {
             throw new Error(`Could not transform '${filename}': ${e.message}`);
         }
     } else {
@@ -130,7 +131,7 @@ async function modify<T = any>(filename: string, modifier: (t: T) => void) {
 }
 
 async function fileExists(file: string) {
-    let stat: fst.Stats;
+    let stat: fst.Stats | null;
     try {
         stat = await fs.stat(file);
     } catch (e) {
@@ -144,22 +145,19 @@ async function fileExists(file: string) {
 }
 
 async function dirExists(file: string) {
-    let stat: fst.Stats;
+    let stat: fst.Stats | null;
     try {
         stat = await fs.stat(file);
     } catch (e) {
         stat = null;
     }
 
-    if (!stat)
-        return false;
-
-    return stat.isDirectory();
+    return stat?.isDirectory() ?? false;
 }
 
 async function main(args: string[]) {
     let hasTrace = args.some(x => x === '--trace');
-    globalThis.CORPUS_VERBOSE = hasTrace;
+    setGlobalFlag('CORPUS_VERBOSE', hasTrace);
 
     let tsrttiDir = path.join(__dirname, '..', '..', '..');
     let corpusDir = path.join(process.cwd(), '.corpus');
@@ -248,7 +246,7 @@ async function main(args: string[]) {
                                             pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
                                     });
                                 }
-                            } catch (e) {
+                            } catch (e: any) {
                                 throw new Error(`Could not patch package.json in subpackage '${pkg}': ${e.message}`);
                             }
                         }
@@ -259,12 +257,12 @@ async function main(args: string[]) {
                     }
 
                     console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
-                } catch (e) {
+                } catch (e: any) {
                     throw new Error(`${pkgName} [typescript@${tsVersion}]: ${e.message}`);
                 }
             }
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error(`❌ ${e.message}`);
         process.exit(1);
     }
