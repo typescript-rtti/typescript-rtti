@@ -2,6 +2,11 @@
 - Fixes some failures where array types are used with `noLib` enabled
 - Ensures that `Object` will be emitted when encountering types with missing symbols
 - Provide better DX for cases where `noLib` causes problems
+- Fixes numerous issues with `design:*` metadata and how RTTI handles importing classes
+  for those
+- RTTI's global detection is now much more reliable, preventing issues where RTTI tries to
+  import a symbol from a declaration-only location when it is not required (for instance `Buffer`
+  in Node.js).
 
 # v0.5.1
 - Fix for bug when accessing a type reference for a default-exported interface
@@ -21,12 +26,12 @@
 # v0.4.17
 - Add support for `@rtti:callsite` JSDoc tag as a way to opt in to receiving call-site reflection data
   without directly referencing `typescript-rtti` types (useful for third parties to opt in and introspect on typescript-rtti's metadata). This will be important for the new `@typescript-rtti/reflect` library.
-- Overhauls handling of classes/interfaces defined external to the file being processed. This fixes a number of cases 
-  which were previously broken, such as those noted by #27 and #28. The transformer is now aware of `node_modules` in a 
-  much better way which can analyze `package.json` to simplify imports in cases where the best import found is the 
+- Overhauls handling of classes/interfaces defined external to the file being processed. This fixes a number of cases
+  which were previously broken, such as those noted by #27 and #28. The transformer is now aware of `node_modules` in a
+  much better way which can analyze `package.json` to simplify imports in cases where the best import found is the
   entrypoint of the library you are using (for instance import from `graphql` instead of `graphql/index`). These changes
-  are important to ensure that typescript-rtti does not cause dependencies on private details (ie filesystem layout) of 
-  packages, as those may change version-to-version without a semver major bump. 
+  are important to ensure that typescript-rtti does not cause dependencies on private details (ie filesystem layout) of
+  packages, as those may change version-to-version without a semver major bump.
 - Fixes issues where typescript-rtti tries to import interface tokens (`IΦ*`) from the Typescript standard library in the
   vain hope that they exist.
 
@@ -44,7 +49,7 @@
 - Support for metadata on properties with computed names (including symbols)
 
 # v0.4.13
-- Added `reflect-metadata` as a peer dependency. It has always been required for the correct operation of 
+- Added `reflect-metadata` as a peer dependency. It has always been required for the correct operation of
   the transformer, but the peer dependency was missing until this version.
 
 # v0.4.12
@@ -64,7 +69,7 @@
 - Fixes a bug where constructor parameters did not emit type information when inferred (instead of defined explicitly)
 
 # v0.4.7
-- Fixes a bug where ReflectedMethod.for(function) failed to resolve the `rt:h` type resolver, producing 
+- Fixes a bug where ReflectedMethod.for(function) failed to resolve the `rt:h` type resolver, producing
   incorrect results.
 
 # v0.4.6
@@ -73,23 +78,23 @@
 - Reflected parameters involving a class (constructor/method parameters) now have `class` properties.
 
 # v0.4.5
-- Fixes issues where external interfaces were imported using absolute file paths 
+- Fixes issues where external interfaces were imported using absolute file paths
   which produced builds that could not be moved
-- Fixes issues where classes/interfaces defined within functions would not be properly accessible via reflection 
+- Fixes issues where classes/interfaces defined within functions would not be properly accessible via reflection
   due to the per-file type store changes.
 
 # v0.4.4
 
 - Allow `ReflectedTypeRef#isInterface()` without passing an interface token
-- Added `metadata()` convenience function to `ReflectedClass`, `ReflectedMember` and `ReflectedFunction`. This method 
+- Added `metadata()` convenience function to `ReflectedClass`, `ReflectedMember` and `ReflectedFunction`. This method
   allows you to get or create a metadata key on the reflected target.
-- Modified `defineMetadata()` on `ReflectedMember`, `ReflectedFunction` to return the value of the new metadata item 
+- Modified `defineMetadata()` on `ReflectedMember`, `ReflectedFunction` to return the value of the new metadata item
   for consistency with the corresponding method on `ReflectedClass`. Previously these methods returned nothing.
 
 # v0.4.3
 - Fixes an issue where matchesValue() behavior for union/intersection was swapped
 - Fixes an issue where the isOptional flag was not emitted properly for properties/methods
-- Fixes an issue where interfaces did not wrap metadata declarations in ExpressionStatement leading to 
+- Fixes an issue where interfaces did not wrap metadata declarations in ExpressionStatement leading to
   automatic semicolon insertion (ASI) bugs. This was previously fixed but only for classes.
 
 # v0.4.2
@@ -111,18 +116,18 @@
 
 # v0.2.0
 - Fixes an issue where the value of `emitDecoratorMetadata` was lost and reset to `false` when run within `ts-jest`
-- Properly emits for inferred async return types 
-- Fix: the name of function expressions assigned to property and variable declarations are now retained when they are 
+- Properly emits for inferred async return types
+- Fix: the name of function expressions assigned to property and variable declarations are now retained when they are
   annotated.
 - Fixed handling of inferred generic types
 - Added missing handling for property get/set accessors
 - String-like and number-like return types (enums mainly) now emit the appropriate type for `design:returntype`
-- Fixed an issue where `this` parameters were included in parameter lists unintentionally, including in 
+- Fixed an issue where `this` parameters were included in parameter lists unintentionally, including in
   `design:paramtypes`
 - Revised emit to create a `__RΦ` object containing the metadata and function annotation helpers instead of `__RtΦ` and `__RfΦ` respectively
-- **Enabled emitting of recursive types**  
-  This was done by revising emit to use the `__RΦ` object as a central store of type information for the current file, with the element-level metadata accessing this metadata as needed. 
-  NOTE: **This change is backwards compatible**  
+- **Enabled emitting of recursive types**
+  This was done by revising emit to use the `__RΦ` object as a central store of type information for the current file, with the element-level metadata accessing this metadata as needed.
+  NOTE: **This change is backwards compatible**
   - As a side effect of this change, the total byte size of emitted metadata should be heavily reduced, with files containing many identical type references seeing the largest benefits.
 
 # v0.1.3
@@ -136,7 +141,7 @@
 - Minimum Typescript version is now 4.5.5
 - Minimum Node.js version is now v14
 - The test suite now builds `razmin`, `@astronautlabs/bitstream`, and `typescript-rtti` (itself) using its own transformer and the test suites of those libraries successfully pass (corpus testing). Additional libraries are on the roadmap for being included in the test corpus including `@alterior-mvc/alterior` and `@astronautlabs/jwt`. Accepting PRs for additional libraries to include in the test suite.
-- Found and fixed as part of corpus testing: 
+- Found and fixed as part of corpus testing:
     - Removed emitting of `design:*` metadata where Typescript does not emit it to better match semantics and fix compilation issues
     - forward references in interface methods caused build failures with emitDecoratorMetadata compatibility
     - numerous corner case build issues discovered through corpus testing
@@ -147,11 +152,11 @@
 
 # v0.0.23
 - Arrow functions and function expressions are now supported
-- Reflected flags are now used to determine what kind of value is being passed to `reflect(value)`. This enables 
+- Reflected flags are now used to determine what kind of value is being passed to `reflect(value)`. This enables
   differentiating between functions and classes according to their flags. For functions without RTTI, reflect() returns
   `ReflectedClass` (instead of `ReflectedFunction`) because there is no way to determine at runtime (without RTTI)
-  whether a `function` expression is a plain function or a constructor. Use `ReflectedFunction.for(value)` instead if 
-  you know the value is intended to be a regular function, as opposed to a constructor. Note that arrow functions do 
+  whether a `function` expression is a plain function or a constructor. Use `ReflectedFunction.for(value)` instead if
+  you know the value is intended to be a regular function, as opposed to a constructor. Note that arrow functions do
   not have this issue as they are not constructable, and thus they have no prototype.
 - `reflect(value)` now has better typed overrides to clarify what kind of value you will get back depending on what value
   you pass in
@@ -169,10 +174,10 @@
 
 # v0.0.22
 
-- [Breaking] `ReflectedFunction#rawParameterMetadata` and `ReflectedProperty#rawParameterMetadata` are now marked 
-  `@internal`. `RawParameterMetadata` is no longer exported. Use `parameterNames` and `parameterTypes` instead and 
+- [Breaking] `ReflectedFunction#rawParameterMetadata` and `ReflectedProperty#rawParameterMetadata` are now marked
+  `@internal`. `RawParameterMetadata` is no longer exported. Use `parameterNames` and `parameterTypes` instead and
   avoid relying on the underlying RTTI metadata.
-- [Breaking] `isPrivate`, `isPublic` and `isProtected` accessors on `ReflectedClass` are removed. These were always 
+- [Breaking] `isPrivate`, `isPublic` and `isProtected` accessors on `ReflectedClass` are removed. These were always
   false.
 - Adds support for emitting static method/property lists (rt:SP and rt:Sm)
 - Improved documentation
@@ -194,24 +199,24 @@
 
 - Added support for `void` type
 - Breaking: You must now use ReflectedClass.for(MyClass) instead of new ReflectedClass(MyClass)
-- Instances of ReflectedClass are now cached and shared. As a result all 
+- Instances of ReflectedClass are now cached and shared. As a result all
   instances of ReflectedClass are now [sealed](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/seal)
-- Breaking: `ReflectedMethod#parameterTypes` now has type `ReflectedTypeRef[]` 
-  which allows them to express the full range of types possible. Previously the raw type refs (for instance type 
+- Breaking: `ReflectedMethod#parameterTypes` now has type `ReflectedTypeRef[]`
+  which allows them to express the full range of types possible. Previously the raw type refs (for instance type
   resolvers such as `() => String`) was returned here which inappropriately exposed the underlying metadata format.
-- Added support for is() type predicates and as() casting to `ReflectedTypeRef` 
+- Added support for is() type predicates and as() casting to `ReflectedTypeRef`
   for ease of use
-- Added several more variants of `ReflectedTypeRef` to match how the 
+- Added several more variants of `ReflectedTypeRef` to match how the
   capabilities of the library have evolved
 - `ReflectedMethod#parameterTypes` can now source metadata from `design:paramtypes`
 - Support for interfaces, use `reify<MyInterface>()` to obtain interface tokens
-- Added `reflect<MyInterface>()`, `reflect(MyClass)`, `reflect(myInstance)` shortcuts for obtaining 
+- Added `reflect<MyInterface>()`, `reflect(MyClass)`, `reflect(myInstance)` shortcuts for obtaining
   `ReflectedClass` instances
 
 # v0.0.19
 
 - Added better handling for literal types to `ReflectedClass`.
-    * You can now expect `isClass(Boolean)` to be true for types `true` and `false`, `isClass(Object)` to be true for 
+    * You can now expect `isClass(Boolean)` to be true for types `true` and `false`, `isClass(Object)` to be true for
       `null`, `isClass(Number)` to be true for numeric literals and `isClass(String)` to be true for string literals.
     * Added `isLiteral(value)` to check for a literal value
 - Fixed a bug where all unknown types were reported as `Boolean`
@@ -239,10 +244,10 @@
 
 **Breaking**
 - changes emission of union, intersection
-  * sample input: `string | number` 
+  * sample input: `string | number`
   * before: `{ kind: 'union', types: [String, Number] }`
   * after: `{ TΦ: T_UNION, t: [String, Number] }`
-- changes array emission to match. 
+- changes array emission to match.
   * sample input: `string[]`
   * before: `[ String ]`
   * after: `{ TΦ: T_ARRAY, e: String }`
