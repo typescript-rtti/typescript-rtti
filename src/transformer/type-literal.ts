@@ -5,7 +5,7 @@ import { getPreferredExportForImport } from './get-exports-for-symbol';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 import { MappedType } from './ts-internal-types';
-import { hasFlag, isFlagType, isNodeJS, propertyPrepend, serializeEntityNameAsExpression, typeHasValue } from './utils';
+import { hasFlag, isFlagType, isNodeJS, propertyPrepend, resolveName, serializeEntityNameAsExpression, typeHasValue } from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
 import { RttiContext } from './rtti-context';
@@ -209,6 +209,14 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 // Appears to be the standard lib. Assume no import is needed.
                 isLocal = true;
             }
+
+            // Ask Typescript if this is a global.
+            // TODO: need another nearby node when there's no typeNode
+            let isGlobal = false;
+            let resolvedGlobalSymbol = resolveName(checker, typeNode, type.symbol.name, ts.SymbolFlags.Value, false);
+            let resolvedNonGlobalSymbol = resolveName(checker, typeNode, type.symbol.name, ts.SymbolFlags.Value, true);
+            if (resolvedGlobalSymbol && !resolvedNonGlobalSymbol && resolvedGlobalSymbol === type.symbol)
+                isLocal = isGlobal = true;
 
             // If this is a non-class from the standard library (ie lib.*.d.ts)
             // output Object

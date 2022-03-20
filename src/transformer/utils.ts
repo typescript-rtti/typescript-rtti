@@ -1332,3 +1332,6 @@ export function setGlobalFlag(name: string, value: any) {
     (globalThis as any)[name] = value;
 }
 
+export function resolveName(checker : ts.TypeChecker, location : ts.Node, name : string, meaning : ts.SymbolFlags, excludeGlobals : boolean): ts.Symbol {
+    return (checker as any).resolveName(name, location, meaning, excludeGlobals);
+}
