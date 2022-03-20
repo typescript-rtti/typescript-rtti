@@ -1,4 +1,4 @@
-# vNext
+# v0.5.2
 - Fixes some failures where array types are used with `noLib` enabled
 - Ensures that `Object` will be emitted when encountering types with missing symbols
 - Provide better DX for cases where `noLib` causes problems
