@@ -1,69 +1,69 @@
 import type * as ts from "typescript";
 
-export const F_READONLY = 'R';
-export const F_ABSTRACT = 'A';
-export const F_PUBLIC = '$';
-export const F_PRIVATE = '#';
-export const F_PROTECTED = '@';
-export const F_PROPERTY = 'P';
-export const F_METHOD = 'M';
-export const F_STATIC = 'S';
-export const F_CLASS = 'C';
-export const F_INTERFACE = 'I';
-export const F_FUNCTION = 'F';
-export const F_ARROW_FUNCTION = '>';
-export const F_OPTIONAL = '?';
-export const F_ASYNC = 'a';
-export const F_EXPORTED = 'e';
-export const F_INFERRED = '.';
+export const F_READONLY: 'R' = 'R';
+export const F_ABSTRACT: 'A' = 'A';
+export const F_PUBLIC: '$' = '$';
+export const F_PRIVATE: '#' = '#';
+export const F_PROTECTED: '@' = '@';
+export const F_PROPERTY: 'P' = 'P';
+export const F_METHOD: 'M' = 'M';
+export const F_STATIC: 'S' = 'S';
+export const F_CLASS: 'C' = 'C';
+export const F_INTERFACE: 'I' = 'I';
+export const F_FUNCTION: 'F' = 'F';
+export const F_ARROW_FUNCTION: '>' = '>';
+export const F_OPTIONAL: '?' = '?';
+export const F_ASYNC: 'a' = 'a';
+export const F_EXPORTED: 'e' = 'e';
+export const F_INFERRED: '.' = '.';
 
-export const T_UNION = '|';
-export const T_INTERSECTION = '&';
-export const T_ANY = '~';
-export const T_UNKNOWN = 'U';
-export const T_VOID = 'V';
-export const T_UNDEFINED = 'u';
-export const T_NULL = 'n';
-export const T_TUPLE = 'T';
-export const T_ARRAY = '[';
-export const T_THIS = 't';
-export const T_GENERIC = 'g';
-export const T_MAPPED = 'm';
-export const T_TRUE = '1';
-export const T_FALSE = '0';
-export const T_CALLSITE = 'c';
-export const T_STAND_IN = '5';
+export const T_UNION: '|' = '|';
+export const T_INTERSECTION: '&' = '&';
+export const T_ANY: '~' = '~';
+export const T_UNKNOWN: 'U' = 'U';
+export const T_VOID: 'V' = 'V';
+export const T_UNDEFINED: 'u' = 'u';
+export const T_NULL: 'n' = 'n';
+export const T_TUPLE: 'T' = 'T';
+export const T_ARRAY: '[' = '[';
+export const T_THIS: 't' = 't';
+export const T_GENERIC: 'g' = 'g';
+export const T_MAPPED: 'm' = 'm';
+export const T_TRUE: '1' = '1';
+export const T_FALSE: '0' = '0';
+export const T_CALLSITE: 'c' = 'c';
+export const T_STAND_IN: '5' = '5';
+export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
+
+export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };
+export const TI_ANY: RtIntrinsicType = { TΦ: T_ANY };
+export const TI_UNKNOWN: RtIntrinsicType = { TΦ: T_UNKNOWN };
+export const TI_UNDEFINED: RtIntrinsicType = { TΦ: T_UNDEFINED };
+export const TI_TRUE: RtIntrinsicType = { TΦ: T_TRUE };
+export const TI_FALSE: RtIntrinsicType = { TΦ: T_FALSE };
+export const TI_THIS: RtIntrinsicType = { TΦ: T_THIS };
+export const TI_NULL: RtIntrinsicType = { TΦ: T_NULL };
 
 export type Literal = number | string;
-
 export interface InterfaceToken<T = any> {
     name: string;
     prototype: any;
     identity: symbol;
 }
 
-export type RtType = RtBrandedType | Function | Literal | InterfaceToken;
+export type RtType = RtIntrinsicType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType | RtGenericType
+    | RtMappedType | RtCallSite | { TΦ: typeof T_STAND_IN }
+    | Function | Literal | InterfaceToken;
+
 export type RtBrandedType = {
     TΦ:
-    typeof T_UNION
-    | typeof T_INTERSECTION
-    | typeof T_ANY
-    | typeof T_UNKNOWN
-    | typeof T_VOID
-    | typeof T_UNDEFINED
-    | typeof T_NULL
-    | typeof T_TUPLE
-    | typeof T_ARRAY
-    | typeof T_THIS
-    | typeof T_GENERIC
-    | typeof T_MAPPED
-    | typeof T_TRUE
-    | typeof T_FALSE
-    | typeof T_CALLSITE
-    | typeof T_STAND_IN;
+    typeof T_UNION | typeof T_INTERSECTION | typeof T_ANY | typeof T_UNKNOWN | typeof T_VOID | typeof T_UNDEFINED
+    | typeof T_NULL | typeof T_TUPLE | typeof T_ARRAY | typeof T_THIS | typeof T_GENERIC | typeof T_MAPPED
+    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_STAND_IN;
 };
 
-export type RtIntrinsicType<T> = { TΦ: T; };
+export type RtIntrinsicIndicator = typeof T_VOID | typeof T_ANY | typeof T_UNKNOWN | typeof T_UNDEFINED | typeof T_TRUE | typeof T_FALSE | typeof T_THIS | typeof T_NULL;
+export type RtIntrinsicType<T extends RtIntrinsicIndicator = RtIntrinsicIndicator> = { TΦ: T; };
 export type RtVoidType = RtIntrinsicType<typeof T_VOID>;
 export type RtNullType = RtIntrinsicType<typeof T_NULL>;
 export type RtUndefinedType = RtIntrinsicType<typeof T_UNDEFINED>;
@@ -116,6 +116,12 @@ export interface RtTupleElement {
 export interface RtTupleType {
     TΦ: typeof T_TUPLE;
     e: RtTupleElement[];
+}
+
+export interface RtMappedType {
+    TΦ: typeof T_MAPPED;
+    t: RtType;
+    p: RtType[];
 }
 
 export interface RtGenericType {

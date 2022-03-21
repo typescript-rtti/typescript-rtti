@@ -1,3 +1,7 @@
+# vNext
+- Adds `ReflectedTypeRef#equals()` (and the supporting protected `ReflectedTypeRef#matches()` family of functions) for
+  comparing type references for equivalence.
+
 # v0.5.2
 - Fixes some failures where array types are used with `noLib` enabled
 - Ensures that `Object` will be emitted when encountering types with missing symbols
