@@ -2,6 +2,7 @@ import * as format from '../common/format';
 import { getParameterNames } from './get-parameter-names';
 import { Sealed } from './sealed';
 import { RtType } from '../common/format';
+import deepEquals from 'deep-equal';
 
 const NotProvided = Symbol();
 
@@ -585,6 +586,17 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
     override matchesValue(value: any, errors?: Error[], context?: string): boolean {
         return this.baseType.matchesValue(value, errors, context);
     }
+
+    matchesRef(that: ReflectedGenericRef): boolean {
+        // return deepEqual(this, that) // is this too lazy?
+        return this.baseType?.ref === that.baseType?.ref
+            && this.typeParameters.length === that.typeParameters.length
+            && this.typeParameters.every((p, i) => deepEquals(p, that.typeParameters[i]));
+            // TODO: do we really need to `matchRef(..)` all the way down?
+            // && this.typeParameters.every((p, i) => p && p.matchesRef(that.typeParameters[i])); // this would work, if we implemented
+            // && this.typeParameters.every((p, i) => p === that.typeParameters[i]); // this doesn't work
+    }
+
 }
 
 export class ReflectedTupleElement {
