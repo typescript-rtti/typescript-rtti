@@ -85,6 +85,7 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                 typeMap: new Map<number, ts.Expression>(),
                 pkgJsonMap,
                 emitStandardMetadata,
+                currentTopStatement: undefined,
                 interfaceSymbols: []
             };
 
@@ -125,32 +126,55 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                 let imports: ts.ImportDeclaration[] = [];
                 let isCommonJS = context.getCompilerOptions().module === ts.ModuleKind.CommonJS;
 
+                let statementTransforms = new Map<ts.Statement, ts.Statement>();
+                for (let statement of statements)
+                    statementTransforms.set(<ts.Statement>ts.getOriginalNode(statement), statement);
+
                 for (let impo of ctx.importMap.values()) {
                     if (!impo.referenced)
-                        continue;
-
-                    // for commonjs we only add extra imports for namespace imports
-                    // (ie import * as x from 'y') and default imports. regular bound imports are handled
-                    // with a direct require anyway.
-
-                    if (isCommonJS && !impo.isNamespace && !impo.isDefault)
                         continue;
 
                     if (ctx.trace)
                         console.log(`RTTI: Generating owned import for '${impo.modulePath}'`);
 
-                    let ownedImpo: ts.ImportDeclaration;
+                    let ownedImpo: ts.Statement;
 
                     if (impo.isDefault) {
-                        ownedImpo = ts.factory.createImportDeclaration(
-                            undefined,
-                            undefined,
-                            ts.factory.createImportClause(
-                                false, ts.factory.createIdentifier(impo.localName),
+                        if (isCommonJS) {
+                            // Typescript's conversion of default imports to CommonJS causes default imports get
+                            // renamed without changing the corresponding references, so we need to output a
+                            // literal `require()` statement here
+                            ownedImpo = ts.factory.createVariableStatement(
+                                undefined,
+                                ts.factory.createVariableDeclarationList(
+                                    [ts.factory.createVariableDeclaration(
+                                        ts.factory.createIdentifier(impo.localName),
+                                        undefined,
+                                        undefined,
+                                        ts.factory.createPropertyAccessExpression(
+                                            ts.factory.createCallExpression(
+                                                ts.factory.createIdentifier("require"),
+                                                undefined,
+                                                [ts.factory.createStringLiteral(impo.modulePath)]
+                                            ),
+                                            ts.factory.createIdentifier("default")
+                                        )
+                                    )],
+                                    ts.NodeFlags.None
+                                )
+                            )
+                        } else {
+                            ownedImpo = ts.factory.createImportDeclaration(
+                                undefined,
+                                undefined,
+                                ts.factory.createImportClause(
+                                    false, ts.factory.createIdentifier(impo.localName),
+                                    undefined
+                                ),
+                                ts.factory.createStringLiteral(impo.modulePath),
                                 undefined
-                            ),
-                            ts.factory.createStringLiteral(impo.modulePath)
-                        );
+                            );
+                        }
                     } else {
                         ownedImpo = ts.factory.createImportDeclaration(
                             undefined,
@@ -174,7 +198,14 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                         );
                     }
 
-                    let impoIndex = statements.indexOf(impo.importDeclaration);
+                    let impoIndex = -1;
+                    if (impo.importDeclaration) {
+                        let original = statementTransforms.get(impo.importDeclaration) ?? impo.importDeclaration;
+                        impoIndex = statements.indexOf(original);
+                        if (impoIndex < 0)
+                            impoIndex = statements.indexOf(impo.importDeclaration);
+                    }
+
                     if (impoIndex >= 0) {
                         statements.splice(impoIndex, 0, ownedImpo);
                     } else {

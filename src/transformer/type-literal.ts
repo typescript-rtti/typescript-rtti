@@ -412,7 +412,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     exportedName = `IΦdefault`;
 
                 if (isExportedAsDefault) {
-                    if (isCommonJS) {
+                    if (isCommonJS && options?.hoistImportsInCommonJS !== true) {
                         return ts.factory.createPropertyAccessExpression(
                             ts.factory.createCallExpression(
                                 ts.factory.createIdentifier('require'),
@@ -425,7 +425,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                         let impo = importMap.get(`*default:${modulePath}`);
                         if (!impo) {
                             importMap.set(`*default:${modulePath}`, impo = {
-                                importDeclaration: undefined,
+                                importDeclaration: ctx.currentTopStatement,
                                 isDefault: exportedName === 'default',
                                 isNamespace: exportedName !== 'default',
                                 localName: `LΦ_${ctx.freeImportReference++}`,
@@ -473,7 +473,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                         let impo = ctx.importMap.get(`*:${modulePath}`);
                         if (!impo) {
                             ctx.importMap.set(`*:${modulePath}`, impo = {
-                                importDeclaration: undefined,
+                                importDeclaration: ctx.currentTopStatement,
                                 isDefault: false,
                                 isNamespace: true,
                                 localName: `LΦ_${ctx.freeImportReference++}`,

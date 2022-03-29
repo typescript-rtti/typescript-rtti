@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { describe } from "razmin";
+import { InterfaceToken, RtCallSite } from '../../common';
 import { runSimple } from "../../runner.test";
 import { MODULE_TYPES } from "./module-types.test";
 
@@ -37,6 +38,39 @@ describe('Imports', it => {
                         foo: {}
                     }
                 });
+            });
+            it('does not modify import order', async () => {
+                globalThis['test__imports'] = [];
+                let exports = await runSimple({
+                    moduleType,
+                    code: `
+                        import "polyfills";
+                        import { reflect } from "./FΦtypescript-rtti";
+                        import foo from "./foo";
+                        export const callsite = reflect<foo>();
+                        export const order = globalThis['test__imports']
+                    `,
+                    modules: {
+                        './FΦtypescript-rtti.ts': `
+                            export function reflect<T = any>(_?, callsite?) { return callsite };
+                        `,
+                        './foo.ts': `
+                            globalThis['test__imports'] = \`\${globalThis['test__imports'] || ''}(foo)\`;
+                            export default interface Foo { }
+                        `,
+                        './polyfills.ts': `
+                            globalThis['test__imports'] = \`\${globalThis['test__imports'] || ''}(polyfills)\`;
+                        `
+                    }
+                });
+
+                expect(exports.order).to.equal('(polyfills)(foo)');
+
+                let callsite: RtCallSite = exports.callsite;
+                let interfaceToken = <InterfaceToken>callsite.tp[0];
+
+                expect(interfaceToken.name).to.equal('Foo');
+
             });
             it('emits correctly for bound imports', async () => {
                 let exports = await runSimple({

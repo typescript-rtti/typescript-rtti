@@ -232,12 +232,12 @@ export function referenceImportedSymbol(
     modulePath: string,
     identifier: string,
     hasValue?: boolean,
-    importDecl?: ts.ImportDeclaration
+    importDecl?: ts.Statement
 ) {
     let impo = ctx.importMap.get(`*:${modulePath}`);
     if (!impo) {
         ctx.importMap.set(`*:${modulePath}`, impo = {
-            importDeclaration: importDecl,
+            importDeclaration: importDecl ?? ctx.currentTopStatement,
             isDefault: false,
             isNamespace: true,
             localName: `LΦ_${ctx.freeImportReference++}`,
@@ -1334,4 +1334,8 @@ export function setGlobalFlag(name: string, value: any) {
 
 export function resolveName(checker : ts.TypeChecker, location : ts.Node, name : string, meaning : ts.SymbolFlags, excludeGlobals : boolean): ts.Symbol {
     return (checker as any).resolveName(name, location, meaning, excludeGlobals);
+}
+
+export function isStatement(node: ts.Node): node is ts.Statement {
+    return ts['isStatement'](node);
 }

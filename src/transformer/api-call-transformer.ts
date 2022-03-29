@@ -1,6 +1,6 @@
 import { Visit } from "./common/visitor-base";
 import * as ts from 'typescript';
-import { hasFlag } from "./utils";
+import { hasFlag, isStatement } from "./utils";
 import { RttiVisitor } from "./rtti-visitor-base";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
@@ -17,16 +17,26 @@ export class ApiCallTransformer extends RttiVisitor {
         return transformer.visitNode(node);
     }
 
+    protected override everyNode(node: ts.Node): void {
+        if (isStatement(node) && node.parent && ts.isSourceFile(node.parent)) {
+            this.ctx.currentTopStatement = node;
+        }
+    }
+
     private isRttiCall(expr: ts.CallExpression, name?: string) {
+        if (!ts.isIdentifier(expr.expression))
+            return false;
+
+        // The './FΦtypescript-rtti' allowance is purely for tests.
         return ts.isIdentifier(expr.expression)
             && this.isAnyImportedSymbol(
                 this.checker.getSymbolAtLocation(expr.expression),
-                'typescript-rtti', name ? [name] : ['reify', 'reflect']
+                ['typescript-rtti', './FΦtypescript-rtti'], name ? [name] : ['reify', 'reflect']
             )
             ;
     }
 
-    isAnyImportedSymbol(symbol: ts.Symbol, packageName: string, names: string[]) {
+    isAnyImportedSymbol(symbol: ts.Symbol, packageName: string[], names: string[]) {
         if (!symbol || !names.includes(symbol.name))
             return false;
 
@@ -34,10 +44,10 @@ export class ApiCallTransformer extends RttiVisitor {
     }
 
     isImportedSymbol(symbol: ts.Symbol, packageName: string, name: string) {
-        return this.isAnyImportedSymbol(symbol, packageName, [name]);
+        return this.isAnyImportedSymbol(symbol, [packageName], [name]);
     }
 
-    isSymbolFromPackage(symbol: ts.Symbol, packageName: string) {
+    isSymbolFromPackage(symbol: ts.Symbol, packageNames: string[]) {
         let decls = Array.from(symbol.getDeclarations());
         let importSpecifier = <ts.ImportSpecifier>decls.find(x => x.kind === ts.SyntaxKind.ImportSpecifier);
 
@@ -49,11 +59,16 @@ export class ApiCallTransformer extends RttiVisitor {
         if (!ts.isStringLiteral(modSpecifier))
             return false;
 
-        return modSpecifier.text === packageName
-            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.js$`))
-            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.ts$`))
-            || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/?$`))
-            ;
+        for (let packageName of packageNames) {
+            let matches = modSpecifier.text === packageName
+                || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.js$`))
+                || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/index.ts$`))
+                || modSpecifier.text.match(new RegExp(`^https?:.*/${packageName}/?$`))
+            if (matches)
+                return true;
+        }
+
+        return false;
     }
 
     isCallSiteTypeRef(typeNode: ts.TypeNode) {

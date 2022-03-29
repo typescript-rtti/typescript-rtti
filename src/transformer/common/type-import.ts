@@ -1,7 +1,7 @@
 import * as ts from 'typescript';
 
 export interface TypeImport {
-    importDeclaration?: ts.ImportDeclaration;
+    importDeclaration?: ts.Statement;
     symbol?: ts.Symbol;
     refName: string;
     modulePath: string;

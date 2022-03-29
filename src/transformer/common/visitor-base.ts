@@ -16,6 +16,12 @@ export class VisitorBase {
 
     traceVisits = false;
 
+    /**
+     * Runs for every node, regardless of what receivers are defined.
+     * @param node
+     */
+    protected everyNode(node: ts.Node) {}
+
     #buildMap() {
         if (this.#visitationMap)
             return;
@@ -39,6 +45,8 @@ export class VisitorBase {
         this.#visitor = (node: ts.Node) => {
             if (!node)
                 return;
+
+            this.everyNode(node);
 
             let receivers = this.#visitationMap.get(node.kind) ?? [];
             if (receivers.length === 0) {

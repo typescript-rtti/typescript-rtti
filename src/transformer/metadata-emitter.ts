@@ -8,7 +8,7 @@ import { InterfaceAnalyzer } from "./common/interface-analyzer";
 import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
-import { expressionForPropertyName, hasModifier, hasModifiers } from "./utils";
+import { expressionForPropertyName, hasModifier, hasModifiers, isStatement } from "./utils";
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -53,6 +53,12 @@ export class MetadataEmitter extends RttiVisitor {
             return callback();
         } finally {
             this.ctx.currentNameScope = originalScope;
+        }
+    }
+
+    protected override everyNode(node: ts.Node): void {
+        if (isStatement(node) && node.parent && ts.isSourceFile(node.parent)) {
+            this.ctx.currentTopStatement = node;
         }
     }
 
