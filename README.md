@@ -428,5 +428,5 @@ reports as the above are all already tracked in existing issues.
 
 # Related/Similar Projects
 
-- [https://github.com/Hookyns/tst-reflect](Hookyns/tst-reflect)
-- [https://github.com/gfx/typescript-rtti](gfx/typescript-rtti) (No relation to this codebase)
+- [Hookyns/tst-reflect](https://github.com/Hookyns/tst-reflect)
+- [gfx/typescript-rtti](https://github.com/gfx/typescript-rtti) (No relation to this codebase)
