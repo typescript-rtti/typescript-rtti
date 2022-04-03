@@ -33,6 +33,7 @@ export const T_TRUE: '1' = '1';
 export const T_FALSE: '0' = '0';
 export const T_CALLSITE: 'c' = 'c';
 export const T_STAND_IN: '5' = '5';
+export const T_OBJECT: 'O' = 'O';
 export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
 
 export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };
@@ -51,8 +52,8 @@ export interface InterfaceToken<T = any> {
     identity: symbol;
 }
 
-export type RtType = RtIntrinsicType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType | RtGenericType
-    | RtMappedType | RtCallSite | { TΦ: typeof T_STAND_IN }
+export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
+    | RtGenericType | RtMappedType | RtCallSite | { TΦ: typeof T_STAND_IN }
     | Function | Literal | InterfaceToken;
 
 export type RtBrandedType = {
@@ -96,6 +97,17 @@ export interface RtCallSite {
 export interface RtUnionType {
     TΦ: typeof T_UNION;
     t: RtType[];
+}
+
+export interface RtObjectType {
+    TΦ: typeof T_OBJECT;
+    m: RtObjectMember[];
+}
+
+export interface RtObjectMember {
+    n: string;
+    f: string;
+    t: RtType;
 }
 
 export interface RtIntersectionType {

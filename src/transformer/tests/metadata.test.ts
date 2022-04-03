@@ -6,7 +6,7 @@ import {
     F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
     F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
     T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
-    T_VOID, InterfaceToken
+    T_OBJECT, T_VOID, InterfaceToken, RtObjectMember, RtObjectType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 
@@ -1444,6 +1444,55 @@ describe('rt:t', it => {
         expect(type.TΦ).to.equal(T_UNION);
         expect(type.t.length).to.equal(2);
         expect(type.t).to.include.all.members([Number, String]);
+    });
+    it('emits for object literal return type', async () => {
+        let exports = await runSimple({
+            code: `
+                type A = { foo: string, bar: number };
+                export class C {
+                    method(hello : string, world : number): A { return { foo: 'hello', bar: 123 }; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method'); let type = typeResolver();
+        expect(type.TΦ).to.equal(T_OBJECT);
+        expect(type.m.length).to.equal(2);
+        let fooT = type.m.find(x => x.n === 'foo');
+        let barT = type.m.find(x => x.n === 'bar');
+
+        expect(fooT).to.exist;
+        expect(barT).to.exist;
+
+        expect(fooT.t).to.equal(String);
+        expect(barT.t).to.equal(Number);
+        expect(fooT.f.includes(F_OPTIONAL)).to.be.false;
+        expect(barT.f.includes(F_OPTIONAL)).to.be.false;
+    });
+    it('emits optionality for object literal members in return type', async () => {
+        let exports = await runSimple({
+            code: `
+                type A = { foo?: string, bar: number };
+                export class C {
+                    method(hello : string, world : number): A { return { foo: 'hello', bar: 123 }; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        let type: RtObjectType = typeResolver();
+        expect(type.TΦ).to.equal(T_OBJECT);
+        expect(type.m.length).to.equal(2);
+        let fooT: RtObjectMember = type.m.find(x => x.n === 'foo');
+        let barT: RtObjectMember = type.m.find(x => x.n === 'bar');
+
+        expect(fooT).to.exist;
+        expect(barT).to.exist;
+
+        expect(fooT.t).to.equal(String);
+        expect(fooT.f.includes(F_OPTIONAL)).to.be.true;
+        expect(barT.t).to.equal(Number);
+        expect(barT.f.includes(F_OPTIONAL)).to.be.false;
     });
     it('emits for inferred intersection return type', async () => {
         let exports = await runSimple({

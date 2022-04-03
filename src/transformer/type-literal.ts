@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
+import { F_OPTIONAL, LiteralSerializedNode, RtObjectMember, RtType, T_ANY, T_ARRAY, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { findRelativePathToFile } from './find-relative-path';
 import { getPreferredExportForImport } from './get-exports-for-symbol';
 import { literalNode } from './literal-node';
@@ -180,11 +180,6 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     );
                 }
             }
-        }
-
-        if (type.symbol?.name === '__object') {
-            // TODO: anonymous object type, not yet supported
-            return ts.factory.createIdentifier('Object');
         }
 
         if ((type.symbol?.flags & ts.SymbolFlags.Function) !== 0) {
@@ -488,6 +483,31 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     }
                 }
             }
+        }
+
+        if (hasFlag(type.flags, ts.TypeFlags.StructuredType)) {
+            let members: RtObjectMember[] = [];
+            if (type.symbol && type.symbol.members) {
+                type.symbol.members.forEach((value, key) => {
+                    // TODO: currentTopStatement may be far up the AST- would be nice if we had
+                    // a currentStatement that was not constrained to be at the top of the SourceFile
+                    let memberType = encoder.ctx.checker.getTypeOfSymbolAtLocation(
+                        value,
+                        typeNode ?? encoder.ctx.currentTopStatement
+                    );
+
+                    members.push({
+                        n: <string>key,
+                        f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
+                        t: <any>literalNode(encoder.referToType(memberType))
+                    })
+                });
+            }
+
+            return serialize({
+                TΦ: T_OBJECT,
+                m: members
+            });
         }
 
         return ts.factory.createIdentifier('Object');

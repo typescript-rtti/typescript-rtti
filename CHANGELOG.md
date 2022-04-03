@@ -1,4 +1,7 @@
 # vNext
+- Adds support for object literal type references
+
+# v0.5.4
 - Fixes issues where synthetic imports are hoisted to the top of the file,
   which particularly can cause problems when `reflect-metadata` or other
   "must import first" imports are present in the file

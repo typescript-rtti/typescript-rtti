@@ -1,7 +1,7 @@
 import * as format from '../common/format';
 import { getParameterNames } from './get-parameter-names';
 import { Sealed } from './sealed';
-import { RtType } from '../common/format';
+import { RtType, RtObjectType, RtObjectMember } from '../common/format';
 
 const NotProvided = Symbol();
 
@@ -38,7 +38,7 @@ function Flag(value: string) {
 
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any'
     | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'mapped' | 'literal'
-    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false';
+    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object';
 
 export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_UNKNOWN]: 'unknown',
@@ -53,7 +53,8 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_UNDEFINED]: 'undefined',
     [format.T_MAPPED]: 'mapped',
     [format.T_FALSE]: 'false',
-    [format.T_TRUE]: 'true'
+    [format.T_TRUE]: 'true',
+    [format.T_OBJECT]: 'object'
 };
 
 export class ReflectedTypeRef<T extends RtType = RtType> {
@@ -400,6 +401,88 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
             return typeof value === 'symbol';
 
         return ReflectedClass.for(this.ref).matchesValue(value);
+    }
+}
+
+export class ReflectedObjectMember {
+    constructor(private ref: RtObjectMember) {
+        this.name = ref.n;
+        this.type = ReflectedTypeRef.createFromRtRef(this.ref.t);
+    }
+
+    readonly name: string;
+    readonly type: ReflectedTypeRef;
+
+    private _flags: ReflectedFlags;
+    get flags() {
+        if (!this._flags)
+            this._flags = new ReflectedFlags(this.ref.f);
+        return this._flags;
+    }
+
+    get isOptional() { return this.flags.isOptional; }
+
+    equals(member: this) {
+        return this.name === member.name && this.type.equals(member.type);
+    }
+
+    toString() { return `${this.name}: ${this.type?.toString() ?? '<error>'}`; }
+}
+
+@ReflectedTypeRef.Kind('object')
+export class ReflectedObjectRef extends ReflectedTypeRef<RtObjectType> {
+    get kind() { return 'object' as const; }
+
+    private _members: ReflectedObjectMember[];
+
+    get members(): Readonly<ReflectedObjectMember[]> {
+        if (!this._members)
+            this._members = this.ref.m.map(m => new ReflectedObjectMember(m));
+
+        return this._members;
+    }
+
+    toString() { return `{ ${this.members.map(m => m.toString()).join(', ')} }`; }
+
+    protected override matches(ref : this) {
+        if (this.members.length !== ref.members.length)
+            return false;
+
+        for (let member of this.members) {
+            let matchingMember = ref.members.find(x => x.name);
+            if (!member.equals(matchingMember))
+                return false;
+        }
+
+        return true;
+    }
+
+    override matchesValue(value: any, errors: Error[] = [], context?: string) {
+        if (typeof value !== 'object')
+            return false;
+
+        let matches = true;
+        for (let member of this.members) {
+            let hasValue = member.name in value;
+
+            if (!hasValue) {
+                if (!member.isOptional) {
+                    errors.push(new TypeError(`Missing value for member ${member.toString()}`));
+                    matches = false;
+                }
+                continue;
+            }
+
+            let memberValue = value[member.name];
+            let memberErrors = [];
+            if (!member.type.matchesValue(memberValue, memberErrors, context)) {
+                errors.push(new TypeError(`Value for member ${member.toString()} is invalid`));
+                errors.push(...memberErrors);
+                matches = false;
+            }
+        }
+
+        return matches;
     }
 }
 
