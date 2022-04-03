@@ -1,4 +1,8 @@
-# vNext
+# v0.5.6
+- Fixes a bug when referring to interfaces that do not have tokens (because they were not compiled with the transformer)
+  This bug exhibits as: `Cannot read properties of undefined (reading 'RΦ')`. See #48
+
+# v0.5.5
 - Adds support for object literal type references
 
 # v0.5.4
