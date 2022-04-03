@@ -293,6 +293,28 @@ function bar<T>(call? : CallSite) {
 bar<String>();
 ```
 
+# Checking the type of a value at runtime
+
+A common use case of runtime type information is to validate that a value matches a specific Typescript type at runtime.
+This functionality is built in via the `matchesValue()` API:
+
+```typescript
+interface A {
+    foo: string;
+    bar: number;
+    baz?: string;
+}
+
+reflect<A>().matchesValue({ foo: 'hello' }) // false
+reflect<A>().matchesValue({ foo: 'hello', bar: 123 }) // true
+reflect<A>().matchesValue({ foo: 'hello', bar: 123, baz: 'world' }) // true
+reflect<A>().matchesValue({ foo: 123, bar: 'hello' }) // false
+reflect<A>().matchesValue({ }) // false
+```
+
+This works for all types that `typescript-rtti` can reflect, including unions, intersections, interfaces, classes,
+object literals, intrinsics (true/false/null/undefined), literals (string/number) etc.
+
 # Regarding `design:*`
 
 > This library supports `emitDecoratorMetadata` but does not require it.
