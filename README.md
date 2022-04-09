@@ -24,7 +24,7 @@ A Typescript transformer to implement comprehensive runtime type information (RT
 Send a pull request to feature your project!
 - [phantomdi](https://github.com/rezonant/phantomdi) -- A dependency injector using runtime type information
   with advanced features like dynamic alterations of injectables
-
+- [decapi](https://github.com/capaj/decapi) -- decapi is a set of decorators for creating GraphQL APIs in typescript. Write your types and GQL schema at once killing two birds with one stone
 # Examples
 
 Classes
