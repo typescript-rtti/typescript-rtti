@@ -86,7 +86,7 @@ export class MetadataEncoder {
         if (ts.isClassDeclaration(klass) || ts.isClassExpression(klass)) {
             let constructor = klass.members.find(x => ts.isConstructorDeclaration(x)) as ts.ConstructorDeclaration;
             if (constructor) {
-                decs.push(...this.params(constructor));
+                decs.push(...this.params(constructor, klass));
             }
         }
 
@@ -246,7 +246,7 @@ export class MetadataEncoder {
         return decs;
     }
 
-    params(node: ts.FunctionLikeDeclaration | ts.MethodSignature): ts.Decorator[] {
+    params(node: ts.FunctionLikeDeclaration | ts.MethodSignature, containingNode? : ts.ClassDeclaration | ts.ClassExpression): ts.Decorator[] {
         let decs: ts.Decorator[] = [];
         let standardParamTypes: ts.Expression[] = [];
         let serializedParamMeta: any[] = [];
@@ -290,13 +290,15 @@ export class MetadataEncoder {
         decs.push(metadataDecorator('rt:p', serializedParamMeta));
 
         let eligibleForLegacyDecorators = (ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node));
-        let isDecorated = node.decorators?.length > 0;
-        if (ts.isConstructorDeclaration(node)) {
-            isDecorated = node.parent.decorators?.length > 0;
-        }
 
-        if (this.emitStandardMetadata && eligibleForLegacyDecorators && isDecorated)
-            decs.push(metadataDecorator('design:paramtypes', standardParamTypes.map(t => literalNode(t))));
+        if (this.emitStandardMetadata && eligibleForLegacyDecorators) {
+            let parent = containingNode ?? node.parent;
+            let isDecorated = node.decorators?.length > 0;
+            if (ts.isConstructorDeclaration(node) && parent)
+                isDecorated = parent.decorators?.length > 0;
+            if (isDecorated)
+                decs.push(metadataDecorator('design:paramtypes', standardParamTypes.map(t => literalNode(t))));
+        }
 
         return decs;
     }

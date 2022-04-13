@@ -3,6 +3,8 @@
   was no methods/properties/static methods/static properties. This would cause the reflection library to fall back to
   property inference when it was unnecessary, causing unexpected execution of properties with getters. See
   [issue #52](https://github.com/typescript-rtti/typescript-rtti/issues/52)
+- Fixes a bug where using `reflect()` or `reify()` within a constructor caused the transformer to crash. See
+  [issue #54](https://github.com/typescript-rtti/typescript-rtti/issues/54)
 
 # v0.5.6
 - Fixes a bug when referring to interfaces that do not have tokens (because they were not compiled with the transformer)

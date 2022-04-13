@@ -1838,4 +1838,21 @@ describe('rt:i', it => {
         expect(typeRefs[0]()).to.equal(Something);
         expect(typeRefs[1]()).to.equal(IΦSomethingElse);
     });
+    it('should not crash when processing a constructor which was previously transformed', async () => {
+        await runSimple({
+            modules: {
+                'typescript-rtti': `
+                    export function reflect() { }
+                `
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export class Foo {
+                    constructor() {
+                        reflect(undefined)
+                    }
+                }
+            `
+        });
+    })
 });
