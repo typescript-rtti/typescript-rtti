@@ -1339,3 +1339,23 @@ export function resolveName(checker : ts.TypeChecker, location : ts.Node, name :
 export function isStatement(node: ts.Node): node is ts.Statement {
     return ts['isStatement'](node);
 }
+
+export function getTypeLocality(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode): 'local' | 'imported' | 'global' {
+    if (!type.symbol)
+        return 'global';
+
+    let typeSourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+    if (!typeSourceFile || ctx.program.isSourceFileDefaultLibrary(typeSourceFile))
+        return 'global';
+
+    let isLocal = typeSourceFile === ctx.sourceFile;
+
+    // Ask Typescript if this is a global.
+    // TODO: need another nearby node when there's no typeNode
+    let resolvedGlobalSymbol = resolveName(ctx.checker, typeNode, type.symbol.name, ts.SymbolFlags.Value, false);
+    let resolvedNonGlobalSymbol = resolveName(ctx.checker, typeNode, type.symbol.name, ts.SymbolFlags.Value, true);
+    if (resolvedGlobalSymbol && !resolvedNonGlobalSymbol && resolvedGlobalSymbol === type.symbol)
+        return 'global';
+
+    return isLocal ? 'local' : 'imported';
+}

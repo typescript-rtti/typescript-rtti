@@ -1,6 +1,6 @@
 import { describe } from "razmin";
 import { expect } from "chai";
-import { ReflectedClass } from "./reflect";
+import { ReflectedClass, ReflectedTypeRef } from "./reflect";
 import * as format from '../common/format';
 import { reflect, ReflectedFunction, ReflectedMethod } from "./reflect";
 
@@ -169,6 +169,19 @@ describe('ReflectedClass', it => {
         expect(reflected.getOwnMethod('bar')).not.to.exist;
         expect(reflected.getOwnProperty('bar')).to.exist;
         expect(invoked).to.equal(0);
+    });
+    it('reflects enum refs', () => {
+        let ref = ReflectedTypeRef.createFromRtRef({
+            TΦ: format.T_ENUM,
+            e: {
+                Zero: 0, 0: 'Zero',
+                One: 1, 1: 'One',
+                Two: 2, 2: 'Two'
+            }
+        });
+
+        expect(ref.kind).to.equal('enum');
+        expect(ref.as('enum'))
     });
     it('reflects reified interfaces', () => {
         let IΦFoo: format.InterfaceToken = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };

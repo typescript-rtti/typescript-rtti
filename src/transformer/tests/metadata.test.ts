@@ -6,7 +6,7 @@ import {
     F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
     F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
     T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
-    T_OBJECT, T_VOID, InterfaceToken, RtObjectMember, RtObjectType
+    T_OBJECT, T_VOID, T_ENUM, InterfaceToken, RtObjectMember, RtObjectType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 
@@ -839,6 +839,57 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
+    });
+    it('emits for an enum type', async () => {
+        let exports = await runSimple({
+            code: `
+                export enum A {
+                    Zero = 0,
+                    One = 1,
+                    Two = 2
+                }
+                export class B {
+                    thing(): A {
+                        return A.Two;
+                    }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.B.prototype, 'thing');
+        let type = typeResolver();
+
+        expect(type.TΦ).to.equal(T_ENUM);
+        expect(type.e).to.equal(exports.A);
+    });
+    it('emits for an enum type defined in another module', async () => {
+        let exports = await runSimple({
+            modules: {
+                './other.ts': `
+                    export enum A {
+                        Zero = 0,
+                        One = 1,
+                        Two = 2
+                    }
+                `
+            },
+            code: `
+                import { A } from './other';
+                export { A } from './other';
+
+                export class B {
+                    thing(): A {
+                        return A.Two;
+                    }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.B.prototype, 'thing');
+        let type = typeResolver();
+
+        expect(type.TΦ).to.equal(T_ENUM);
+        expect(type.e).to.equal(exports.A);
     });
 
     it('emits for a nullable promise type when strictNullChecks is enabled', async () => {

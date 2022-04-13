@@ -1,4 +1,6 @@
 # vNext
+- Adds support for reflecting properly on enums. Previously enums were emitted as unions of the numeric values of the
+  enum. See [issue #53](https://github.com/typescript-rtti/typescript-rtti/issues/53)
 - Fixes an issue where the annotations for method/property/static method/static property names were not emitted if there
   was no methods/properties/static methods/static properties. This would cause the reflection library to fall back to
   property inference when it was unnecessary, causing unexpected execution of properties with getters. See
