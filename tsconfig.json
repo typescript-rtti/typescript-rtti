@@ -20,18 +20,5 @@
 		"emitDecoratorMetadata": true,
 		"downlevelIteration": true
     },
-    "include": [ "./src/**/*.ts" ],
-    "typedocOptions": {
-		"mode": "file",
-		"out": "docs",
-		"target": "ES5",
-		"excludeExternals": true,
-		"excludePrivate": true,
-		"externalPattern": "**/node_modules/**",
-		"exclude": "**/node_modules/**,**/dist*/**,**/example/**,**/*.test.ts",
-		"categoryOrder": [
-		  "Entrypoint",
-		  "*"
-		]
-	}
+    "include": [ "./src/**/*.ts" ]
 }
