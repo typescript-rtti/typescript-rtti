@@ -132,6 +132,26 @@ describe('ReflectedClass', it => {
         let refClass = ReflectedClass.new(B);
         expect(refClass.getProperty('foo').type.isClass(Number)).to.be.true;
     });
+    it('will not inadvertently invoke getters when reflecting a property as a method', () => {
+        let invoked = 0;
+
+        class Foo {
+            get bar(): number {
+                invoked += 1;
+                return 123;
+            }
+        }
+
+        Reflect.defineMetadata('rt:t', () => String, Foo.prototype, 'bar');
+        Reflect.defineMetadata('rt:P', ['bar'], Foo);
+        Reflect.defineMetadata('rt:m', [], Foo);
+
+        const reflected = reflect(Foo)
+
+        expect(reflected.getOwnMethod('bar')).not.to.exist;
+        expect(reflected.getOwnProperty('bar')).to.exist;
+        expect(invoked).to.equal(0);
+    });
     it('reflects reified interfaces', () => {
         let IΦFoo: format.InterfaceToken = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
 

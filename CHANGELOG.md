@@ -1,3 +1,9 @@
+# vNext
+- Fixes an issue where the annotations for method/property/static method/static property names were not emitted if there
+  was no methods/properties/static methods/static properties. This would cause the reflection library to fall back to
+  property inference when it was unnecessary, causing unexpected execution of properties with getters. See
+  [issue #52](https://github.com/typescript-rtti/typescript-rtti/issues/52)
+
 # v0.5.6
 - Fixes a bug when referring to interfaces that do not have tokens (because they were not compiled with the transformer)
   This bug exhibits as: `Cannot read properties of undefined (reading 'RΦ')`. See #48

@@ -438,7 +438,44 @@ describe('rt:P', it => {
 
         expect(Reflect.getMetadata('rt:P', exports.A)).to.include.all.members([exports.sym, 'bar']);
     });
+    it('is emitted for classes with no properties', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:P', exports.A);
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
+    });
 });
+describe('rt:SP', it => {
+    it('is emitted for classes with no static properties', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:SP', exports.A);
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
+    });
+})
+describe('rt:Sm', it => {
+    it('is emitted for classes with no static methods', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:Sm', exports.A);
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
+    });
+})
 describe('rt:m', it => {
     it('properly refers to symbols', async () => {
         let exports = await runSimple({
@@ -462,6 +499,18 @@ describe('rt:m', it => {
         });
 
         expect(Reflect.getMetadata('rt:m', exports.A)).to.include.all.members([exports.SYM, 'foo']);
+    });
+    it('is emitted for classes with no methods', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:m', exports.A);
+
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
     });
     it('properly refers to exported symbols', async () => {
         let exports = await runSimple({
