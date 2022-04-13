@@ -308,7 +308,14 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                     }
                 }
             } else {
-                throw new Error(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
+                // TODO
+                // In certain cases, Typescript will collapse a more complex type into a simpler one.
+                // This can happen with enums in cases like `MyEnum | undefined` when `strictNullChecks` is not
+                // enabled. I've been unable to pin down exactly when this occurs, but if we simply continue
+                // instead of throwing, the modulePath will be undefined, allowing us to try to find the type
+                // import another way that doesn't depend on the type node anyway.
+
+                //throw new Error(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
             }
         }
 
