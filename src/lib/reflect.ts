@@ -1827,7 +1827,16 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         } else {
             propertyNames = Object.getOwnPropertyNames(this.class.prototype)
                 .filter(x => x !== 'constructor')
-                .filter(x => typeof this.class.prototype[x] === 'function');
+                .filter(x => {
+                    // All properties which have `get` defined must be considered properties, not methods.
+                    // We need to avoid executing getters inadvertently while determining the type of the property.
+                    // https://github.com/typescript-rtti/typescript-rtti/issues/52
+                    let descriptor = Object.getOwnPropertyDescriptor(this.class.prototype, x);
+                    if (descriptor.get)
+                        return true;
+
+                    return typeof this.class.prototype[x] === 'function';
+                });
         }
 
         return this._ownPropertyNames = propertyNames || [];
@@ -1845,7 +1854,16 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (!methodNames) {
             methodNames = Object.getOwnPropertyNames(this.class.prototype)
                 .filter(x => x !== 'constructor')
-                .filter(x => typeof this.class.prototype[x] === 'function');
+                .filter(x => {
+                    // All properties which have `get` defined must be considered properties, not methods.
+                    // We need to avoid executing getters inadvertently while determining the type of the property.
+                    // https://github.com/typescript-rtti/typescript-rtti/issues/52
+                    let descriptor = Object.getOwnPropertyDescriptor(this.class.prototype, x);
+                    if (descriptor.get)
+                        return false;
+
+                    return typeof this.class.prototype[x] === 'function'
+                });
         }
 
         return this._ownMethodNames = methodNames;

@@ -152,6 +152,24 @@ describe('ReflectedClass', it => {
         expect(reflected.getOwnProperty('bar')).to.exist;
         expect(invoked).to.equal(0);
     });
+    it('will not invoke getters when reflecting on properties, even when unannotated', () => {
+        let invoked = 0;
+
+        class Foo {
+            get bar() {
+                invoked += 1;
+                return () => 123;
+            }
+        }
+
+        const reflected = reflect(Foo)
+
+        expect(reflected.ownMethodNames.length).to.equal(0);
+        expect(reflected.ownPropertyNames.length).to.equal(1);
+        expect(reflected.getOwnMethod('bar')).not.to.exist;
+        expect(reflected.getOwnProperty('bar')).to.exist;
+        expect(invoked).to.equal(0);
+    });
     it('reflects reified interfaces', () => {
         let IΦFoo: format.InterfaceToken = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
 

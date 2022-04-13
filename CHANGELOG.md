@@ -3,6 +3,9 @@
   was no methods/properties/static methods/static properties. This would cause the reflection library to fall back to
   property inference when it was unnecessary, causing unexpected execution of properties with getters. See
   [issue #52](https://github.com/typescript-rtti/typescript-rtti/issues/52)
+- Fixes an issue where getters would be invoked while inferring properties and methods on unannotated classes. This may
+  mean that some properties you might consider "methods" are listed as properties instead, but executing the getter could
+  have unintended side effects, and may also crash if `this` is referenced (which is common).
 - Fixes a bug where using `reflect()` or `reify()` within a constructor caused the transformer to crash. See
   [issue #54](https://github.com/typescript-rtti/typescript-rtti/issues/54)
 
