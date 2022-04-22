@@ -1,4 +1,4 @@
-# vNext
+# v0.6.0
 - Adds support for reflecting properly on enums. Previously enums were emitted as unions of the numeric values of the
   enum. See [issue #53](https://github.com/typescript-rtti/typescript-rtti/issues/53)
 - Fixes an issue where the annotations for method/property/static method/static property names were not emitted if there
