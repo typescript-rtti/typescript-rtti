@@ -794,6 +794,35 @@ export function removeSuffix(str: string, suffix: string): string {
     return str.endsWith(suffix) ? str.slice(0, str.length - suffix.length) : str;
 }
 
+export function getRttiDocTagFromNode(element: ts.Node, tagName: string): string {
+    let tags = ts.getJSDocTags(element);
+    if (!tags)
+        return undefined;
+
+    let match = tags
+        .find(x => x.tagName.text === 'rtti' && typeof x.comment === 'string' && (x.comment.startsWith(`:${tagName} `) || x.comment === `:${tagName}`));
+
+    if (!match)
+        return undefined;
+
+    return (match.comment as string).slice(`:${tagName} `.length);
+}
+
+export function getRttiDocTagFromSignature(signature: ts.Signature, tagName: string): string {
+    let jsDocTags = signature.getJsDocTags();
+    if (!jsDocTags)
+        return undefined;
+
+    let tag = jsDocTags.find(x => x.name === 'rtti' && x.text[0]?.text.startsWith(`:${tagName} `));
+    if (!tag)
+        return undefined;
+
+    let comment = <string>tag.text[0].text;
+    let value = comment.slice(`:${tagName} `.length);
+
+    return value;
+}
+
 /*
     As per ECMAScript Language Specification 3th Edition, Section 7.6: Identifiers
     IdentifierStart ::

@@ -10,6 +10,11 @@
   have unintended side effects, and may also crash if `this` is referenced (which is common).
 - Fixes a bug where using `reflect()` or `reify()` within a constructor caused the transformer to crash. See
   [issue #54](https://github.com/typescript-rtti/typescript-rtti/issues/54)
+- Adds support for `@rtti:skip` to disable RTTI generation for specific parts of a codebase. This JSDoc can
+  be applied to any node that TS supports JSDocs on (which is more than you might think). Can be very useful
+  to work around problems or to isolate which part of your codebase is causing a crash in the transformer.
+  We use this internally to allow typescript-rtti's test suite to be roundtripped within the "corpus" test
+  suite.
 
 # v0.5.6
 - Fixes a bug when referring to interfaces that do not have tokens (because they were not compiled with the transformer)

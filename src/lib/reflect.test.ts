@@ -4,18 +4,9 @@ import { ReflectedClass, ReflectedTypeRef } from "./reflect";
 import * as format from '../common/format';
 import { reflect, ReflectedFunction, ReflectedMethod } from "./reflect";
 
-
 /**
- * Remove all metadata from the given object [+property key]. This is
- * useful to ensure that any transformers used to compile the tests do not
- * interfere with the library tests themselves.
- * @param target
- * @param propertyKey
+ * @rtti:skip
  */
-function undecorate(target: any, propertyKey?: string) {
-    Reflect.getMetadataKeys(target, propertyKey).forEach(k => Reflect.deleteMetadata(k, target, propertyKey));
-}
-
 describe('ReflectedClass', it => {
     describe('ownMethodNames', it => {
         it('includes only the own methods', () => {
@@ -83,7 +74,7 @@ describe('ReflectedClass', it => {
     it('can reflect constructor parameters from design:paramtypes', () => {
         class A {
             constructor(a, b, c) { }
-        }; undecorate(A);
+        };
 
         Reflect.defineMetadata('design:paramtypes', [String, Number, String], A);
         let refClass = ReflectedClass.new(A);
@@ -254,7 +245,7 @@ describe('ReflectedMethod', it => {
     it('reflects method return types using design:returntype', () => {
         class B {
             foo() { }
-        }; undecorate(B.prototype, 'foo');
+        };
 
         Reflect.defineMetadata('design:returntype', String, B.prototype, 'foo');
         let refClass = ReflectedClass.new(B);
@@ -264,7 +255,7 @@ describe('ReflectedMethod', it => {
         class B {
             foo() { }
             bar() { }
-        }; undecorate(B.prototype, 'foo');
+        };
 
         Reflect.defineMetadata('rt:f', format.F_INFERRED, B.prototype, 'foo');
         Reflect.defineMetadata('rt:f', '', B.prototype, 'bar');
@@ -280,6 +271,7 @@ describe('ReflectedMethod', it => {
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').visibility).to.equal('public');
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PUBLIC}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').visibility).to.equal('public');
@@ -290,6 +282,7 @@ describe('ReflectedMethod', it => {
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').visibility).to.equal('public');
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PROTECTED}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').visibility).to.equal('protected');
@@ -300,6 +293,7 @@ describe('ReflectedMethod', it => {
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').visibility).to.equal('public');
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PRIVATE}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').visibility).to.equal('private');
@@ -310,6 +304,7 @@ describe('ReflectedMethod', it => {
         Reflect.defineMetadata('rt:m', ['foo'], B);
         expect(ReflectedClass.new(B).getMethod('foo').isAsync).to.be.false;
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_ASYNC}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:m', ['foo'], A);
         expect(ReflectedClass.new(A).getMethod('foo').isAsync).to.be.true;
@@ -347,6 +342,7 @@ describe('ReflectedMethod', it => {
     });
     it('reflects function async flag', () => {
         function A() { }
+
         Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, A);
         function B() { }
         Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}${format.F_ASYNC}`, B);
@@ -365,11 +361,7 @@ describe('ReflectedMethod', it => {
         class B {
             static foo() { }
             static bar() { }
-        };
-
-        undecorate(B);
-        undecorate(B, 'foo');
-        undecorate(B, 'bar');
+        }
 
         Reflect.defineMetadata('design:returntype', RegExp, B, 'foo');
         expect(ReflectedClass.new(B).getStaticMethod('foo').returnType.isClass(RegExp)).to.be.true;
@@ -422,6 +414,7 @@ describe('ReflectedProperty', it => {
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').visibility).to.equal('public');
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PUBLIC}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').visibility).to.equal('public');
@@ -432,6 +425,7 @@ describe('ReflectedProperty', it => {
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').visibility).to.equal('public');
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PROTECTED}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').visibility).to.equal('protected');
@@ -442,6 +436,7 @@ describe('ReflectedProperty', it => {
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').visibility).to.equal('public');
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_PRIVATE}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').visibility).to.equal('private');
@@ -452,6 +447,7 @@ describe('ReflectedProperty', it => {
         Reflect.defineMetadata('rt:P', ['foo'], B);
         expect(ReflectedClass.new(B).getProperty('foo').isReadonly).to.be.false;
         class A { }
+
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}${format.F_READONLY}`, A.prototype, 'foo');
         Reflect.defineMetadata('rt:P', ['foo'], A);
         expect(ReflectedClass.new(A).getProperty('foo').isReadonly).to.be.true;
@@ -611,9 +607,6 @@ describe('ReflectedProperty', it => {
             static foo = 123;
             static bar;
         }
-        undecorate(B);
-        undecorate(B, 'foo');
-        undecorate(B, 'bar');
         Reflect.defineMetadata('design:type', Number, B, 'foo');
         Reflect.defineMetadata('design:type', String, B, 'bar');
         expect(ReflectedClass.new(B).getStaticProperty('foo').type.isClass(Number)).to.be.true;
@@ -624,14 +617,17 @@ describe('ReflectedProperty', it => {
 describe('reflect(value)', it => {
     it('returns a ReflectedClass when passing in a class', () => {
         class A { }
+
         expect(reflect(A)).to.be.an.instanceOf(ReflectedClass);
     });
     it('returns a ReflectedClass even if callSite is passed when passing a class', () => {
         class A { }
+
         expect((reflect as any)(<any>A, { TΦ: 'c', p: [], tp: [] })).to.be.an.instanceOf(ReflectedClass);
     });
     it('returns a ReflectedClass when passing in an instance', () => {
         class A { }
+
         let a = new A();
         let reflClass = reflect(a);
         expect(reflClass).to.be.an.instanceOf(ReflectedClass);
@@ -639,16 +635,18 @@ describe('reflect(value)', it => {
     });
     it('returns a ReflectedClass when passing in a bare function', () => {
         function a() { }
-        undecorate(a);
+
         expect(reflect(a)).to.be.an.instanceOf(ReflectedClass);
     });
     it('returns a ReflectedFunction when passing in a marked function', () => {
         function a() { }
+
         Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, a);
         expect(reflect(a)).to.be.an.instanceOf(ReflectedFunction);
     });
     it('returns a ReflectedMethod when passing in a method', () => {
         class A { foo() { } }
+
 
         Reflect.defineMetadata('rt:m', ['foo'], A);
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, A, 'foo');
@@ -659,6 +657,7 @@ describe('reflect(value)', it => {
     });
     it('returns a ReflectedMethod when passing in a static method', () => {
         class A { static foo() { } }
+
 
         Reflect.defineMetadata('rt:m', ['foo'], A);
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, A, 'foo');

@@ -338,6 +338,12 @@ Some Typescript options are incompatible with `typescript-rtti`:
   `typescript-rtti` relies on Typescript's semantic analysis which is not performed when performing a direct
   transpilation.
 
+# Skipping parts of your code
+
+If, for whatever reason, you wish to skip generating RTTI metadata for a part of a source file, you can use
+the `@rtti:skip` JSDoc tag. The transformer will skip processing the node this tag is on, and any child nodes.
+This works for any syntactic element that Typescript supports JSDocs on (which is more than you might think).
+
 # Backward Compatibility
 
 The library is in beta, so currently no backward compatibility is guaranteed but we are tracking back-compat breakage
