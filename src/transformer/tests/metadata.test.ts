@@ -794,7 +794,7 @@ describe('rt:p', it => {
     });
 });
 describe('rt:t', it => {
-    it.only('is not emitted when @rtti:skip is present on docblock', async () => {
+    it('is not emitted when @rtti:skip is present on docblock', async () => {
         let exports = await runSimple({
             code: `
                 export class A {
@@ -813,7 +813,7 @@ describe('rt:t', it => {
         expect(Reflect.hasMetadata('rt:t', exports.A.prototype, 'property')).to.be.true;
         expect(Reflect.hasMetadata('rt:t', exports.B.prototype, 'property')).to.be.false;
     });
-    it.only('is not emitted when @rtti:skip is present on docblock', async () => {
+    it('is not emitted when @rtti:skip is present on docblock', async () => {
         let exports = await runSimple({
             code: `
                 function test(callback) {
