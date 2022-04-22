@@ -230,6 +230,9 @@ describe('ReflectedClass', it => {
     });
 });
 
+/**
+ * @rtti:skip
+ */
 describe('ReflectedMethod', it => {
     it('reflects method names without metadata', () => {
         class B {
@@ -407,6 +410,9 @@ describe('ReflectedMethod', it => {
     });
 });
 
+/**
+ * @rtti:skip
+ */
 describe('ReflectedProperty', it => {
     it('reflects public', () => {
         class B { }
@@ -614,6 +620,9 @@ describe('ReflectedProperty', it => {
     });
 });
 
+/**
+ * @rtti:skip
+ */
 describe('reflect(value)', it => {
     it('returns a ReflectedClass when passing in a class', () => {
         class A { }
@@ -671,6 +680,10 @@ describe('reflect(value)', it => {
         expect(reflect(a)).to.be.an.instanceOf(ReflectedFunction);
     });
 });
+
+/**
+* @rtti:skip
+*/
 describe('Intrinsic types', it => {
     it('reflects null type', () => {
         class B { }
