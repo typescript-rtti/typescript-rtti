@@ -24,7 +24,7 @@ A Typescript transformer to implement comprehensive runtime type information (RT
 Send a pull request to feature your project!
 - [phantomdi](https://github.com/rezonant/phantomdi) -- A dependency injector using runtime type information
   with advanced features like dynamic alterations of injectables
-
+- [decapi](https://github.com/capaj/decapi) -- decapi is a set of decorators for creating GraphQL APIs in typescript. Write your types and GQL schema at once killing two birds with one stone
 # Examples
 
 Classes
@@ -293,6 +293,28 @@ function bar<T>(call? : CallSite) {
 bar<String>();
 ```
 
+# Checking the type of a value at runtime
+
+A common use case of runtime type information is to validate that a value matches a specific Typescript type at runtime.
+This functionality is built in via the `matchesValue()` API:
+
+```typescript
+interface A {
+    foo: string;
+    bar: number;
+    baz?: string;
+}
+
+reflect<A>().matchesValue({ foo: 'hello' }) // false
+reflect<A>().matchesValue({ foo: 'hello', bar: 123 }) // true
+reflect<A>().matchesValue({ foo: 'hello', bar: 123, baz: 'world' }) // true
+reflect<A>().matchesValue({ foo: 123, bar: 'hello' }) // false
+reflect<A>().matchesValue({ }) // false
+```
+
+This works for all types that `typescript-rtti` can reflect, including unions, intersections, interfaces, classes,
+object literals, intrinsics (true/false/null/undefined), literals (string/number) etc.
+
 # Regarding `design:*`
 
 > This library supports `emitDecoratorMetadata` but does not require it.
@@ -315,6 +337,12 @@ Some Typescript options are incompatible with `typescript-rtti`:
 - `transpileOnly` -- For build solutions which provide it note that `transpileOnly` will not work correctly as
   `typescript-rtti` relies on Typescript's semantic analysis which is not performed when performing a direct
   transpilation.
+
+# Skipping parts of your code
+
+If, for whatever reason, you wish to skip generating RTTI metadata for a part of a source file, you can use
+the `@rtti:skip` JSDoc tag. The transformer will skip processing the node this tag is on, and any child nodes.
+This works for any syntactic element that Typescript supports JSDocs on (which is more than you might think).
 
 # Backward Compatibility
 

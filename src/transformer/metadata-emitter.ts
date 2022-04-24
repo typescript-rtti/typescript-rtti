@@ -8,7 +8,7 @@ import { InterfaceAnalyzer } from "./common/interface-analyzer";
 import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
-import { expressionForPropertyName, hasModifier, hasModifiers, isStatement } from "./utils";
+import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -56,7 +56,11 @@ export class MetadataEmitter extends RttiVisitor {
         }
     }
 
-    protected override everyNode(node: ts.Node): void {
+    protected override everyNode(node: ts.Node): boolean | void {
+        // If `@rtti:skip` is present in the JSDoc, skip this node
+        if (getRttiDocTagFromNode(node, 'skip') === '')
+            return false;
+
         if (isStatement(node) && node.parent && ts.isSourceFile(node.parent)) {
             this.ctx.currentTopStatement = node;
         }

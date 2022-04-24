@@ -18,9 +18,11 @@ export class VisitorBase {
 
     /**
      * Runs for every node, regardless of what receivers are defined.
+     * If `false` is returned, the node (and all its children) are not visited.
+     * Note that if you return nothing (ie `undefined`) the node is visited.
      * @param node
      */
-    protected everyNode(node: ts.Node) {}
+    protected everyNode(node: ts.Node): boolean | void {}
 
     #buildMap() {
         if (this.#visitationMap)
@@ -46,7 +48,9 @@ export class VisitorBase {
             if (!node)
                 return;
 
-            this.everyNode(node);
+            let continueProcessing = this.everyNode(node);
+            if (continueProcessing === false)
+                return node;
 
             let receivers = this.#visitationMap.get(node.kind) ?? [];
             if (receivers.length === 0) {

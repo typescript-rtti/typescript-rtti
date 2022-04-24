@@ -794,6 +794,35 @@ export function removeSuffix(str: string, suffix: string): string {
     return str.endsWith(suffix) ? str.slice(0, str.length - suffix.length) : str;
 }
 
+export function getRttiDocTagFromNode(element: ts.Node, tagName: string): string {
+    let tags = ts.getJSDocTags(element);
+    if (!tags)
+        return undefined;
+
+    let match = tags
+        .find(x => x.tagName.text === 'rtti' && typeof x.comment === 'string' && (x.comment.startsWith(`:${tagName} `) || x.comment === `:${tagName}`));
+
+    if (!match)
+        return undefined;
+
+    return (match.comment as string).slice(`:${tagName} `.length);
+}
+
+export function getRttiDocTagFromSignature(signature: ts.Signature, tagName: string): string {
+    let jsDocTags = signature.getJsDocTags();
+    if (!jsDocTags)
+        return undefined;
+
+    let tag = jsDocTags.find(x => x.name === 'rtti' && x.text[0]?.text.startsWith(`:${tagName} `));
+    if (!tag)
+        return undefined;
+
+    let comment = <string>tag.text[0].text;
+    let value = comment.slice(`:${tagName} `.length);
+
+    return value;
+}
+
 /*
     As per ECMAScript Language Specification 3th Edition, Section 7.6: Identifiers
     IdentifierStart ::
@@ -1338,4 +1367,24 @@ export function resolveName(checker : ts.TypeChecker, location : ts.Node, name :
 
 export function isStatement(node: ts.Node): node is ts.Statement {
     return ts['isStatement'](node);
+}
+
+export function getTypeLocality(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode): 'local' | 'imported' | 'global' {
+    if (!type.symbol)
+        return 'global';
+
+    let typeSourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+    if (!typeSourceFile || ctx.program.isSourceFileDefaultLibrary(typeSourceFile))
+        return 'global';
+
+    let isLocal = typeSourceFile === ctx.sourceFile;
+
+    // Ask Typescript if this is a global.
+    // TODO: need another nearby node when there's no typeNode
+    let resolvedGlobalSymbol = resolveName(ctx.checker, typeNode, type.symbol.name, ts.SymbolFlags.Value, false);
+    let resolvedNonGlobalSymbol = resolveName(ctx.checker, typeNode, type.symbol.name, ts.SymbolFlags.Value, true);
+    if (resolvedGlobalSymbol && !resolvedNonGlobalSymbol && resolvedGlobalSymbol === type.symbol)
+        return 'global';
+
+    return isLocal ? 'local' : 'imported';
 }

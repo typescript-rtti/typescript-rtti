@@ -1,4 +1,29 @@
-# vNext
+# v0.6.0
+- Adds support for reflecting properly on enums. Previously enums were emitted as unions of the numeric values of the
+  enum. See [issue #53](https://github.com/typescript-rtti/typescript-rtti/issues/53)
+- Fixes an issue where the annotations for method/property/static method/static property names were not emitted if there
+  was no methods/properties/static methods/static properties. This would cause the reflection library to fall back to
+  property inference when it was unnecessary, causing unexpected execution of properties with getters. See
+  [issue #52](https://github.com/typescript-rtti/typescript-rtti/issues/52)
+- Fixes an issue where getters would be invoked while inferring properties and methods on unannotated classes. This may
+  mean that some properties you might consider "methods" are listed as properties instead, but executing the getter could
+  have unintended side effects, and may also crash if `this` is referenced (which is common).
+- Fixes a bug where using `reflect()` or `reify()` within a constructor caused the transformer to crash. See
+  [issue #54](https://github.com/typescript-rtti/typescript-rtti/issues/54)
+- Adds support for `@rtti:skip` to disable RTTI generation for specific parts of a codebase. This JSDoc can
+  be applied to any node that TS supports JSDocs on (which is more than you might think). Can be very useful
+  to work around problems or to isolate which part of your codebase is causing a crash in the transformer.
+  We use this internally to allow typescript-rtti's test suite to be roundtripped within the "corpus" test
+  suite.
+
+# v0.5.6
+- Fixes a bug when referring to interfaces that do not have tokens (because they were not compiled with the transformer)
+  This bug exhibits as: `Cannot read properties of undefined (reading 'RΦ')`. See #48
+
+# v0.5.5
+- Adds support for object literal type references
+
+# v0.5.4
 - Fixes issues where synthetic imports are hoisted to the top of the file,
   which particularly can cause problems when `reflect-metadata` or other
   "must import first" imports are present in the file

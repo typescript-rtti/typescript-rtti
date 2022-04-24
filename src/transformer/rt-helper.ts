@@ -505,6 +505,15 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                     )
                                 ),
                                 factory.createIfStatement(
+                                    factory.createBinaryExpression(
+                                        factory.createIdentifier("t"),
+                                        factory.createToken(ts.SyntaxKind.EqualsEqualsEqualsToken),
+                                        factory.createVoidExpression(factory.createNumericLiteral("0"))
+                                    ),
+                                    factory.createReturnStatement(factory.createVoidExpression(factory.createNumericLiteral("0"))),
+                                    undefined
+                                ),
+                                factory.createIfStatement(
                                     factory.createPropertyAccessExpression(
                                         factory.createIdentifier("t"),
                                         factory.createIdentifier("RΦ")
@@ -603,7 +612,8 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                             ],
                             true
                         )
-                    )),
+                    )
+                    ),
                     t: literalNode(typeStore)
                 })
             )],

@@ -1,7 +1,7 @@
 import * as format from '../common/format';
 import { getParameterNames } from './get-parameter-names';
 import { Sealed } from './sealed';
-import { RtType } from '../common/format';
+import { RtType, RtObjectType, RtObjectMember } from '../common/format';
 
 const NotProvided = Symbol();
 
@@ -38,7 +38,7 @@ function Flag(value: string) {
 
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any'
     | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'mapped' | 'literal'
-    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false';
+    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum';
 
 export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_UNKNOWN]: 'unknown',
@@ -52,8 +52,10 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_NULL]: 'null',
     [format.T_UNDEFINED]: 'undefined',
     [format.T_MAPPED]: 'mapped',
+    [format.T_ENUM]: 'enum',
     [format.T_FALSE]: 'false',
-    [format.T_TRUE]: 'true'
+    [format.T_TRUE]: 'true',
+    [format.T_OBJECT]: 'object'
 };
 
 export class ReflectedTypeRef<T extends RtType = RtType> {
@@ -204,6 +206,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     /** Check if this type reference is an array type        */ is(kind: 'array'): this is ReflectedArrayRef;
     /** Check if this type reference is an intersection type */ is(kind: 'intersection'): this is ReflectedIntersectionRef;
     /** Check if this type reference is a union type         */ is(kind: 'union'): this is ReflectedUnionRef;
+    /** Check if this type reference is an enum type         */ is(kind: 'enum'): this is ReflectedEnumRef;
     /** Check if this type reference is a tuple type         */ is(kind: 'tuple'): this is ReflectedTupleRef;
     /** Check if this type reference is a void type          */ is(kind: 'void'): this is ReflectedVoidRef;
     /** Check if this type reference is an any type          */ is(kind: 'any'): this is ReflectedAnyRef;
@@ -236,6 +239,11 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
      * If the reference is not the correct type an error is thrown.
      */
     as<T = any>(kind: 'generic'): ReflectedGenericRef;
+    /**
+     * Assert that this type reference is an enum type and cast it to ReflectedEnumRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as<T = any>(kind: 'enum'): ReflectedEnumRef;
     /**
      * Assert that this type reference is an array type and cast it to ReflectedArrayRef.
      * If the reference is not the correct type an error is thrown.
@@ -400,6 +408,88 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
             return typeof value === 'symbol';
 
         return ReflectedClass.for(this.ref).matchesValue(value);
+    }
+}
+
+export class ReflectedObjectMember {
+    constructor(private ref: RtObjectMember) {
+        this.name = ref.n;
+        this.type = ReflectedTypeRef.createFromRtRef(this.ref.t);
+    }
+
+    readonly name: string;
+    readonly type: ReflectedTypeRef;
+
+    private _flags: ReflectedFlags;
+    get flags() {
+        if (!this._flags)
+            this._flags = new ReflectedFlags(this.ref.f);
+        return this._flags;
+    }
+
+    get isOptional() { return this.flags.isOptional; }
+
+    equals(member: this) {
+        return this.name === member.name && this.type.equals(member.type);
+    }
+
+    toString() { return `${this.name}: ${this.type?.toString() ?? '<error>'}`; }
+}
+
+@ReflectedTypeRef.Kind('object')
+export class ReflectedObjectRef extends ReflectedTypeRef<RtObjectType> {
+    get kind() { return 'object' as const; }
+
+    private _members: ReflectedObjectMember[];
+
+    get members(): Readonly<ReflectedObjectMember[]> {
+        if (!this._members)
+            this._members = this.ref.m.map(m => new ReflectedObjectMember(m));
+
+        return this._members;
+    }
+
+    toString() { return `{ ${this.members.map(m => m.toString()).join(', ')} }`; }
+
+    protected override matches(ref : this) {
+        if (this.members.length !== ref.members.length)
+            return false;
+
+        for (let member of this.members) {
+            let matchingMember = ref.members.find(x => x.name);
+            if (!member.equals(matchingMember))
+                return false;
+        }
+
+        return true;
+    }
+
+    override matchesValue(value: any, errors: Error[] = [], context?: string) {
+        if (typeof value !== 'object')
+            return false;
+
+        let matches = true;
+        for (let member of this.members) {
+            let hasValue = member.name in value;
+
+            if (!hasValue) {
+                if (!member.isOptional) {
+                    errors.push(new TypeError(`Missing value for member ${member.toString()}`));
+                    matches = false;
+                }
+                continue;
+            }
+
+            let memberValue = value[member.name];
+            let memberErrors = [];
+            if (!member.type.matchesValue(memberValue, memberErrors, context)) {
+                errors.push(new TypeError(`Value for member ${member.toString()} is invalid`));
+                errors.push(...memberErrors);
+                matches = false;
+            }
+        }
+
+        return matches;
     }
 }
 
@@ -653,6 +743,46 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
     override matchesValue(value: any, errors?: Error[], context?: string): boolean {
         return this.baseType.matchesValue(value, errors, context);
     }
+}
+
+@ReflectedTypeRef.Kind('enum')
+export class ReflectedEnumRef extends ReflectedTypeRef<format.RtEnumType> {
+    get kind() { return 'enum' as const; }
+    toString() { return `enum`; } // TODO: name of enum?
+
+    private _enum: any;
+
+    get enum() {
+        if (!this._enum)
+            this._enum = this.ref.e;
+        return this._enum;
+    }
+
+    private _values: EnumValue[];
+
+    get values() {
+        if (!this._values) {
+            this._values = Object.keys(this.enum)
+                .filter(x => !/^\d+$/.test(x))
+                .map(name => ({ name, value: this.enum[name] }))
+            ;
+        }
+
+        return this._values;
+    }
+
+    protected override matches(ref : this) {
+        return this.enum === ref.enum;
+    }
+
+    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+        return value in this.enum;
+    }
+}
+
+export interface EnumValue {
+    name: string;
+    value: number;
 }
 
 @ReflectedTypeRef.Kind('mapped')
@@ -1744,7 +1874,16 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         } else {
             propertyNames = Object.getOwnPropertyNames(this.class.prototype)
                 .filter(x => x !== 'constructor')
-                .filter(x => typeof this.class.prototype[x] === 'function');
+                .filter(x => {
+                    // All properties which have `get` defined must be considered properties, not methods.
+                    // We need to avoid executing getters inadvertently while determining the type of the property.
+                    // https://github.com/typescript-rtti/typescript-rtti/issues/52
+                    let descriptor = Object.getOwnPropertyDescriptor(this.class.prototype, x);
+                    if (descriptor.get)
+                        return true;
+
+                    return typeof this.class.prototype[x] === 'function';
+                });
         }
 
         return this._ownPropertyNames = propertyNames || [];
@@ -1762,7 +1901,16 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (!methodNames) {
             methodNames = Object.getOwnPropertyNames(this.class.prototype)
                 .filter(x => x !== 'constructor')
-                .filter(x => typeof this.class.prototype[x] === 'function');
+                .filter(x => {
+                    // All properties which have `get` defined must be considered properties, not methods.
+                    // We need to avoid executing getters inadvertently while determining the type of the property.
+                    // https://github.com/typescript-rtti/typescript-rtti/issues/52
+                    let descriptor = Object.getOwnPropertyDescriptor(this.class.prototype, x);
+                    if (descriptor.get)
+                        return false;
+
+                    return typeof this.class.prototype[x] === 'function'
+                });
         }
 
         return this._ownMethodNames = methodNames;

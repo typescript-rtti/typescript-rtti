@@ -51,7 +51,7 @@ const PACKAGES: Record<string, Package> = {
     "rezonant/typescript-rtti": {
         enabled: true, // 🎉
         url: 'https://github.com/rezonant/typescript-rtti.git',
-        ref: 'eec152929c840a13fdbbfd2f13bf524067c8d379',
+        ref: 'c936bfcb7aba086a6b8a16275a9398d9d19215e2',
         commands: ['npm run build', 'npm test']
     },
     "capaj/decapi": {

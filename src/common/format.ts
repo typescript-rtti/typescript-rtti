@@ -33,6 +33,8 @@ export const T_TRUE: '1' = '1';
 export const T_FALSE: '0' = '0';
 export const T_CALLSITE: 'c' = 'c';
 export const T_STAND_IN: '5' = '5';
+export const T_OBJECT: 'O' = 'O';
+export const T_ENUM: 'e' = 'e';
 export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
 
 export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };
@@ -51,15 +53,15 @@ export interface InterfaceToken<T = any> {
     identity: symbol;
 }
 
-export type RtType = RtIntrinsicType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType | RtGenericType
-    | RtMappedType | RtCallSite | { TΦ: typeof T_STAND_IN }
+export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
+    | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN }
     | Function | Literal | InterfaceToken;
 
 export type RtBrandedType = {
     TΦ:
     typeof T_UNION | typeof T_INTERSECTION | typeof T_ANY | typeof T_UNKNOWN | typeof T_VOID | typeof T_UNDEFINED
     | typeof T_NULL | typeof T_TUPLE | typeof T_ARRAY | typeof T_THIS | typeof T_GENERIC | typeof T_MAPPED
-    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_STAND_IN;
+    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN;
 };
 
 export type RtIntrinsicIndicator = typeof T_VOID | typeof T_ANY | typeof T_UNKNOWN | typeof T_UNDEFINED | typeof T_TRUE | typeof T_FALSE | typeof T_THIS | typeof T_NULL;
@@ -98,6 +100,17 @@ export interface RtUnionType {
     t: RtType[];
 }
 
+export interface RtObjectType {
+    TΦ: typeof T_OBJECT;
+    m: RtObjectMember[];
+}
+
+export interface RtObjectMember {
+    n: string;
+    f: string;
+    t: RtType;
+}
+
 export interface RtIntersectionType {
     TΦ: typeof T_INTERSECTION;
     t: RtType[];
@@ -128,6 +141,14 @@ export interface RtGenericType {
     TΦ: typeof T_GENERIC;
     t: RtType;
     p: RtType[];
+}
+
+export interface RtEnumType {
+    TΦ: typeof T_ENUM;
+    /**
+     * This will be the runtime enum object.
+     */
+    e: any;
 }
 
 export interface RtParameter {

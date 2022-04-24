@@ -1,6 +1,6 @@
 import { Visit } from "./common/visitor-base";
 import * as ts from 'typescript';
-import { hasFlag, isStatement } from "./utils";
+import { getRttiDocTagFromSignature, hasFlag, isStatement } from "./utils";
 import { RttiVisitor } from "./rtti-visitor-base";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
@@ -112,14 +112,9 @@ export class ApiCallTransformer extends RttiVisitor {
         );
 
         if (callSiteArgIndex < 0) {
-            let jsDocTags = signature.getJsDocTags();
-            if (jsDocTags) {
-                let tag = jsDocTags.find(x => x.name === 'rtti' && x.text[0]?.text.startsWith(':callsite '));
-                if (tag) {
-                    let comment = <string>tag.text[0].text;
-                    callSiteArgIndex = Number(comment.replace(/:callsite /, ''));
-                }
-            }
+            let callSiteArgFromJsDoc = getRttiDocTagFromSignature(signature, 'callsite');
+            if (callSiteArgFromJsDoc)
+                callSiteArgIndex = Number(callSiteArgFromJsDoc);
         }
 
         if (this.isRttiCall(expr, 'reflect') && callSiteArgIndex < 0) {

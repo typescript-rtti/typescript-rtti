@@ -6,7 +6,7 @@ import {
     F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
     F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
     T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
-    T_VOID, InterfaceToken
+    T_OBJECT, T_VOID, T_ENUM, InterfaceToken, RtObjectMember, RtObjectType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 
@@ -438,7 +438,44 @@ describe('rt:P', it => {
 
         expect(Reflect.getMetadata('rt:P', exports.A)).to.include.all.members([exports.sym, 'bar']);
     });
+    it('is emitted for classes with no properties', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:P', exports.A);
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
+    });
 });
+describe('rt:SP', it => {
+    it('is emitted for classes with no static properties', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:SP', exports.A);
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
+    });
+})
+describe('rt:Sm', it => {
+    it('is emitted for classes with no static methods', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:Sm', exports.A);
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
+    });
+})
 describe('rt:m', it => {
     it('properly refers to symbols', async () => {
         let exports = await runSimple({
@@ -462,6 +499,18 @@ describe('rt:m', it => {
         });
 
         expect(Reflect.getMetadata('rt:m', exports.A)).to.include.all.members([exports.SYM, 'foo']);
+    });
+    it('is emitted for classes with no methods', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {}
+            `
+        });
+
+        let rtm = Reflect.getMetadata('rt:m', exports.A);
+
+        expect(rtm).to.exist;
+        expect(rtm.length).to.equal(0);
     });
     it('properly refers to exported symbols', async () => {
         let exports = await runSimple({
@@ -745,6 +794,52 @@ describe('rt:p', it => {
     });
 });
 describe('rt:t', it => {
+    it('is not emitted when @rtti:skip is present on docblock', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {
+                    property: B;
+                }
+
+                /**
+                 * @rtti:skip
+                 */
+                export class B {
+                    property: B;
+                }
+            `
+        });
+
+        expect(Reflect.hasMetadata('rt:t', exports.A.prototype, 'property')).to.be.true;
+        expect(Reflect.hasMetadata('rt:t', exports.B.prototype, 'property')).to.be.false;
+    });
+    it('is not emitted when @rtti:skip is present on docblock', async () => {
+        let exports = await runSimple({
+            code: `
+                function test(callback) {
+                    return callback();
+                }
+
+                export const A = test(() => {
+                    return class A {
+                        property: B;
+                    }
+                });
+
+                /**
+                 * @rtti:skip
+                 */
+                export const B = test(() => {
+                    return class B {
+                        property: B;
+                    }
+                });
+            `
+        });
+
+        expect(Reflect.hasMetadata('rt:t', exports.A.prototype, 'property')).to.be.true;
+        expect(Reflect.hasMetadata('rt:t', exports.B.prototype, 'property')).to.be.false;
+    });
     it('emits for a property of a class expression', async () => {
         let exports = await runSimple({
             code: `
@@ -790,6 +885,57 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
+    });
+    it('emits for an enum type', async () => {
+        let exports = await runSimple({
+            code: `
+                export enum A {
+                    Zero = 0,
+                    One = 1,
+                    Two = 2
+                }
+                export class B {
+                    thing(): A {
+                        return A.Two;
+                    }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.B.prototype, 'thing');
+        let type = typeResolver();
+
+        expect(type.TΦ).to.equal(T_ENUM);
+        expect(type.e).to.equal(exports.A);
+    });
+    it('emits for an enum type defined in another module', async () => {
+        let exports = await runSimple({
+            modules: {
+                './other.ts': `
+                    export enum A {
+                        Zero = 0,
+                        One = 1,
+                        Two = 2
+                    }
+                `
+            },
+            code: `
+                import { A } from './other';
+                export { A } from './other';
+
+                export class B {
+                    thing(): A {
+                        return A.Two;
+                    }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.B.prototype, 'thing');
+        let type = typeResolver();
+
+        expect(type.TΦ).to.equal(T_ENUM);
+        expect(type.e).to.equal(exports.A);
     });
 
     it('emits for a nullable promise type when strictNullChecks is enabled', async () => {
@@ -1445,6 +1591,55 @@ describe('rt:t', it => {
         expect(type.t.length).to.equal(2);
         expect(type.t).to.include.all.members([Number, String]);
     });
+    it('emits for object literal return type', async () => {
+        let exports = await runSimple({
+            code: `
+                type A = { foo: string, bar: number };
+                export class C {
+                    method(hello : string, world : number): A { return { foo: 'hello', bar: 123 }; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method'); let type = typeResolver();
+        expect(type.TΦ).to.equal(T_OBJECT);
+        expect(type.m.length).to.equal(2);
+        let fooT = type.m.find(x => x.n === 'foo');
+        let barT = type.m.find(x => x.n === 'bar');
+
+        expect(fooT).to.exist;
+        expect(barT).to.exist;
+
+        expect(fooT.t).to.equal(String);
+        expect(barT.t).to.equal(Number);
+        expect(fooT.f.includes(F_OPTIONAL)).to.be.false;
+        expect(barT.f.includes(F_OPTIONAL)).to.be.false;
+    });
+    it('emits optionality for object literal members in return type', async () => {
+        let exports = await runSimple({
+            code: `
+                type A = { foo?: string, bar: number };
+                export class C {
+                    method(hello : string, world : number): A { return { foo: 'hello', bar: 123 }; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        let type: RtObjectType = typeResolver();
+        expect(type.TΦ).to.equal(T_OBJECT);
+        expect(type.m.length).to.equal(2);
+        let fooT: RtObjectMember = type.m.find(x => x.n === 'foo');
+        let barT: RtObjectMember = type.m.find(x => x.n === 'bar');
+
+        expect(fooT).to.exist;
+        expect(barT).to.exist;
+
+        expect(fooT.t).to.equal(String);
+        expect(fooT.f.includes(F_OPTIONAL)).to.be.true;
+        expect(barT.t).to.equal(Number);
+        expect(barT.f.includes(F_OPTIONAL)).to.be.false;
+    });
     it('emits for inferred intersection return type', async () => {
         let exports = await runSimple({
             code: `
@@ -1740,4 +1935,21 @@ describe('rt:i', it => {
         expect(typeRefs[0]()).to.equal(Something);
         expect(typeRefs[1]()).to.equal(IΦSomethingElse);
     });
+    it('should not crash when processing a constructor which was previously transformed', async () => {
+        await runSimple({
+            modules: {
+                'typescript-rtti': `
+                    export function reflect() { }
+                `
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export class Foo {
+                    constructor() {
+                        reflect(undefined)
+                    }
+                }
+            `
+        });
+    })
 });
