@@ -92,7 +92,9 @@ export class MetadataEncoder {
 
         // `implements`
 
-        let impls = klass.heritageClauses?.find(x => x.token === ts.SyntaxKind.ImplementsKeyword);
+        let impls = klass.heritageClauses?.find(x => x.token === (ts.isInterfaceDeclaration(klass)
+            ? ts.SyntaxKind.ExtendsKeyword : ts.SyntaxKind.ImplementsKeyword));
+
         if (impls) {
             let typeRefs: ts.Expression[] = [];
             for (let heritageType of impls.types) {
@@ -102,11 +104,6 @@ export class MetadataEncoder {
 
                 if (symbol) {
                     let localName = heritageType.expression.getText();
-
-                    // let decls = symbol.getDeclarations();
-                    // let interfaceDecl = decls.find(x => ts.isInterfaceDeclaration(x));
-                    // let classDecl = decls.find(x => ts.isClassDeclaration(x) || ts.isClassExpression(x));
-
                     typeRefs.push(
                         referenceSymbol(
                             this.ctx, localName,

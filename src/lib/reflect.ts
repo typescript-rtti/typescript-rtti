@@ -1700,7 +1700,9 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
     private _interfaces: ReflectedTypeRef[];
 
     /**
-     * Get the interfaces that this class implements.
+     * Get the interfaces that this class implements, or that this interface extends.
+     * Note that if the class implements another class as an interface, you will receive
+     * a class type reference for that, not an interface type reference.
      */
     get interfaces() {
         if (this._interfaces !== undefined)
@@ -1720,6 +1722,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
     /**
      * Check if this class implements the given interface. The parameter can be a reified interface
      * reference or a class reference. Note that implementing a class is not the same as extending a class.
+     * Note that this will return true only if this class explicitly declares that an interface is implemented.
      *
      * @param interfaceType
      * @returns boolean
@@ -1784,7 +1787,9 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
     }
 
     /**
-     * Get the reflected superclass for this class.
+     * Get the reflected superclass for this class. If this is an interface,
+     * this will always be undefined. If you are looking to access the classes/interfaces that
+     * an interface extends, use the "interfaces" property.
      */
     get super(): ReflectedClass {
         if (this._super !== undefined)

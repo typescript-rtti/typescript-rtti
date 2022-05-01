@@ -150,4 +150,20 @@ describe('Interface token', it => {
         expect(Reflect.getMetadata('rt:P', exports.IΦFoo)).to.eql(['field', 'blah']);
         expect(Reflect.getMetadata('rt:m', exports.IΦFoo)).to.eql(['method']);
     });
+    it('exposes interfaces which are extended', async () => {
+        let exports = await runSimple({
+            code: `
+                export interface Foo1 { }
+                export interface Foo2 { }
+                export interface Bar extends Foo1, Foo2 { }
+            `
+        });
+
+        let ext = Reflect.getMetadata('rt:i', exports.IΦBar);
+        let ifaces = ext.map(f => f());
+
+        expect(ifaces.length).to.equal(2);
+        expect(ifaces[0]).to.equal(exports.IΦFoo1);
+        expect(ifaces[1]).to.equal(exports.IΦFoo2);
+    });
 });

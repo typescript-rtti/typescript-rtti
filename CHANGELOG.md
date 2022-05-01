@@ -9,6 +9,9 @@
   to obtain references to classes, interface tokens, and enum objects. This fixes issues with referring to packages which
   have `index.d.ts` at the root of the package when the entrypoint for the application is something other than `index.js`
   at the root of the package (for instance the `winston` package). See #61 for details.
+- The interfaces which an interface _extends_ are now exposed via the same mechanism that we use to expose the interfaces
+  that a class _implements_. You can access these type references via `ReflectedClass#interfaces` when the `ReflectedClass`
+  represents an `interface`. See #60 for details.
 
 # v0.6.0
 - Adds support for reflecting properly on enums. Previously enums were emitted as unions of the numeric values of the
