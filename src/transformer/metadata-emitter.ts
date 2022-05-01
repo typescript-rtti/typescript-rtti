@@ -9,6 +9,8 @@ import { decorateClassExpression, decorateFunctionExpression, directMetadataDeco
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
 import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
+import { serialize } from './serialize';
+import { literalNode } from './literal-node';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -215,25 +217,15 @@ export class MetadataEmitter extends RttiVisitor {
                     ts.factory.createIdentifier(`IΦ${emitName}`),
                     undefined,
                     undefined,
-                    ts.factory.createObjectLiteralExpression([
-                        ts.factory.createPropertyAssignment(
-                            'name',
-                            ts.factory.createStringLiteral(decl.name.text)
-                        ),
-                        ts.factory.createPropertyAssignment(
-                            'prototype',
-                            ts.factory.createObjectLiteralExpression()
-                        ),
-                        ts.factory.createPropertyAssignment(
-                            'identity',
-                            ts.factory.createCallExpression(
-                                ts.factory.createIdentifier("Symbol"),
-                                undefined,
-                                [ts.factory.createStringLiteral(`${decl.name.text} (interface)`)]
-                            )
-                        )
-                    ])
-
+                    serialize({
+                        name: decl.name.text,
+                        prototype: {},
+                        identity: literalNode(ts.factory.createCallExpression(
+                            ts.factory.createIdentifier("Symbol"),
+                            undefined,
+                            [ts.factory.createStringLiteral(`${decl.name.text} (interface)`)]
+                        ))
+                    })
                 )],
                 ts.NodeFlags.None
             )
