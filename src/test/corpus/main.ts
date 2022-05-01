@@ -16,6 +16,7 @@ interface Package {
     acceptFailure?: boolean;
     url: string;
     ref: string;
+    target?: 'esm' | 'commonjs',
     commands: string[];
 }
 
@@ -72,6 +73,7 @@ const PACKAGES: Record<string, Package> = {
         yarn: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: 'rtti-wip',
+        target: 'esm',
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
     "typeorm/typeorm": {
@@ -122,18 +124,12 @@ function trace(message: string, context?: string) {
         console.log(`corpus${context ? `: ${context}` : ``}: ${message}`);
 }
 
-async function modify<T = any>(filename: string, modifier: (t: T) => void) {
+async function modify<T = any>(filename: string, modifier: (t: T) => void, target?: 'esm' | 'commonjs') {
 
     if (filename.endsWith('.js')) {
         let config;
-        let isModule = false;
-        try {
-            config = require(path.resolve(process.cwd(), filename));
-        } catch (e) {
-            isModule = true;
-            config = await import('file://' + path.resolve(process.cwd(), filename).replace(/\\/g, '/'));
-        }
-
+        let isModule = target === 'esm';
+        config = await import('file://' + path.resolve(process.cwd(), filename).replace(/\\/g, '/'));
         modifier(config);
 
         if (isModule)
@@ -259,7 +255,7 @@ async function main(args: string[]) {
                             jestConfig.globals ??= {};
                             jestConfig.globals['ts-jest'] ??= {};
                             jestConfig.globals['ts-jest'].compiler = 'ttypescript';
-                        });
+                        }, pkg.target);
                     }
 
                     // Patch all subpackage package.jsons
