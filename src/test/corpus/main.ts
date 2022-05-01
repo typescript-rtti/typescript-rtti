@@ -48,11 +48,17 @@ const PACKAGES: Record<string, Package> = {
         ref: '1e6e462dc50bdbe045281cae50b7c3fd21c16b82',
         commands: ['npm install tslib@latest', 'lerna bootstrap', 'lerna link', 'npm test']
     },
-    "rezonant/typescript-rtti": {
+    "typescript-rtti": {
         enabled: true, // 🎉
-        url: 'https://github.com/rezonant/typescript-rtti.git',
+        url: 'https://github.com/typescript-rtti/typescript-rtti.git',
         ref: 'c936bfcb7aba086a6b8a16275a9398d9d19215e2',
         commands: ['npm run build', 'npm test']
+    },
+    "@typescript-rtti/rtti-testcase-61": {
+        enabled: true,
+        url: 'https://github.com/typescript-rtti/rtti-testcase-61.git',
+        ref: 'main',
+        commands: ['npm test']
     },
     "capaj/decapi": {
         enabled: true,
@@ -119,9 +125,11 @@ async function modify<T = any>(filename: string, modifier: (t: T) => void) {
 
         try {
             let jsonString = (await fs.readFile(filename)).toString();
-            let obj = JSON.parse(stripJsonComments(jsonString));
+            jsonString = stripJsonComments(jsonString);
+            let obj = JSON.parse(jsonString);
             modifier(obj);
-            await fs.writeFile(filename, JSON.stringify(obj, undefined, 2));
+            jsonString = JSON.stringify(obj, undefined, 2);
+            await fs.writeFile(filename, jsonString);
         } catch (e : any) {
             throw new Error(`Could not transform '${filename}': ${e.message}`);
         }
@@ -189,6 +197,8 @@ async function main(args: string[]) {
                     run(`git clone ${pkg.url} ${local}`, undefined, context);
                     run(`git checkout ${pkg.ref}`, local, context);
                     run(`cpy ${path.join(tsrttiDir, 'dist')} .tsrtti`, local, context);
+                    run(`cpy ${path.join(tsrttiDir, 'dist.esm')} .tsrtti`, local, context);
+                    run(`cpy "${path.join(tsrttiDir, 'package.json')}" "${path.join(local, '.tsrtti', 'package.json')}"`, undefined, context);
 
                     // forced to allow for codebases that have not yet updated to
                     // npm@7 peer deps
@@ -203,6 +213,9 @@ async function main(args: string[]) {
 
                     trace(`Transforming project-level tsconfig.json...`, context);
                     await modify<{ compilerOptions: ts.CompilerOptions; }>(path.join(local, 'tsconfig.json'), config => {
+                        if (!config.compilerOptions)
+                            config.compilerOptions = {};
+
                         (config.compilerOptions as any).plugins = [{ transform: path.resolve(local, '.tsrtti', 'dist', 'transformer') }];
                     });
 

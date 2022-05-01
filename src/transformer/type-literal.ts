@@ -1,11 +1,13 @@
 import * as ts from 'typescript';
-import { F_OPTIONAL, LiteralSerializedNode, RtObjectMember, RtType, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
+import { F_OPTIONAL, RtObjectMember, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
+    T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { findRelativePathToFile } from './find-relative-path';
 import { getPreferredExportForImport } from './get-exports-for-symbol';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 import { MappedType } from './ts-internal-types';
-import { getTypeLocality, hasFlag, isFlagType, isNodeJS, propertyPrepend, resolveName, serializeEntityNameAsExpression, typeHasValue } from './utils';
+import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
+    serializeEntityNameAsExpression, typeHasValue } from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
 import { RttiContext } from './rtti-context';
@@ -334,6 +336,32 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                 destFile = preferredExport.sourceFile.fileName;
                 symbol = preferredExport.symbol;
                 isExportedAsDefault = symbol?.name === 'default' || !symbol;
+            }
+
+            // Treat /index.js et al specially: On Node.js this is equivalent to importing
+            // the containing folder due to the node resolution algorithm. This can be important
+            // if the .d.ts file does not have a corresponding .js file alongside it (for instance,
+            // see the 'winston' package)
+
+            if (isNodeJS()) {
+                if (destFile.endsWith('/index.d.ts'))
+                    destFile = destFile.replace(/\/index\.d\.ts$/, '');
+                else if (destFile.endsWith('/index.js'))
+                    destFile = destFile.replace(/\/index\.js$/, '');
+                else if (destFile.endsWith('/index.ts'))
+                    destFile = destFile.replace(/\/index\.ts$/, '');
+            }
+
+            if (destFile.endsWith('.d.ts') && hasFilesystemAccess()) {
+                // Make sure we have a .js file alongside the .d.ts.
+                if (!fileExists(destFile.replace(/\.d\.ts$/, '.js'))) {
+                    console.warn(
+                        `RTTI: warning: Cannot import symbol '${symbol.name}' from declaration file '${destFile}' `
+                        + `because there is no corresponding Javascript file alongside the declaration `
+                        + `file! Refusing to emit type references for this symbol.`
+                    );
+                    return ts.factory.createIdentifier(`Object`);
+                }
             }
 
             if (destFile.endsWith('.d.ts'))

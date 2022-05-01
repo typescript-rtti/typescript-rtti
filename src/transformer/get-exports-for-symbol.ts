@@ -1,5 +1,7 @@
 import * as ts from 'typescript';
-import { externalModules, getDefaultLikeExportInfo, getDirectoryPath, ImportKind, isTypeOnlySymbol, moduleSymbolToValidIdentifier, skipAlias } from './utils';
+
+import { externalModules, fileExists, getDefaultLikeExportInfo, getDirectoryPath, hasFilesystemAccess, ImportKind,
+    isTypeOnlySymbol, skipAlias } from './utils';
 
 interface SymbolExportInfo {
     readonly moduleSymbol: ts.Symbol;
@@ -77,6 +79,32 @@ export function getPreferredExportForImport(
     exports.sort((a, b) => {
         return a.sourceFile.fileName.length - b.sourceFile.fileName.length;
     });
+
+    // If it is possible, try to determine if this import has a corresponding JS file.
+    // A good example of where this is important is for a package like:
+    // package/
+    //   lib/
+    //     index.js <-- "main"/"module" entrypoint
+    //   index.d.ts <-- "types" entrypoint
+    //
+    // Here, if we end up importing "package/import", it will fail at runtime since there is no "package/import.js".
+
+    if (hasFilesystemAccess()) {
+        exports = exports.filter(exp => {
+            if (exp.sourceFile.fileName.endsWith('.d.ts')) {
+                let jsFile = exp.sourceFile.fileName.replace(/\.d\.ts$/, '.js');
+                if (!fileExists(jsFile))
+                    return false;
+            }
+
+            return true;
+        });
+    }
+
+    // console.log(`Found ${exports.length} viable exports for symbol ${symbol.name}:`);
+    // for (let exp of exports) {
+    //     console.log(` - ${exp.sourceFile.fileName}`);
+    // }
 
     return exports[0];
 }

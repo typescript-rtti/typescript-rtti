@@ -1388,3 +1388,24 @@ export function getTypeLocality(ctx: RttiContext, type: ts.Type, typeNode: ts.Ty
 
     return isLocal ? 'local' : 'imported';
 }
+
+export function hasFilesystemAccess() {
+    if (isNodeJS()) {
+        let fsx;
+        try { fsx = require('fs'); } catch (e) {}
+        return !!fsx;
+    }
+
+    return false;
+}
+
+export function fileExists(filename: string) {
+    if (isNodeJS()) {
+        let fsx;
+        try { fsx = require('fs'); } catch (e) {}
+        if (fsx)
+            return fsx.existsSync(filename);
+    }
+
+    throw new Error(`No filesystem access available in this environment! Should guard using hasFilesystem()! This is a bug.`);
+}
