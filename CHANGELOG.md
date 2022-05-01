@@ -1,3 +1,15 @@
+# vNext
+- Fixes an issue where RTTI assumes that the existence of a `.d.ts` file implies the existence of a corresponding `.js`
+  file. Now RTTI will verify the existence of the `.js` file in environments which support such a check (Node.js environments).
+  When this situation is encountered, RTTI will refuse to import the module, a type reference of type `Object` will
+  be emitted instead, and a warning of the following format will be emitted:
+  > RTTI: warning: Cannot import symbol 'OffendingSymbol' from declaration file 'PathToDeclaration' because there is no
+  > corresponding Javascript file alongside the declaration file! Refusing to emit type references for this symbol.
+- RTTI will now remove `/index.d.ts`, `/index.js` or `/index.ts` from the end of an import path when generating imports
+  to obtain references to classes, interface tokens, and enum objects. This fixes issues with referring to packages which
+  have `index.d.ts` at the root of the package when the entrypoint for the application is something other than `index.js`
+  at the root of the package (for instance the `winston` package). See #61 for details.
+
 # v0.6.0
 - Adds support for reflecting properly on enums. Previously enums were emitted as unions of the numeric values of the
   enum. See [issue #53](https://github.com/typescript-rtti/typescript-rtti/issues/53)

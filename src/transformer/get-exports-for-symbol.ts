@@ -87,7 +87,10 @@ export function getPreferredExportForImport(
     //     index.js <-- "main"/"module" entrypoint
     //   index.d.ts <-- "types" entrypoint
     //
-    // Here, if we end up importing "package/import", it will fail at runtime since there is no "package/import.js".
+    // Here, if we end up importing "package/index", it will fail at runtime since there is no "package/index.js".
+    // However importing "package" will work as expected. We'll handle adjusting "package/index" to "package"
+    // elsewhere, for the purposes of this operation we need to exclude cases where the .d.ts does not have a
+    // corresponding .js file.
 
     if (hasFilesystemAccess()) {
         exports = exports.filter(exp => {
