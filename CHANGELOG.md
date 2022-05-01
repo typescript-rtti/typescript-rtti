@@ -12,6 +12,7 @@
 - The interfaces which an interface _extends_ are now exposed via the same mechanism that we use to expose the interfaces
   that a class _implements_. You can access these type references via `ReflectedClass#interfaces` when the `ReflectedClass`
   represents an `interface`. See #60 for details.
+- Fixes an issue when referring to enums declared within function statements / expressions. See #57 for details.
 
 # v0.6.0
 - Adds support for reflecting properly on enums. Previously enums were emitted as unions of the numeric values of the

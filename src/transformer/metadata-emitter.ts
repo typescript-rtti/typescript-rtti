@@ -11,6 +11,7 @@ import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, 
 import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
 import { serialize } from './serialize';
 import { literalNode } from './literal-node';
+import { T_ENUM } from '../common';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -202,6 +203,41 @@ export class MetadataEmitter extends RttiVisitor {
             ),
             from ? ts.factory.createStringLiteral(from) : undefined
         );
+    }
+
+    @Visit(ts.SyntaxKind.EnumDeclaration)
+    enum(decl: ts.EnumDeclaration) {
+        let type = this.checker.getTypeAtLocation(decl);
+        return [
+            decl,
+            ts.factory.createExpressionStatement(
+                ts.factory.createCallExpression(
+                    ts.factory.createArrowFunction(
+                        [], [],
+                        [
+                            ts.factory.createParameterDeclaration([], [], undefined, 't')
+                        ],
+                        undefined,
+                        ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                        ts.factory.createBinaryExpression(
+                            ts.factory.createElementAccessExpression(
+                                ts.factory.createPropertyAccessExpression(
+                                    ts.factory.createIdentifier('__RΦ'),
+                                    't'
+                                ),
+                                type['id']
+                            ),
+                            ts.factory.createToken(ts.SyntaxKind.EqualsToken),
+                            serialize({ TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t')) })
+                        )
+                    ),
+                    [],
+                    [
+                        ts.factory.createIdentifier(decl.name.text)
+                    ]
+                )
+            )
+        ];
     }
 
     @Visit(ts.SyntaxKind.InterfaceDeclaration)

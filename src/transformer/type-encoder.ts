@@ -4,6 +4,7 @@ import { literalNode } from "./literal-node";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
 import { typeLiteral } from "./type-literal";
+import { hasFlag } from './utils';
 
 export class TypeEncoder {
     constructor(
@@ -40,7 +41,11 @@ export class TypeEncoder {
             let expr = typeLiteral(this, type, typeNode);
             let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
             let useStandIn = false;
-            if (type.isClassOrInterface()) {
+            let isEnum = hasFlag(type.flags, ts.TypeFlags.Enum) || (hasFlag(type.flags, ts.TypeFlags.EnumLiteral) && (
+                hasFlag(type.aliasSymbol?.flags, ts.SymbolFlags.Enum
+            )));
+
+            if (type.isClassOrInterface() || isEnum) {
                 let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
                 let isLocal = sourceFile === this.ctx.sourceFile;
                 useStandIn = isLocal;

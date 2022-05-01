@@ -59,6 +59,33 @@ describe('Central Libraries', it => {
         expect(Reflect.getMetadata('rt:t', exports.classes.A.prototype, 'foo')()).to.equal(String);
         expect(Reflect.getMetadata('rt:t', exports.classes.B.prototype, 'a')()).to.equal(exports.classes.A);
     });
+    it('emits for an enum type defined in a function', async () => {
+        let exports = await runSimple({
+            code: `
+                export let MyEnum;
+
+                function func() {
+                    enum MyEnum2 {
+                        Foo = 'FOO',
+                        Bar = 'BAR'
+                    }
+
+                    MyEnum = MyEnum2;
+                    return class {
+                        thing: MyEnum2;
+                    }
+                }
+
+                export const MyClass = func();
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.MyClass.prototype, 'thing');
+        let type = typeResolver();
+
+        expect(type.TΦ).to.equal(T_ENUM);
+        expect(type.e).to.equal(exports.MyEnum);
+    });
     it('works correctly for interface declarations within functions', async () => {
         let exports = await runSimple({
             code: `
