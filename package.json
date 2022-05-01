@@ -32,10 +32,10 @@
     "clean": "rimraf dist dist.esm",
     "build": "npm run clean && npm run build:cjs && npm run build:esm",
     "build:cjs": "tsc -b",
-    "build:esm": "tsc -b ./tsconfig.esm.json",
+    "build:esm": "tsc -b ./tsconfig.esm.json && cpy package.esm.json dist.esm --rename package.json",
     "test": "npm run build && nyc node --experimental-loader ./test-module-resolver.mjs dist/test",
     "test:nocov": "npm run build && node --experimental-loader ./test-module-resolver.mjs dist/test",
-    "test:corpus": "npm run build && node ./dist/test/corpus/main",
+    "test:corpus": "npm run build && node ./dist.esm/test/corpus/main",
     "test:corpus:trace": "npm run -- test:corpus -- --trace",
     "prepublishOnly": "npm test && npm run test:corpus",
     "docs": "typedoc ."

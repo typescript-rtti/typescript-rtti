@@ -2,12 +2,12 @@ import * as fs from 'fs/promises';
 import * as fst from 'fs';
 import * as path from 'path';
 import stripJsonComments from 'strip-json-comments';
-import * as shell from 'shelljs';
+import shell from 'shelljs';
 import rimraf from 'rimraf';
 import { promisify } from 'util';
 import { Stats } from 'fs';
 import ts from 'typescript';
-import { hasGlobalFlag, setGlobalFlag } from '../../transformer/utils';
+import { hasGlobalFlag, setGlobalFlag } from '../../transformer/utils.js';
 
 interface Package {
     enabled: boolean;
@@ -67,6 +67,13 @@ const PACKAGES: Record<string, Package> = {
         ref: '1.0.0',
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
+    "capaj/decapi-rtti": {
+        enabled: false,
+        yarn: true,
+        url: 'https://github.com/capaj/decapi.git',
+        ref: 'rtti-wip',
+        commands: ['npm run -- test --runInBand --no-cache --ci ']
+    },
     "typeorm/typeorm": {
         enabled: true,
         url: 'https://github.com/typeorm/typeorm.git',
@@ -118,9 +125,22 @@ function trace(message: string, context?: string) {
 async function modify<T = any>(filename: string, modifier: (t: T) => void) {
 
     if (filename.endsWith('.js')) {
-        let config = require(path.resolve(process.cwd(), filename));
+        let config;
+        let isModule = false;
+        try {
+            config = require(path.resolve(process.cwd(), filename));
+        } catch (e) {
+            isModule = true;
+            config = await import('file://' + path.resolve(process.cwd(), filename).replace(/\\/g, '/'));
+        }
+
         modifier(config);
-        await fs.writeFile(filename, `module.exports = ${JSON.stringify(config, undefined, 2)};`);
+
+        if (isModule)
+            await fs.writeFile(filename, `export default ${JSON.stringify(config.default, undefined, 2)};`);
+        else
+            await fs.writeFile(filename, `module.exports = ${JSON.stringify(config, undefined, 2)};`);
+
     } else if (filename.endsWith('.json')) {
 
         try {
@@ -167,7 +187,7 @@ async function main(args: string[]) {
     let hasTrace = args.some(x => x === '--trace');
     setGlobalFlag('CORPUS_VERBOSE', hasTrace);
 
-    let tsrttiDir = path.join(__dirname, '..', '..', '..');
+    let tsrttiDir = process.cwd(); // path.join(__dirname, '..', '..', '..');
     let corpusDir = path.join(process.cwd(), '.corpus');
 
     if (!await dirExists(corpusDir))
@@ -235,6 +255,7 @@ async function main(args: string[]) {
                     if (await fileExists(path.join(local, 'jest.config.js'))) {
                         trace(`Transforming jest config...`, context);
                         await modify(path.join(local, 'jest.config.js'), jestConfig => {
+                            jestConfig = JSON.parse(JSON.stringify(jestConfig));
                             jestConfig.globals ??= {};
                             jestConfig.globals['ts-jest'] ??= {};
                             jestConfig.globals['ts-jest'].compiler = 'ttypescript';
