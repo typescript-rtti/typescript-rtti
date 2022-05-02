@@ -43,8 +43,20 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
     } else if ((type.flags & ts.TypeFlags.BigInt) !== 0) {
         return ts.factory.createIdentifier('BigInt');
     } else if (hasFlag(type.flags, ts.TypeFlags.EnumLiteral)) {
+
+        if (type.symbol && hasFlag(type.symbol.flags, ts.SymbolFlags.ConstEnum)) {
+            // This is a constant enum, so we won't refer to the runtime identity (there won't be one)
+            let unionType = type as ts.UnionType;
+            return serialize({
+                TΦ: T_ENUM,
+                n: type.symbol.name ?? type.aliasSymbol.name,
+                v: unionType.types.reduce((s, t: ts.LiteralType) => (s[t.symbol.name] = t.value, s), {})
+            });
+        }
+
         return serialize({
             TΦ: T_ENUM,
+            n: type.symbol?.name ?? type.aliasSymbol?.name,
             e: literalNode(referToTypeWithIdentifier(ctx, type, typeNode, options))
         });
     } else if (type.isUnion()) {

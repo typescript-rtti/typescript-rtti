@@ -146,9 +146,20 @@ export interface RtGenericType {
 export interface RtEnumType {
     TΦ: typeof T_ENUM;
     /**
-     * This will be the runtime enum object.
+     * This will be the runtime enum object, if it exists.
+     * It will be undefined for const enums.
      */
     e: any;
+
+    /**
+     * Name of the enum
+     */
+    n?: string;
+
+    /**
+     * Values of the enum. Only provided for constant enums.
+     */
+    v?: Map<string,any>;
 }
 
 export interface RtParameter {

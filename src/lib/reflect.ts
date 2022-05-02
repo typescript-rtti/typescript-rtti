@@ -758,6 +758,14 @@ export class ReflectedEnumRef extends ReflectedTypeRef<format.RtEnumType> {
         return this._enum;
     }
 
+    private _name: string;
+
+    get name() {
+        if (!this._name)
+            this._name = this.ref.n;
+        return this._name;
+    }
+
     private _values: EnumValue[];
 
     get values() {

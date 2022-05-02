@@ -207,6 +207,13 @@ export class MetadataEmitter extends RttiVisitor {
 
     @Visit(ts.SyntaxKind.EnumDeclaration)
     enum(decl: ts.EnumDeclaration) {
+
+        if (hasModifier(decl.modifiers, ts.SyntaxKind.ConstKeyword)) {
+            // Const enums have no runtime representation, so no need to link their runtime object
+            // to the type reference.
+            return decl;
+        }
+
         let type = this.checker.getTypeAtLocation(decl);
         return [
             decl,

@@ -935,6 +935,31 @@ describe('rt:t', it => {
         expect(type.TΦ).to.equal(T_ENUM);
         expect(type.e).to.equal(exports.A);
     });
+    it('emits for const enum type', async () => {
+        let exports = await runSimple({
+            code: `
+                export const enum ImportKind {
+                    Named,
+                    Default,
+                    Namespace,
+                    CommonJS,
+                }
+                export class B {
+                    thing(): ImportKind {
+                        return ImportKind.Default;
+                    }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.B.prototype, 'thing');
+        let type = typeResolver();
+
+        expect(type.TΦ).to.equal(T_ENUM);
+        expect(type.e).to.equal(undefined);
+        expect(type.n).to.equal('ImportKind');
+        expect(type.v).to.eql({ Named: 0, Default: 1, Namespace: 2, CommonJS: 3 });
+    });
     it('emits for an enum type defined in another module', async () => {
         let exports = await runSimple({
             modules: {

@@ -13,6 +13,7 @@
   that a class _implements_. You can access these type references via `ReflectedClass#interfaces` when the `ReflectedClass`
   represents an `interface`. See #60 for details.
 - Fixes an issue when referring to enums declared within function statements / expressions. See #57 for details.
+- Fixes enum support to properly handle const enums.
 
 # v0.6.0
 - Adds support for reflecting properly on enums. Previously enums were emitted as unions of the numeric values of the

@@ -162,17 +162,21 @@ describe('ReflectedClass', it => {
         expect(invoked).to.equal(0);
     });
     it('reflects enum refs', () => {
+        let enumValue = {
+            Zero: 0, 0: 'Zero',
+            One: 1, 1: 'One',
+            Two: 2, 2: 'Two'
+        };
+
         let ref = ReflectedTypeRef.createFromRtRef({
             TΦ: format.T_ENUM,
-            e: {
-                Zero: 0, 0: 'Zero',
-                One: 1, 1: 'One',
-                Two: 2, 2: 'Two'
-            }
+            n: 'MyEnum',
+            e: enumValue
         });
 
         expect(ref.kind).to.equal('enum');
-        expect(ref.as('enum'))
+        expect(ref.as('enum').enum).to.equal(enumValue);
+        expect(ref.as('enum').name).to.equal('MyEnum');
     });
     it('reflects reified interfaces', () => {
         let IΦFoo: format.InterfaceToken = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };

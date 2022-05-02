@@ -45,7 +45,9 @@ export class TypeEncoder {
                 hasFlag(type.aliasSymbol?.flags, ts.SymbolFlags.Enum
             )));
 
-            if (type.isClassOrInterface() || isEnum) {
+            if (isEnum) {
+                useStandIn = !hasFlag(type.symbol.flags, ts.SymbolFlags.ConstEnum);
+            } else if (type.isClassOrInterface()) {
                 let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
                 let isLocal = sourceFile === this.ctx.sourceFile;
                 useStandIn = isLocal;
