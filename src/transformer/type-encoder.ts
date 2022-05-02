@@ -40,18 +40,18 @@ export class TypeEncoder {
 
             let expr = typeLiteral(this, type, typeNode);
             let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
-            let useStandIn = false;
             let isEnum = hasFlag(type.flags, ts.TypeFlags.Enum) || (hasFlag(type.flags, ts.TypeFlags.EnumLiteral) && (
                 hasFlag(type.aliasSymbol?.flags, ts.SymbolFlags.Enum
             )));
 
-            if (isEnum) {
-                useStandIn = !hasFlag(type.symbol.flags, ts.SymbolFlags.ConstEnum);
-            } else if (type.isClassOrInterface()) {
-                let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
-                let isLocal = sourceFile === this.ctx.sourceFile;
+            let useStandIn = false;
+            let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
+            let isLocal = sourceFile === this.ctx.sourceFile;
+
+            if (isEnum)
+                useStandIn = isLocal && !hasFlag(type.symbol.flags, ts.SymbolFlags.ConstEnum);
+            else if (type.isClassOrInterface())
                 useStandIn = isLocal;
-            }
 
             if (useStandIn) {
                 // The class or interface may not be defined at the top level of the module.
