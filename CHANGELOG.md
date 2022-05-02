@@ -1,4 +1,4 @@
-# vNext
+# v0.6.1
 - Fixes an issue where RTTI assumes that the existence of a `.d.ts` file implies the existence of a corresponding `.js`
   file. Now RTTI will verify the existence of the `.js` file in environments which support such a check (Node.js environments).
   When this situation is encountered, RTTI will refuse to import the module, a type reference of type `Object` will
