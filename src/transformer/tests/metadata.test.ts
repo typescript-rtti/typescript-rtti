@@ -6,7 +6,8 @@ import {
     F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
     F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
     T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
-    T_OBJECT, T_VOID, T_ENUM, InterfaceToken, RtObjectMember, RtObjectType
+    T_OBJECT, T_VOID, T_ENUM, T_FUNCTION, InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
+    RtUnionType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 
@@ -1064,6 +1065,39 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type).to.equal(Date);
+    });
+    it('emits for a Function property type', async () => {
+        let exports = await runSimple({
+            code: `
+                let d = new Date();
+                export class C {
+                    foo = () => { return true ? 123 : 'foo'; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');
+        let type: RtFunctionType = typeResolver();
+        expect(type).to.eql({ 'TΦ': T_FUNCTION, r: { 'TΦ': T_UNION, t: [ 123, 'foo' ] }, p: [], f: '' });
+    });
+    it('emits for a Function property type with parameters', async () => {
+        let exports = await runSimple({
+            code: `
+                let d = new Date();
+                export class C {
+                    foo = (foo: string, bar: number) => { return true ? bar : foo; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');
+        let type: RtFunctionType = typeResolver();
+        expect(type).to.eql({
+            'TΦ': T_FUNCTION,
+            r: { 'TΦ': T_UNION, t: [ String, Number ] },
+            p: [ String, Number ],
+            f: ''
+        });
     });
     it('emits for designed class return type', async () => {
         let exports = await runSimple({

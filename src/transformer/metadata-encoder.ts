@@ -165,16 +165,25 @@ export class MetadataEncoder {
         node: ts.PropertyDeclaration | ts.PropertySignature
             | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration
     ) {
-        let type: ts.TypeNode = node.type;
-        if (!type && ts.isSetAccessor(node) && node.parameters.length > 0) {
-            type = node.parameters[0].type;
+        let typeNode: ts.TypeNode = node.type;
+        let type: ts.Type;
+
+        if (!typeNode && ts.isSetAccessor(node) && node.parameters.length > 0) {
+            typeNode = node.parameters[0].type;
         }
 
         this.ctx.locationHint = `Property '${node.name.getText()}' of ${this.getClassName(node)}`;
 
+        if (typeNode) {
+            type = this.checker.getTypeAtLocation(typeNode);
+        } else {
+            type = this.checker.getTypeAtLocation(node);
+        }
+
         return [
-            ...this.typeNode(
-                type, 'type',
+            ...this.type(
+                type,
+                typeNode, 'type',
                 (ts.isPropertyDeclaration(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node))
                 && node.decorators?.length > 0
             ),

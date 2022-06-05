@@ -1,3 +1,10 @@
+# vNext
+- Proper support for reflecting into function types. Previously when a function type was encountered in a type position,
+  `Function` was emitted similar to the behavior of traditional emitDecoratorMetadata. This new reflection includes
+  return type and parameter types, and a flags field which is reserved for future use. Use the new ReflectedFunctionRef
+  (`as('function')`) to access. Note that despite the new ReflectedTypeRef kind, explicit support for `isClass(Function)
+  ` has been added to ensure backwards compatibility.
+
 # v0.6.1
 - Fixes an issue where RTTI assumes that the existence of a `.d.ts` file implies the existence of a corresponding `.js`
   file. Now RTTI will verify the existence of the `.js` file in environments which support such a check (Node.js environments).
