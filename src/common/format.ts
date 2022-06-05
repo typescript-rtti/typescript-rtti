@@ -35,6 +35,7 @@ export const T_CALLSITE: 'c' = 'c';
 export const T_STAND_IN: '5' = '5';
 export const T_OBJECT: 'O' = 'O';
 export const T_ENUM: 'e' = 'e';
+export const T_FUNCTION: 'F' = 'F';
 export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
 
 export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };
@@ -54,7 +55,7 @@ export interface InterfaceToken<T = any> {
 }
 
 export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
-    | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN }
+    | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN } | RtFunctionType
     | Function | Literal | InterfaceToken;
 
 export type RtBrandedType = {
@@ -105,6 +106,12 @@ export interface RtObjectType {
     m: RtObjectMember[];
 }
 
+export interface RtFunctionType {
+    TΦ: typeof T_FUNCTION;
+    r: RtType;
+    p: RtParameter[];
+    f: string;
+}
 export interface RtObjectMember {
     n: string;
     f: string;

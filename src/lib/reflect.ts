@@ -38,7 +38,7 @@ function Flag(value: string) {
 
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any'
     | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'mapped' | 'literal'
-    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum';
+    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum' | 'function';
 
 export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_UNKNOWN]: 'unknown',
@@ -55,7 +55,8 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_ENUM]: 'enum',
     [format.T_FALSE]: 'false',
     [format.T_TRUE]: 'true',
-    [format.T_OBJECT]: 'object'
+    [format.T_OBJECT]: 'object',
+    [format.T_FUNCTION]: 'function'
 };
 
 export class ReflectedTypeRef<T extends RtType = RtType> {
@@ -159,6 +160,10 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
             'boolean': Boolean,
             'object': Object
         };
+
+        // Support for isClass(Function) even though we now have a dedicated 'function' reflected type
+        if (this.kind === 'function' && klass === <any>Function)
+            return true;
 
         if (this.kind === 'literal')
             return literalTypes[typeof this.ref] === klass;
@@ -788,6 +793,45 @@ export class ReflectedEnumRef extends ReflectedTypeRef<format.RtEnumType> {
     }
 }
 
+@ReflectedTypeRef.Kind('function')
+export class ReflectedFunctionRef extends ReflectedTypeRef<format.RtFunctionType> {
+    get kind() { return 'function' as const; }
+    toString() { return `function`; } // TODO: details
+
+    private _returnType: ReflectedTypeRef;
+
+    get returnType() {
+        return this._returnType ??= ReflectedTypeRef.createFromRtRef(this.ref.r);
+    }
+
+    private _parameters: ReflectedParameter[];
+
+    get parameters() {
+        return this._parameters ??= (this.ref.p ?? []).map((p, i) => new ReflectedParameter(p, i));
+    }
+
+    private _flags: ReflectedFlags;
+
+    /**
+     * No use for this yet, reserved for future use
+     * @internal
+     */
+    get flags() {
+        return this._flags ??= new ReflectedFlags(this.ref.f);
+    }
+
+    protected override matches(ref : this | ReflectedFunction) {
+        return this.returnType.equals(ref.returnType)
+            && this.parameters.every((p, i) => p.equals(ref.parameters[i]))
+            && this.flags.toString() === ref.flags.toString()
+        ;
+    }
+
+    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+        return this.matches(ReflectedFunction.for(value));
+    }
+}
+
 export interface EnumValue {
     name: string;
     value: number;
@@ -945,6 +989,20 @@ export class ReflectedParameter<ValueT = any> {
      */
     evaluateInitializer(thisObject: any = {}) {
         return this.initializer.apply(thisObject, []);
+    }
+
+    /**
+     * Check if this parameter declaration is identical to another parameter declaration (including its name).
+     *
+     * @param other The other parameter to check against
+     * @param checkName If true, the name is checked, otherwise it is ignored
+     * @returns
+     */
+    equals(other: ReflectedParameter, checkName = true) {
+        return (!checkName || this.name === other.name)
+            && this.type.equals(other.type)
+            && this.flags.toString() === other.flags.toString()
+        ;
     }
 }
 

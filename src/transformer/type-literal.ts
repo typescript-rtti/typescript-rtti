@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { F_OPTIONAL, RtObjectMember, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
+import { F_OPTIONAL, RtFunctionType, RtObjectMember, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
     T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { findRelativePathToFile } from './find-relative-path';
 import { getPreferredExportForImport } from './get-exports-for-symbol';
@@ -202,6 +202,33 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         }
 
         if ((type.symbol?.flags & ts.SymbolFlags.Function) !== 0) {
+            let signatures = type.getCallSignatures();
+
+
+            if (signatures.length > 1) {
+                console.warn(
+                    `RTTI: ${containingSourceFile.fileName}: ${ctx.locationHint ?? 'unknown location'}: `
+                    + `Function type had multiple call signatures, emitted type will only include the`
+                    + `first one. We could use an isolated reproduction of this [please report]`
+                );
+            }
+
+            if (signatures.length >= 1) {
+                let signature = signatures[0];
+                let returnType = signature.getReturnType()
+                let parameters = signature.getParameters();
+                let flags = ''; // No flags supported yet
+
+                return serialize(<RtFunctionType>{
+                    TΦ: T_FUNCTION,
+                    r: <any>literalNode(encoder.referToType(returnType)),
+                    p: <any[]>parameters.map(p => literalNode(encoder.referToType(checker.getTypeOfSymbolAtLocation(
+                        p, typeNode ?? encoder.ctx.currentTopStatement
+                    )))),
+                    f: flags
+                });
+            }
+
             return ts.factory.createIdentifier(`Function`);
         } else if (type.isClassOrInterface()) {
             return referToTypeWithIdentifier(ctx, type, typeNode, options);
