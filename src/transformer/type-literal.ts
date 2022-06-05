@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { F_OPTIONAL, RtFunctionType, RtObjectMember, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
+import { F_OPTIONAL, RtFunctionType, RtObjectMember, RtParameter, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
     T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { findRelativePathToFile } from './find-relative-path';
 import { getPreferredExportForImport } from './get-exports-for-symbol';
@@ -11,10 +11,13 @@ import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, 
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
 import { RttiContext } from './rtti-context';
+import { forwardRef } from './forward-ref';
+import { encodeParameter } from './encode-parameter';
 
 export interface TypeEncoderImpl {
     ctx: RttiContext;
-    referToType(type: ts.Type): ts.Expression;
+    referToType(type: ts.Type, typeNode?: ts.TypeNode): ts.Expression;
+    referToTypeNode(typeNode: ts.TypeNode): ts.Expression;
 }
 
 export interface TypeLiteralOptions {
@@ -218,13 +221,42 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 let returnType = signature.getReturnType()
                 let parameters = signature.getParameters();
                 let flags = ''; // No flags supported yet
+                let missingParamDecls = false;
 
                 return serialize(<RtFunctionType>{
                     TΦ: T_FUNCTION,
                     r: <any>literalNode(encoder.referToType(returnType)),
-                    p: <any[]>parameters.map(p => literalNode(encoder.referToType(checker.getTypeOfSymbolAtLocation(
-                        p, typeNode ?? encoder.ctx.currentTopStatement
-                    )))),
+                    p: parameters.map(p => {
+                        let decl = p.valueDeclaration;
+                        if (decl && ts.isParameter(decl)) {
+                            return encodeParameter(encoder, decl);
+                        } else {
+                            // Shouldn't happen, but if it does, we should emit as much information as possible.
+
+                            if (!missingParamDecls) {
+                                missingParamDecls = true;
+                                console.warn(
+                                    `RTTI: ${containingSourceFile.fileName}: ${ctx.locationHint ?? 'unknown location'}: `
+                                    + `Could not resolve declaration of parameter for function type. Initializer and `
+                                    + `flags for these parameters will be unavailable. [please report]`
+                                );
+                            }
+
+                            return <RtParameter>{
+                                n: p.name,
+                                t: <any>literalNode(<any>forwardRef(
+                                    encoder.referToType(
+                                        checker.getTypeOfSymbolAtLocation(
+                                            p, typeNode ?? encoder.ctx.currentTopStatement
+                                        )
+                                    )
+                                )),
+                                v: undefined, // cannot get initializer without ParameterDeclaration
+                                f: '' // cannot determine flags without a ParameterDeclaration
+                            };
+                        }
+
+                    }),
                     f: flags
                 });
             }

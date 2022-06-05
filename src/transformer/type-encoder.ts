@@ -18,13 +18,6 @@ export class TypeEncoder {
     get importMap() { return this.ctx.importMap; }
     get checker() { return this.ctx.checker; }
 
-    referToTypeOfInitializer(initializer: ts.Expression, typeNode?: ts.TypeNode) {
-        if (typeNode)
-            return this.referToTypeNode(typeNode);
-
-        return this.referToType(this.checker.getTypeAtLocation(initializer), typeNode);
-    }
-
     referToTypeNode(typeNode: ts.TypeNode): ts.Expression {
         return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }

@@ -4,6 +4,7 @@ import {
     F_PROTECTED, F_PUBLIC, F_READONLY, F_STATIC, RtParameter, RtSerialized
 } from '../common/format';
 import { ClassDetails } from './common/class-details';
+import { encodeParameter } from './encode-parameter';
 import { getVisibility, isAbstract, isAsync, isExported, isReadOnly } from './flags';
 import { forwardRef, functionForwardRef } from './forward-ref';
 import { LegacyTypeEncoder } from './legacy-type-encoder';
@@ -263,34 +264,8 @@ export class MetadataEncoder {
 
             let expr = this.legacyTypeEncoder.referToTypeNode(param.type);
             standardParamTypes.push(expr);
-            let f: string[] = [];
 
-            if (param.modifiers) {
-                for (let modifier of Array.from(param.modifiers)) {
-                    if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword)
-                        f.push(F_READONLY);
-                    if (modifier.kind === ts.SyntaxKind.PrivateKeyword)
-                        f.push(F_PRIVATE);
-                    if (modifier.kind === ts.SyntaxKind.PublicKeyword)
-                        f.push(F_PUBLIC);
-                    if (modifier.kind === ts.SyntaxKind.ProtectedKeyword)
-                        f.push(F_PROTECTED);
-                }
-            }
-
-            if (param.questionToken)
-                f.push(F_OPTIONAL);
-
-            let meta: RtSerialized<RtParameter> = {
-                n: param.name?.getText(),
-                t: literalNode(forwardRef(this.typeEncoder.referToTypeOfInitializer(param.initializer, param.type))),
-                v: param.initializer ? literalNode(functionForwardRef(param.initializer)) : null
-            };
-
-            if (f.length > 0)
-                meta.f = f.join('');
-
-            serializedParamMeta.push(literalNode(serialize(meta)));
+            serializedParamMeta.push(literalNode(serialize(encodeParameter(this.typeEncoder, param))));
         }
 
         decs.push(metadataDecorator('rt:p', serializedParamMeta));

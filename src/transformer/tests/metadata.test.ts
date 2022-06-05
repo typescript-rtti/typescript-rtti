@@ -1092,12 +1092,16 @@ describe('rt:t', it => {
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');
         let type: RtFunctionType = typeResolver();
-        expect(type).to.eql({
-            'TΦ': T_FUNCTION,
-            r: { 'TΦ': T_UNION, t: [ String, Number ] },
-            p: [ String, Number ],
-            f: ''
-        });
+        expect(type.TΦ).to.equal(T_FUNCTION);
+        expect(type.r).to.eql({ 'TΦ': T_UNION, t: [ String, Number ] });
+        expect(type.p.length).to.equal(2);
+        expect(type.p[0].n).to.equal('foo');
+        expect(type.p[0].t()).to.equal(String);
+        expect(type.p[0].v).to.equal(null);
+        expect(type.p[1].n).to.equal('bar');
+        expect(type.p[1].t()).to.equal(Number);
+        expect(type.p[1].v).to.equal(null);
+        expect(type.f).to.equal('');
     });
     it('emits for designed class return type', async () => {
         let exports = await runSimple({

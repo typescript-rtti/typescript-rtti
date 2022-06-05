@@ -1,3 +1,7 @@
+# v0.7.1
+- Fixes an issue where the emitter outputted `RtType` instead of `RtParameter` on the new function type refs added
+  in 0.7.0.
+
 # v0.7.0
 - Proper support for reflecting into function types. Previously when a function type was encountered in a type position,
   `Function` was emitted similar to the behavior of traditional emitDecoratorMetadata. This new reflection includes
