@@ -1,4 +1,4 @@
-# vNext
+# v0.7.0
 - Proper support for reflecting into function types. Previously when a function type was encountered in a type position,
   `Function` was emitted similar to the behavior of traditional emitDecoratorMetadata. This new reflection includes
   return type and parameter types, and a flags field which is reserved for future use. Use the new ReflectedFunctionRef
