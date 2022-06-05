@@ -1,3 +1,6 @@
+# v0.7.3
+- Fixes a missed code path for enabling reflection on _declared_ function types (as opposed to only inferred ones)
+
 # v0.7.2
 - Adds missing `as('function')` overload to enable accessing `ReflectedFunctionRef`
 
