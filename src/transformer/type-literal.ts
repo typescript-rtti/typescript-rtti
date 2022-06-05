@@ -223,9 +223,9 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 let flags = ''; // No flags supported yet
                 let missingParamDecls = false;
 
-                return serialize(<RtFunctionType>{
+                return serialize(<RtSerialized<RtFunctionType>>{
                     TΦ: T_FUNCTION,
-                    r: <any>literalNode(encoder.referToType(returnType)),
+                    r: literalNode(encoder.referToType(returnType)),
                     p: parameters.map(p => {
                         let decl = p.valueDeclaration;
                         if (decl && ts.isParameter(decl)) {
