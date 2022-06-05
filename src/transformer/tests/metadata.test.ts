@@ -1103,9 +1103,8 @@ describe('rt:t', it => {
         expect(type.p[1].v).to.equal(null);
         expect(type.f).to.equal('');
     });
-    it.only('emits for a Function property type node with parameters', async () => {
+    it('emits for a Function property type node with parameters', async () => {
         let exports = await runSimple({
-            trace: true,
             code: `
                 let d = new Date();
                 export class C {
