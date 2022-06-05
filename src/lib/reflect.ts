@@ -233,7 +233,12 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
      * Assert that this type reference is an interface type and cast it to ReflectedInterfaceRef.
      * If the reference is not the correct type an error is thrown.
      */
-    as(kind: 'interface'): ReflectedInterfaceRef;
+     as(kind: 'interface'): ReflectedInterfaceRef;
+     /**
+      * Assert that this type reference is a Function type and cast it to ReflectedFunctionRef.
+      * If the reference is not the correct type an error is thrown.
+      */
+     as(kind: 'function'): ReflectedFunctionRef;
     /**
      * Assert that this type reference is a class type and cast it to ReflectedClassRef.
      * If the reference is not the correct type an error is thrown.

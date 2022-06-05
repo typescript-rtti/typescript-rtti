@@ -1,3 +1,6 @@
+# v0.7.2
+- Adds missing `as('function')` overload to enable accessing `ReflectedFunctionRef`
+
 # v0.7.1
 - Fixes an issue where the emitter outputted `RtType` instead of `RtParameter` on the new function type refs added
   in 0.7.0.
