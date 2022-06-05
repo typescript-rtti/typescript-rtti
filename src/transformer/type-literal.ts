@@ -204,7 +204,8 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
             }
         }
 
-        if ((type.symbol?.flags & ts.SymbolFlags.Function) !== 0) {
+        let isDeclaredFunctionType = typeNode && ts.isFunctionTypeNode(typeNode);
+        if (isDeclaredFunctionType || (type.symbol?.flags & ts.SymbolFlags.Function) !== 0) {
             let signatures = type.getCallSignatures();
 
 
