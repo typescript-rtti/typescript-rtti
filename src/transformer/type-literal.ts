@@ -1,5 +1,5 @@
 import * as ts from 'typescript';
-import { F_OPTIONAL, RtFunctionType, RtObjectMember, RtParameter, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
+import { F_OPTIONAL, RtFunctionType, RtObjectMember, RtParameter, RtSerialized, RtType, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
     T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { findRelativePathToFile } from './find-relative-path';
 import { getPreferredExportForImport } from './get-exports-for-symbol';
@@ -242,9 +242,9 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                                 );
                             }
 
-                            return <RtParameter>{
+                            return <RtSerialized<RtParameter>>{
                                 n: p.name,
-                                t: <any>literalNode(<any>forwardRef(
+                                t: literalNode(forwardRef(
                                     encoder.referToType(
                                         checker.getTypeOfSymbolAtLocation(
                                             p, typeNode ?? encoder.ctx.currentTopStatement
