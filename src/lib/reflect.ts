@@ -84,7 +84,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
      * @param context
      * @returns
      */
-    matchesValue(value, errors?: Error[], context?: string) {
+    matchesValue(value, errors: Error[] = [], context?: string) {
         errors.push(new Error(`No validation available for type with kind '${this.kind}'`));
         return false;
     }
@@ -557,7 +557,7 @@ export class ReflectedUnionRef extends ReflectedTypeRef<format.RtUnionType> {
         return true;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string) {
+    override matchesValue(value: any, errors?: Error[], context?: string) {
         return this.types.some(t => t.matchesValue(value, errors, context));
     }
 }
@@ -605,7 +605,7 @@ export class ReflectedArrayRef extends ReflectedTypeRef<format.RtArrayType> {
         return this.elementType.equals(ref.elementType);
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] =[], context?: string): boolean {
         if (!Array.isArray(value)) {
             errors.push(new TypeError(`Value should be an array`));
             return false;
@@ -620,7 +620,7 @@ export class ReflectedVoidRef extends ReflectedTypeRef<format.RtVoidType> {
     get kind() { return 'void' as const; }
     toString() { return `void`; }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         if (value !== void 0) {
             errors.push(new Error(`Value must not be present`));
             return false;
@@ -708,7 +708,7 @@ export class ReflectedTupleRef extends ReflectedTypeRef<format.RtTupleType> {
         return this.elements.every((x, i) => x.name === ref.elements[i].name && x.type.equals(ref.elements[i].type));
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         if (!Array.isArray(value)) {
             errors.push(new Error(`Value must be an array`));
             return false;
