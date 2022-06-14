@@ -1,3 +1,8 @@
+# v0.7.4
+- Fixes a crash when calling matchesValue() without an initialized `errors` array, despite the API declaration
+  indicating this is allowed ([Pull Request #70](https://github.com/typescript-rtti/typescript-rtti/pull/70))
+  Thanks to @CristianPi for this enhancement!
+
 # v0.7.3
 - Fixes a missed code path for enabling reflection on _declared_ function types (as opposed to only inferred ones)
 
