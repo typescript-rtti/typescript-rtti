@@ -701,6 +701,39 @@ describe('rt:p', it => {
         let params = Reflect.getMetadata('rt:p', exports.C);
         expect(params[0].f).to.contain(F_REST);
     });
+    it('emits F_REST for rest method', async () => {
+        let exports = await runSimple({
+            code: `
+                export class C {
+                    test(a,...rest){}
+                }
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:p', exports.C.prototype,"test");
+        expect(params[0].f).to.be.undefined;
+        expect(params[1].f).to.contain(F_REST);
+    });
+    it('emits F_REST for functions', async () => {
+        let exports = await runSimple({
+            code: `
+            export function test(a,...rest){}
+            export function test2(...b){}
+            export const test3 = (a,...c)=>{}
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:p', exports.test);
+        expect(params[0].f).to.be.undefined;
+        expect(params[1].f).to.contain(F_REST);
+
+        params = Reflect.getMetadata('rt:p', exports.test2);
+        expect(params[0].f).to.contain(F_REST);
+
+        params = Reflect.getMetadata('rt:p', exports.test3);
+        expect(params[0].f).to.be.undefined;
+        expect(params[1].f).to.contain(F_REST);
+    });
     it('emits multiple flags for ctor param', async () => {
         let exports = await runSimple({
             code: `
