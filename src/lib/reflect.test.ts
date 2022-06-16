@@ -388,7 +388,7 @@ describe('ReflectedMethod', it => {
         expect(ReflectedClass.new(B).getMethod('foo').parameters[1].type.isClass(Boolean)).to.be.true;
         expect(ReflectedClass.new(B).getMethod('foo').getParameter('b').type.isClass(Boolean)).to.be.true;
     });
-    it('reflects do not crash missing/null metadata rt:p', () => {
+    it('reflects method do not crash missing/null metadata rt:p', () => {
         class B { }
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
         Reflect.defineMetadata('rt:p', undefined, B.prototype, 'foo');
@@ -396,6 +396,14 @@ describe('ReflectedMethod', it => {
         expect(ReflectedClass.new(B).getMethod('foo').parameters.length).to.equal(0);
         expect(ReflectedClass.new(B).getMethod('foo').getParameter('a')).to.equal(undefined);
         expect(ReflectedClass.new(B).getMethod('foo').parameters[0]).to.be.undefined;
+    });
+    it('reflects function do not crash missing/null metadata rt:p', () => {
+        function B() { }
+        Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, B);
+        Reflect.defineMetadata('rt:p', undefined, B);
+        expect(ReflectedFunction.new(B).parameters.length).to.equal(0);
+        expect(ReflectedFunction.new(B).getParameter('a')).to.equal(undefined);
+        expect(ReflectedFunction.new(B).parameters[0]).to.be.undefined;
     });
     it('reflects parameter optionality', () => {
         class B { }
