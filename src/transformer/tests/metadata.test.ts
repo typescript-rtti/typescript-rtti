@@ -3,7 +3,7 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import {
-    F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
+    F_REST, F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
     F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
     T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
     T_OBJECT, T_VOID, T_ENUM, T_FUNCTION, InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
@@ -686,6 +686,20 @@ describe('rt:p', it => {
 
         let params = Reflect.getMetadata('rt:p', exports.C);
         expect(params[0].f).to.contain(F_OPTIONAL);
+    });
+    it('emits F_REST for rest ctor param', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A { }
+                export class B { }
+                export class C {
+                    constructor(...hello : A[]) { }
+                }
+            `
+        });
+
+        let params = Reflect.getMetadata('rt:p', exports.C);
+        expect(params[0].f).to.contain(F_REST);
     });
     it('emits multiple flags for ctor param', async () => {
         let exports = await runSimple({

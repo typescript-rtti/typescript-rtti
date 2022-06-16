@@ -13,6 +13,7 @@ export const F_INTERFACE: 'I' = 'I';
 export const F_FUNCTION: 'F' = 'F';
 export const F_ARROW_FUNCTION: '>' = '>';
 export const F_OPTIONAL: '?' = '?';
+export const F_REST: '3' = '3';
 export const F_ASYNC: 'a' = 'a';
 export const F_EXPORTED: 'e' = 'e';
 export const F_INFERRED: '.' = '.';
