@@ -24,6 +24,9 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
     if (param.questionToken)
         f.push(format.F_OPTIONAL);
 
+    if (param.dotDotDotToken)
+        f.push(format.F_REST);
+
     let typeExpr = param.type
         ? encoder.referToTypeNode(param.type)
         : encoder.referToType(checker.getTypeAtLocation(param.initializer), param.type)

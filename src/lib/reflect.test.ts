@@ -356,6 +356,17 @@ describe('ReflectedMethod', it => {
         expect(ReflectedFunction.new(A).isAsync).to.be.false;
         expect(ReflectedFunction.new(B).isAsync).to.be.true;
     });
+    it('reflects function variadic', () => {
+        function A() { }
+
+        Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, A);
+        Reflect.defineMetadata('rt:p', [], A);
+        function B() { }
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B);
+        Reflect.defineMetadata('rt:p', [{ n: 'a', t: () => String }, { n: 'b', t: () => Boolean, f: `${format.F_REST}` }], B);
+        expect(ReflectedFunction.new(A).isVariadic).to.be.false;
+        expect(ReflectedFunction.new(B).isVariadic).to.be.true;
+    });
     it('reflects static method names without metadata', () => {
         class B {
             static foo() { }
@@ -411,6 +422,30 @@ describe('ReflectedMethod', it => {
         expect(ReflectedClass.new(B).getMethod('foo').getParameter('b').flags.isOptional).to.be.true;
         expect(ReflectedClass.new(B).getMethod('foo').parameters[1].isOptional).to.be.true;
         expect(ReflectedClass.new(B).getMethod('foo').getParameter('b').isOptional).to.be.true;
+    });
+    it('reflects parameter rest', () => {
+        class B { }
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
+        Reflect.defineMetadata('rt:p', [{ n: 'a', t: () => String }, { n: 'b', t: () => Boolean, f: `${format.F_REST}` }], B.prototype, 'foo');
+        Reflect.defineMetadata('rt:m', ['foo', 'bar'], B);
+
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[0].name).to.equal('a');
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('a').name).to.equal('a');
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[0].type.isClass(String)).to.be.true;
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('a').type.isClass(String)).to.be.true;
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('a').flags.isRest).to.be.false;
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[0].flags.isRest).to.be.false;
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[0].isRest).to.be.false;
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('a').isRest).to.be.false;
+
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[1].name).to.equal('b');
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('b').name).to.equal('b');
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[1].type.isClass(Boolean)).to.be.true;
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('b').type.isClass(Boolean)).to.be.true;
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[1].flags.isRest).to.be.true;
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('b').flags.isRest).to.be.true;
+        expect(ReflectedClass.new(B).getMethod('foo').parameters[1].isRest).to.be.true;
+        expect(ReflectedClass.new(B).getMethod('foo').getParameter('b').isRest).to.be.true;
     });
 });
 

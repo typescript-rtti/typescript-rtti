@@ -913,6 +913,7 @@ export class ReflectedFlags {
     @Flag(format.F_CLASS) isClass: boolean;
     @Flag(format.F_INTERFACE) isInterface: boolean;
     @Flag(format.F_OPTIONAL) isOptional: boolean;
+    @Flag(format.F_REST) isRest: boolean;
     @Flag(format.F_ASYNC) isAsync: boolean;
     @Flag(format.F_EXPORTED) isExported: boolean;
     @Flag(format.F_INFERRED) isInferred: boolean;
@@ -972,6 +973,13 @@ export class ReflectedParameter<ValueT = any> {
      */
     get isOptional() {
         return this.flags.isOptional;
+    }
+
+    /**
+     * True if this parameter is a rest parameter
+     */
+    get isRest() {
+        return this.flags.isRest;
     }
 
     /**
@@ -1450,6 +1458,13 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
      */
     get isAsync() {
         return this.flags.isAsync;
+    }
+
+    /**
+     * True if this function is a variadic function.
+     */
+    get isVariadic() {
+        return this.parameters.find(v => v.isRest) !== undefined;
     }
 }
 
