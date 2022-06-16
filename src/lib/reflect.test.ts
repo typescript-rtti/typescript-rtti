@@ -522,6 +522,20 @@ describe('ReflectedProperty', it => {
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(true)).to.be.false;
         expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(null)).to.be.false;
     });
+    it('reflects 123n type as class BigInt and as 123n', () => {
+        class B { }
+        Reflect.defineMetadata('rt:t', () => BigInt(123), B.prototype, 'foo');
+        Reflect.defineMetadata('rt:P', ['foo'], B);
+
+        expect(ReflectedClass.new(B).getProperty('foo').type.isClass(BigInt)).to.be.true;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Number)).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isClass(Boolean)).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(BigInt(123))).to.be.true;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(BigInt(124))).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(false)).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(true)).to.be.false;
+        expect(ReflectedClass.new(B).getProperty('foo').type.isLiteral(null)).to.be.false;
+    });
     it('reflects string literal type as class String and as the literal', () => {
         class B { }
         Reflect.defineMetadata('rt:t', () => 'foobaz', B.prototype, 'foo');
