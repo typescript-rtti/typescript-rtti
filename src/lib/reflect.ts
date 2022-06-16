@@ -315,7 +315,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     isFalse(): this is ReflectedFalseRef { return this.kind === 'false'; }
     isStringLiteral(): this is ReflectedLiteralRef<string> { return this.kind === 'literal' && typeof this.ref === 'string'; }
     isNumberLiteral(): this is ReflectedLiteralRef<number> { return this.kind === 'literal' && typeof this.ref === 'number'; }
-    isBigIntLiteral(): this is ReflectedLiteralRef<number> { return this.kind === 'literal' && typeof this.ref === 'bigint'; }
+    isBigIntLiteral(): this is ReflectedLiteralRef<BigInt> { return this.kind === 'literal' && typeof this.ref === 'bigint'; }
     isBooleanLiteral(): this is ReflectedLiteralRef<number> { return this.isTrue() || this.isFalse(); }
 
     /**
