@@ -8,21 +8,24 @@ describe('ReflectedClass#matchesValue()', it => {
     it('works with simple interfaces', async () => {
         let IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
 
-        Reflect.defineMetadata('rt:P', ['foo', 'bar', 'baz'], IΦA);
+        Reflect.defineMetadata('rt:P', ['foo', 'bar', 'baz','ban'], IΦA);
         Reflect.defineMetadata('rt:t', () => String, IΦA.prototype, 'foo');
         Reflect.defineMetadata('rt:t', () => Number, IΦA.prototype, 'bar');
         Reflect.defineMetadata('rt:t', () => Boolean, IΦA.prototype, 'baz');
+        Reflect.defineMetadata('rt:t', () => BigInt, IΦA.prototype, 'ban');
 
         expect(reflect(IΦA).matchesValue({
             foo: 'hello',
             bar: 123,
-            baz: true
+            baz: true,
+            ban: BigInt(123)
         })).to.be.true;
 
         expect(reflect(IΦA).matchesValue({
             foo: 1111,
             bar: 123,
-            baz: true
+            baz: true,
+            ban: BigInt(123)
         })).to.be.false;
     });
     it('supports literal types', async () => {

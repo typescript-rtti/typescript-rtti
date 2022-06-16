@@ -112,7 +112,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
 
     get kind(): ReflectedTypeRefKind {
         let ref = this._ref;
-        if (ref === null || ['string', 'number'].includes(typeof ref))
+        if (ref === null || ['string', 'number', 'bigint'].includes(typeof ref))
             return 'literal';
 
         if (typeof ref === 'object' && 'TΦ' in ref)
@@ -153,12 +153,13 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
      * (ie it is generic) this check will fail, and instead isGeneric() will succeed.
      * @param klass
      */
-    isClass<T = Function>(klass?: Constructor<T>): this is ReflectedClassRef<T> {
+    isClass<T = Function>(klass?: Constructor<T> | BigIntConstructor): this is ReflectedClassRef<T> {
         let literalTypes = {
             'string': String,
             'number': Number,
             'boolean': Boolean,
-            'object': Object
+            'object': Object,
+            'bigint': BigInt
         };
 
         // Support for isClass(Function) even though we now have a dedicated 'function' reflected type
@@ -196,8 +197,8 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     isLiteral(value: false): this is ReflectedFalseRef;
     isLiteral<T extends format.Literal>(value: T): this is ReflectedLiteralRef<T>;
     isLiteral(): this is ReflectedLiteralRef<any>;
-    isLiteral(value: number | string): boolean;
-    isLiteral(value: true | false | null | number | string | symbol = NotProvided): boolean {
+    isLiteral(value: number | bigint | string): boolean;
+    isLiteral(value: true | false | null | number | bigint | string | symbol = NotProvided): boolean {
         if (value === null) return this.isNull();
         if (value === true) return this.isTrue();
         if (value === false) return this.isFalse();
@@ -314,6 +315,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     isFalse(): this is ReflectedFalseRef { return this.kind === 'false'; }
     isStringLiteral(): this is ReflectedLiteralRef<string> { return this.kind === 'literal' && typeof this.ref === 'string'; }
     isNumberLiteral(): this is ReflectedLiteralRef<number> { return this.kind === 'literal' && typeof this.ref === 'number'; }
+    isBigIntLiteral(): this is ReflectedLiteralRef<bigint> { return this.kind === 'literal' && typeof this.ref === 'bigint'; }
     isBooleanLiteral(): this is ReflectedLiteralRef<number> { return this.isTrue() || this.isFalse(); }
 
     /**
@@ -415,7 +417,9 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
         else if (this.ref === Function)
             return typeof value === 'function';
         else if (this.ref === Symbol)
-            return typeof value === 'symbol';
+            return typeof value === 'symbol'
+        else if (this.ref === BigInt)
+            return typeof value === 'bigint';
 
         return ReflectedClass.for(this.ref).matchesValue(value);
     }

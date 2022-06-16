@@ -48,7 +48,7 @@ export const TI_FALSE: RtIntrinsicType = { TΦ: T_FALSE };
 export const TI_THIS: RtIntrinsicType = { TΦ: T_THIS };
 export const TI_NULL: RtIntrinsicType = { TΦ: T_NULL };
 
-export type Literal = number | string;
+export type Literal = number | string | bigint;
 export interface InterfaceToken<T = any> {
     name: string;
     prototype: any;
