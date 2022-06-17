@@ -1,3 +1,7 @@
+# v0.8.0
+- Adds support for reflecting "rest" parameters ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/72))
+- Adds support for reflecting BigInt literals ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/73))
+
 # v0.7.4
 - Fixes a crash when calling matchesValue() without an initialized `errors` array, despite the API declaration
   indicating this is allowed ([Pull Request #70](https://github.com/typescript-rtti/typescript-rtti/pull/70))
