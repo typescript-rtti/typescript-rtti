@@ -1380,7 +1380,7 @@ export class ReflectedFunction<T extends Function = Function> implements Reflect
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
 
-        return this._rawParameterMetadata = this.getMetadata('rt:p');
+        return this._rawParameterMetadata = this.getMetadata('rt:p') || [];
     }
 
     /**
@@ -1498,7 +1498,7 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
         if (this._rawParameterMetadata)
             return this._rawParameterMetadata;
 
-        return this._rawParameterMetadata = this.getMetadata('rt:p');
+        return this._rawParameterMetadata = this.getMetadata('rt:p') || [];
     }
 
     /**
