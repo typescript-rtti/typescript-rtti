@@ -362,10 +362,24 @@ describe('ReflectedMethod', it => {
         Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, A);
         Reflect.defineMetadata('rt:p', [], A);
         function B() { }
-        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B);
+        Reflect.defineMetadata('rt:f', `${format.F_FUNCTION}`, B);
         Reflect.defineMetadata('rt:p', [{ n: 'a', t: () => String }, { n: 'b', t: () => Boolean, f: `${format.F_REST}` }], B);
         expect(ReflectedFunction.new(A).isVariadic).to.be.false;
         expect(ReflectedFunction.new(B).isVariadic).to.be.true;
+    });
+    it('reflects method variadic', () => {
+        class C {
+            A(){}
+            B(){}
+        }
+        Reflect.defineMetadata('rt:m', ['A', 'B'], C);
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, C.prototype,'A');
+        Reflect.defineMetadata('rt:p', [],C.prototype,'A');
+        Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, C.prototype,'B');
+        Reflect.defineMetadata('rt:p', [{ n: 'a', t: () => String }, { n: 'b', t: () => Boolean, f: `${format.F_REST}` }], C.prototype,'B');
+        const cls = ReflectedClass.new(C);
+        expect(cls.getMethod('A').isVariadic).to.be.false;
+        expect(cls.getMethod('B').isVariadic).to.be.true;
     });
     it('reflects static method names without metadata', () => {
         class B {
