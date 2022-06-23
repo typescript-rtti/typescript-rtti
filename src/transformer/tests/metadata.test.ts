@@ -869,6 +869,29 @@ describe('rt:p', it => {
     });
 });
 describe('rt:t', it => {
+    it('is emitted on alias', async () => {
+        let exports = await runSimple({
+            code: `
+                export type B = number;
+                export type C = string;
+                export type D<T> = bigint;
+                export type E<T> = {v:T};
+            `,
+            trace: true
+        });
+
+        console.log("alias exports.B",exports.IΦB);
+
+        let typeResolve = Reflect.getMetadata('rt:t', exports.IΦB);
+        const type = typeResolve();
+
+        console.log("alias exports.B.type",type);
+
+        expect(type.TΦ).to.equal(T_GENERIC);
+        expect(type.e).to.equal(undefined);
+        expect(type.n).to.equal('ImportKind');
+        expect(type.v).to.eql({ Named: 0, Default: 1, Namespace: 2, CommonJS: 3 });
+    });
     it('is not emitted when @rtti:skip is present on docblock', async () => {
         let exports = await runSimple({
             code: `

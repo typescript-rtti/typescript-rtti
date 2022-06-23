@@ -37,6 +37,7 @@ export const T_STAND_IN: '5' = '5';
 export const T_OBJECT: 'O' = 'O';
 export const T_ENUM: 'e' = 'e';
 export const T_FUNCTION: 'F' = 'F';
+export const T_ALIAS: 'd' = 'd';
 export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
 
 export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };

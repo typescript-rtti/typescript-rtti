@@ -11,7 +11,7 @@ import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, 
 import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
 import { serialize } from './serialize';
 import { literalNode } from './literal-node';
-import { T_ENUM } from '../common';
+import {T_ALIAS, T_ENUM} from '../common';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -48,7 +48,7 @@ export class MetadataEmitter extends RttiVisitor {
     }
 
 
-    scope<T = any>(nameScope: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration, callback: () => T) {
+    scope<T = any>(nameScope: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration | ts.TypeAliasDeclaration, callback: () => T) {
         let originalScope = this.ctx.currentNameScope;
         this.ctx.currentNameScope = nameScope;
 
@@ -203,6 +203,72 @@ export class MetadataEmitter extends RttiVisitor {
             ),
             from ? ts.factory.createStringLiteral(from) : undefined
         );
+    }
+
+    @Visit(ts.SyntaxKind.TypeAliasDeclaration)
+    alias(decl: ts.TypeAliasDeclaration) {
+        let emitName = decl.name.text;
+        if (hasModifiers(decl.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
+            emitName = 'default';
+
+        let tokenDecl = ts.factory.createVariableStatement(
+            [],
+            ts.factory.createVariableDeclarationList(
+                [ts.factory.createVariableDeclaration(
+                    ts.factory.createIdentifier(`IΦ${emitName}`),
+                    undefined,
+                    undefined,
+                    serialize({
+                        name: decl.name.text,
+                        identity: literalNode(ts.factory.createCallExpression(
+                            ts.factory.createIdentifier("Symbol"),
+                            undefined,
+                            [ts.factory.createStringLiteral(`${decl.name.text} (alias)`)]
+                        ))
+                    })
+                )],
+                ts.NodeFlags.None
+            )
+        );
+
+        if (this.trace)
+            console.log(`Decorating alias ${decl.name.text}`);
+
+        let aliasName = decl.name.getText();
+        let aliasDecl = decl;
+
+        return this.scope(decl, () => {
+            let result = this.collectMetadata(() => {
+                try {
+                    return this.visitEachChild(decl);
+                } catch (e) {
+                    console.error(`RTTI: During metadata collection for alias ${aliasName}: ${e.message}`);
+                    throw e;
+                }
+            });
+
+            return [
+                result.node,
+                tokenDecl,
+                ...(
+                    hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword)
+                        ? [this.exportInterfaceToken(emitName)]
+                        : []
+                ),
+                ...this.metadataEncoder.alias(<ts.TypeAliasDeclaration>decl)
+                    .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
+                        ts.factory.createIdentifier(`IΦ${emitName}`)
+                    ]))),
+                ...this.emitOutboardMetadata(aliasDecl, result),
+                ...(result.decorators.map(dec => ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.decorator.expression, undefined, [
+                    ts.factory.createPropertyAccessExpression(
+                        ts.factory.createIdentifier(`IΦ${emitName}`),
+                        'prototype'
+                    ),
+                    expressionForPropertyName(dec.property)
+                ]))))
+            ];
+        });
     }
 
     @Visit(ts.SyntaxKind.EnumDeclaration)
@@ -451,7 +517,7 @@ export class MetadataEmitter extends RttiVisitor {
         return this.collector.collect(node, this.metadataEncoder.method(node));
     }
 
-    emitOutboardMetadataExpressions<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
+    emitOutboardMetadataExpressions<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration>(
         node: NodeT,
         outboardMetadata: { node: NodeT, decorators: ExternalDecorator[]; }
     ): ts.Expression[] {
@@ -500,7 +566,7 @@ export class MetadataEmitter extends RttiVisitor {
         return nodes;
     }
 
-    emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
+    emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration | ts.TypeAliasDeclaration>(
         node: NodeT,
         outboardMetadata: { node: NodeT, decorators: ExternalDecorator[]; }
     ): ts.ExpressionStatement[] {
