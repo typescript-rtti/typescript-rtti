@@ -1,5 +1,6 @@
 # vNext
 - Fixes an issue where `type.isPromise()` returns false for `Promise<T>` (previously returned true only for bare `Promise`).
+- Adds `isVariadic()` to `ReflectedMethod` to match the call on `ReflectedFunction` ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/77))
 
 # v0.8.0
 - Adds support for reflecting "rest" parameters ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/72))
