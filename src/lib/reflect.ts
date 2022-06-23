@@ -140,10 +140,10 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
             return !klass;
 
         if (this.isGeneric(Promise)) {
-            if (this.typeParameters.length === 0)
-                return !klass;
+            if (klass)
+                return this.typeParameters.length > 0 && this.typeParameters[0].isClass(klass);
 
-            return this.typeParameters[0].isClass(klass);
+            return true;
         }
         return false;
     }
