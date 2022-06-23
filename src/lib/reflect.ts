@@ -1601,6 +1601,13 @@ export class ReflectedMethod<T extends Function = Function> extends ReflectedMem
     get isAsync() {
         return this.flags.isAsync;
     }
+
+    /**
+     * True if this function is a variadic function.
+     */
+    get isVariadic() {
+        return this.parameters.find(v => v.isRest) !== undefined;
+    }
 }
 
 /**
