@@ -6,7 +6,7 @@ import {
     F_REST, F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
     F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
     T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
-    T_OBJECT, T_VOID, T_ENUM, T_FUNCTION, InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
+    T_OBJECT, T_VOID, T_ENUM, T_FUNCTION,T_ALIAS, InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
     RtUnionType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
@@ -872,22 +872,44 @@ describe('rt:t', it => {
     it('is emitted on alias', async () => {
         let exports = await runSimple({
             code: `
-                export type B = number;
-                export type C = string;
-                export type D<T> = bigint;
-                export type E<T> = {v:T};
+                // export enum testenum{
+                //     ea,eb,ec
+                // }
+                // export type A = number;
+                // export type B = number;
+                // export type C = string;
+                // export type D<T> = bigint;
+                // export type E<T> = {v:T};
+                // export type F = B | C | D<E<B>>;
+                // export interface I {
+                //     a:B;
+                //     b:C;
+                //     c:D<E<B>>;
+                //     d:F;
+                //     e:testenum,
+                //     f:number;
+                //     g:string;
+                // }
+                export interface I {
+                    a:string;
+                    b:string;
+                    c:string;
+                    d:string;
+                    e:string,
+                    f:string;
+                    g:string;
+                }
             `,
             trace: true
         });
 
-        console.log("alias exports.B",exports.IΦB);
+        console.log("alias exports.B",exports.AΦB);
 
-        let typeResolve = Reflect.getMetadata('rt:t', exports.IΦB);
-        const type = typeResolve();
+        const type = exports.AΦB;
 
         console.log("alias exports.B.type",type);
 
-        expect(type.TΦ).to.equal(T_GENERIC);
+        expect(type.TΦ).to.equal(T_ALIAS);
         expect(type.e).to.equal(undefined);
         expect(type.n).to.equal('ImportKind');
         expect(type.v).to.eql({ Named: 0, Default: 1, Namespace: 2, CommonJS: 3 });

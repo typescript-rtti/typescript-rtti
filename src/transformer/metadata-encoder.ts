@@ -49,37 +49,6 @@ export class MetadataEncoder {
         return elementNames.map(elementName => literalNode(expressionForPropertyName(elementName)));
     }
 
-    alias(klass: ts.TypeAliasDeclaration) {
-        let type = this.checker.getTypeAtLocation(klass);
-        let decs: ts.Decorator[] = [
-            ts.factory.createDecorator(
-                ts.factory.createArrowFunction(
-                    [], [],
-                    [
-                        ts.factory.createParameterDeclaration([], [], undefined, 't')
-                    ],
-                    undefined,
-                    ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                    ts.factory.createBinaryExpression(
-                        ts.factory.createElementAccessExpression(
-                            ts.factory.createPropertyAccessExpression(
-                                ts.factory.createIdentifier('__RΦ'),
-                                't'
-                            ),
-                            type['id']
-                        ),
-                        ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-                        ts.factory.createIdentifier('t')
-                    )
-                )
-            )
-        ];
-        //@TODO check if we need special handling for generic types
-        let typeNode: ts.TypeNode = klass.type;
-        decs.push(...this.typeNode(typeNode,undefined,false));
-        return decs;
-    }
-
     class(klass: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration, details: ClassDetails) {
         let type = this.checker.getTypeAtLocation(klass);
 

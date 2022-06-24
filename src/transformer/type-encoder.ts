@@ -18,6 +18,59 @@ export class TypeEncoder {
     get importMap() { return this.ctx.importMap; }
     get checker() { return this.ctx.checker; }
 
+    extractTypeAliasDeclarationFromTypeNode(node: ts.TypeNode): ts.TypeAliasDeclaration | undefined {
+        if (node == null){
+            return undefined;
+        }
+
+        if (node.kind === ts.SyntaxKind.TypeAliasDeclaration) {
+            return node as unknown as ts.TypeAliasDeclaration;
+        }
+
+        if (node.kind !== ts.SyntaxKind.TypeReference) {
+            return undefined;
+        }
+        const anode = node as ts.TypeReferenceNode;
+        console.log("extractTypeAliasDeclarationFromTypeNode",anode.typeName.getText());
+        const symb = this.checker.getSymbolAtLocation(anode.typeName);
+
+        return this.extractTypeAliasDeclarationFromSymbol(symb);
+    }
+
+    extractTypeAliasDeclarationFromType(type: ts.Type): ts.TypeAliasDeclaration | undefined {
+        if (type == null){
+            return undefined;
+        }
+        return this.extractTypeAliasDeclarationFromSymbol(type.symbol) || this.extractTypeAliasDeclarationFromSymbol(type.aliasSymbol);
+    }
+
+    extractTypeAliasDeclarationFromSymbol(symbol: ts.Symbol): ts.TypeAliasDeclaration | undefined {
+        if (symbol == null){
+            return undefined;
+        }
+        if ((symbol.flags & ts.SymbolFlags.Alias) === ts.SymbolFlags.Alias) {
+            console.log(`Symbol ${symbol.name} is an alias`);
+            symbol = this.checker.getAliasedSymbol(symbol)
+        }
+        if ((symbol.flags & ts.SymbolFlags.TypeAlias) === ts.SymbolFlags.TypeAlias){
+            console.log(`Symbol ${symbol.name} is an typeAlias`);
+        }
+        console.log(`Symbol ${symbol.name} is a ${symbol.flags}`);
+        const sym = this.checker.getFullyQualifiedName(symbol);
+        const decls = symbol.getDeclarations() as ts.Declaration[];
+        if (decls == null){
+            return undefined;
+        }
+        for (const d of decls){
+                    // @TODO should we check the fully qualified name?
+                    if (d.kind === ts.SyntaxKind.TypeAliasDeclaration) {
+                        console.log("found",sym)
+                        return d as ts.TypeAliasDeclaration;
+                    }
+        }
+        return undefined;
+    }
+
     referToTypeNode(typeNode: ts.TypeNode): ts.Expression {
         return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }

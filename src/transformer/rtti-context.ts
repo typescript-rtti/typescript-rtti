@@ -16,7 +16,7 @@ export interface RttiContext {
     importMap: Map<string, TypeImport>;
     typeMap: Map<number, ts.Expression>;
     freeImportReference: number;
-    currentNameScope: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.ClassExpression | ts.TypeAliasDeclaration;
+    currentNameScope: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.ClassExpression;
     emitStandardMetadata: boolean;
     interfaceSymbols: InterfaceSymbol[];
     pkgJsonMap: Map<string, any>;
