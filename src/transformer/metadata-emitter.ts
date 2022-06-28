@@ -5,13 +5,20 @@ import { Visit } from "./common/visitor-base";
 import { ClassAnalyzer } from "./common/class-analyzer";
 import { ClassDetails } from "./common/class-details";
 import { InterfaceAnalyzer } from "./common/interface-analyzer";
-import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
+import {
+    decorateClassExpression,
+    decorateFunctionExpression,
+    directMetadataDecorator,
+    hostMetadataDecorator,
+    metadataDecorator
+} from "./metadata-decorator";
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
 import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
 import { serialize } from './serialize';
 import { literalNode } from './literal-node';
-import { T_ENUM } from '../common';
+import {T_ALIAS, T_ENUM} from '../common';
+import {forwardRef} from "./forward-ref";
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -262,6 +269,83 @@ export class MetadataEmitter extends RttiVisitor {
                     ]
                 )
             )
+        ];
+    }
+
+    @Visit(ts.SyntaxKind.TypeAliasDeclaration)
+    alias(decl: ts.TypeAliasDeclaration) {
+        let emitName = decl.name.text;
+        if (hasModifiers(decl.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
+            emitName = 'default';
+
+        const identifierName = `AΦ${emitName}`;
+
+        let tokenDecl = ts.factory.createVariableStatement(
+            [],
+            ts.factory.createVariableDeclarationList(
+                [ts.factory.createVariableDeclaration(
+                    ts.factory.createIdentifier(identifierName),
+                    undefined,
+                    undefined,
+                    serialize({
+                        name: decl.name.text,
+                        identity: literalNode(ts.factory.createCallExpression(
+                            ts.factory.createIdentifier("Symbol"),
+                            undefined,
+                            [ts.factory.createStringLiteral(`${decl.name.text} (alias)`)]
+                        ))
+                    })
+                )],
+                ts.NodeFlags.None
+            )
+        );
+        decl = this.visitEachChild(decl);
+        let type = this.checker.getTypeAtLocation(decl);
+        let typeNode: ts.TypeNode = decl.type;
+        return [
+            decl,
+            tokenDecl,
+            ...(
+                hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword)
+                    ? [this.exportToken(identifierName)]
+                    : []
+            ),
+            ts.factory.createExpressionStatement(
+                ts.factory.createCallExpression(
+                    ts.factory.createArrowFunction(
+                        [], [],
+                        [
+                            ts.factory.createParameterDeclaration([], [], undefined, 't')
+                        ],
+                        undefined,
+                        ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                        ts.factory.createBinaryExpression(
+                            ts.factory.createElementAccessExpression(
+                                ts.factory.createPropertyAccessExpression(
+                                    ts.factory.createIdentifier('__RΦ'),
+                                    't'
+                                ),
+                                ts.factory.createStringLiteral(emitName + ':' + type['id'])
+                            ),
+                            ts.factory.createToken(ts.SyntaxKind.EqualsToken),
+                            serialize({
+                                TΦ: T_ALIAS,
+                                name: emitName,
+                                a: literalNode(ts.factory.createIdentifier(`t`)),
+                                t: literalNode(forwardRef(this.metadataEncoder.typeEncoder.referToType(type, typeNode, false))),
+                            })
+                        )
+                    ),
+                    [],
+                    [
+                        ts.factory.createIdentifier(identifierName)
+                    ]
+                )
+            ),
+            [metadataDecorator('rt:t', literalNode(forwardRef(this.metadataEncoder.typeEncoder.referToType(type, typeNode))))]
+                .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
+                    ts.factory.createIdentifier(identifierName)
+                ])))
         ];
     }
 

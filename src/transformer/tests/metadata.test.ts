@@ -872,32 +872,34 @@ describe('rt:t', it => {
     it('is emitted on alias', async () => {
         let exports = await runSimple({
             code: `
-                // export enum testenum{
-                //     ea,eb,ec
-                // }
-                // export type A = number;
-                // export type B = number;
-                // export type C = string;
-                // export type D<T> = bigint;
-                // export type E<T> = {v:T};
-                // export type F = B | C | D<E<B>>;
-                // export interface I {
-                //     a:B;
-                //     b:C;
-                //     c:D<E<B>>;
-                //     d:F;
-                //     e:testenum,
-                //     f:number;
-                //     g:string;
-                // }
-                export interface I {
-                    a:string;
-                    b:string;
-                    c:string;
-                    d:string;
-                    e:string,
-                    f:string;
+                 export enum testenum{
+                    ea,eb,ec
+                }
+                 export type A = number;
+                 export type B = number;
+                 export type C = string;
+                 export type D<T> = bigint;
+                 export type E<T> = {v:T,a:D<string>};
+                 export type F = B | C | D<E<B>>;
+                 export interface I {
+                    a:B;
+                    b:C;
+                    c:D<E<B>>;
+                    d:F;
+                    e:E<string>;
+                    f:number;
                     g:string;
+                    n:testenum;
+                }
+                 export class CLS {
+                    a:B;
+                    b:C;
+                    c:D<E<B>>;
+                    d:F;
+                    e:E<string>;
+                    f:number;
+                    g:string;
+                    n:testenum;
                 }
             `,
             trace: true

@@ -27,11 +27,14 @@ export class TypeEncoder {
             return node as unknown as ts.TypeAliasDeclaration;
         }
 
+        if (node.parent?.kind === ts.SyntaxKind.TypeAliasDeclaration) {
+            return node.parent as unknown as ts.TypeAliasDeclaration;
+        }
+
         if (node.kind !== ts.SyntaxKind.TypeReference) {
             return undefined;
         }
         const anode = node as ts.TypeReferenceNode;
-        console.log("extractTypeAliasDeclarationFromTypeNode",anode.typeName.getText());
         const symb = this.checker.getSymbolAtLocation(anode.typeName);
 
         return this.extractTypeAliasDeclarationFromSymbol(symb);
@@ -49,13 +52,13 @@ export class TypeEncoder {
             return undefined;
         }
         if ((symbol.flags & ts.SymbolFlags.Alias) === ts.SymbolFlags.Alias) {
-            console.log(`Symbol ${symbol.name} is an alias`);
+            //console.log(`Symbol ${symbol.name} is an alias`);
             symbol = this.checker.getAliasedSymbol(symbol)
         }
         if ((symbol.flags & ts.SymbolFlags.TypeAlias) === ts.SymbolFlags.TypeAlias){
-            console.log(`Symbol ${symbol.name} is an typeAlias`);
+            //console.log(`Symbol ${symbol.name} is an typeAlias`);
         }
-        console.log(`Symbol ${symbol.name} is a ${symbol.flags}`);
+        //console.log(`Symbol ${symbol.name} is a ${symbol.flags}`);
         const sym = this.checker.getFullyQualifiedName(symbol);
         const decls = symbol.getDeclarations() as ts.Declaration[];
         if (decls == null){
@@ -64,7 +67,6 @@ export class TypeEncoder {
         for (const d of decls){
                     // @TODO should we check the fully qualified name?
                     if (d.kind === ts.SyntaxKind.TypeAliasDeclaration) {
-                        console.log("found",sym)
                         return d as ts.TypeAliasDeclaration;
                     }
         }
@@ -75,7 +77,7 @@ export class TypeEncoder {
         return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }
 
-    referToType(type: ts.Type, typeNode?: ts.TypeNode): ts.Expression {
+    referToType(type: ts.Type, typeNode?: ts.TypeNode,asAlias=true): ts.Expression {
         if (!type['id'])
             throw new Error(`Type does not have an ID!`);
 
@@ -122,12 +124,23 @@ export class TypeEncoder {
             }
         }
 
+        let typeRef = type['id'];
+        let typeRefAsString = false;
+        if (asAlias) {
+            let typeAlias:ts.TypeAliasDeclaration = this.extractTypeAliasDeclarationFromType(type) || this.extractTypeAliasDeclarationFromTypeNode(typeNode);
+            if (typeAlias){
+                    let typeAliasName = typeAlias.name.getText();
+                    typeRef = typeAliasName+':'+type['id'];
+                    typeRefAsString = true;
+            }
+        }
+
         return ts.factory.createCallExpression(
             ts.factory.createPropertyAccessExpression(
                 ts.factory.createIdentifier(`__RΦ`),
                 'a'
             ), [], [
-            ts.factory.createNumericLiteral(type['id'])
+                typeRefAsString?ts.factory.createStringLiteral(typeRef):ts.factory.createNumericLiteral(typeRef)
         ]
         );
     }
