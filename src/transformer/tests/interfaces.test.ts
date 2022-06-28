@@ -166,7 +166,7 @@ describe('Interface token', it => {
         expect(ifaces[0]).to.equal(exports.IΦFoo1);
         expect(ifaces[1]).to.equal(exports.IΦFoo2);
     });
-    it.skip('emits interface decorators only once', async () => {
+    it('emits interface decorators only once', async () => {
 
         (globalThis as any).__metadataDecorators = [];
 
