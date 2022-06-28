@@ -166,4 +166,31 @@ describe('Interface token', it => {
         expect(ifaces[0]).to.equal(exports.IΦFoo1);
         expect(ifaces[1]).to.equal(exports.IΦFoo2);
     });
+    it.only('emits interface decorators only once', async () => {
+
+        (globalThis as any).__metadataDecorators = [];
+
+        let exports = await runSimple({
+            code: `
+                export interface A {
+                    a:string;
+                    b:string;
+                    c:string;
+                    d:string;
+                    e:string,
+                    f:string;
+                    g:string;
+                }
+            `,
+            outputTransformer(filename, code) {
+                code = code.replace(/__RΦ\.m\(/g, `((key, value) => (__metadataDecorators.push([key, value]), __RΦ.m(key, value)))(`)
+                return code;
+            }
+        });
+
+        let decorators: ([key: string, value: any ])[] = (globalThis as any).__metadataDecorators;
+        let count = decorators.filter(([key, value]) => key === 'rt:t').length;
+
+        expect(count).to.equal(7);
+    })
 });

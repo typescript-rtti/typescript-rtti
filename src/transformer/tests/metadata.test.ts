@@ -2112,4 +2112,31 @@ describe('rt:i', it => {
             `
         });
     })
+    it.only('emits class decorators only once', async () => {
+
+        (globalThis as any).__metadataDecorators = [];
+
+        let exports = await runSimple({
+            code: `
+                export class A {
+                    a:string;
+                    b:string;
+                    c:string;
+                    d:string;
+                    e:string,
+                    f:string;
+                    g:string;
+                }
+            `,
+            outputTransformer(filename, code) {
+                code = code.replace(/__RΦ\.m\(/g, `((key, value) => (__metadataDecorators.push([key, value]), __RΦ.m(key, value)))(`)
+                return code;
+            }
+        });
+
+        let decorators: ([key: string, value: any ])[] = (globalThis as any).__metadataDecorators;
+        let count = decorators.filter(([key, value]) => key === 'rt:t').length;
+
+        expect(count).to.equal(7);
+    })
 });

@@ -9,6 +9,7 @@ export interface RunInvocation {
     transformerEnabled?: boolean;
     moduleType?: 'commonjs' | 'esm';
     compilerOptions?: Partial<ts.CompilerOptions>;
+    outputTransformer?: (filename: string, code: string) => string;
     modules?: Record<string, any>;
     trace?: boolean;
 }
@@ -157,6 +158,12 @@ export function compile(invocation: RunInvocation): Record<string, string> {
         }
 
         throw new Error(`Failed to compile test code: '${invocation.code}'. Code was emitted for: ${JSON.stringify(Object.keys(outputs))}`);
+    }
+
+    if (invocation.outputTransformer) {
+        for (let key of Object.keys(outputs)) {
+            outputs[key] = invocation.outputTransformer(key, outputs[key]);
+        }
     }
 
     return outputs;
