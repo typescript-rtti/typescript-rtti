@@ -2112,7 +2112,7 @@ describe('rt:i', it => {
             `
         });
     })
-    it.only('emits class decorators only once', async () => {
+    it('emits class decorators only once', async () => {
 
         (globalThis as any).__metadataDecorators = [];
 
