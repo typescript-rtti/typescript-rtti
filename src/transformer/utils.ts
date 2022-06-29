@@ -192,6 +192,27 @@ export function expressionForPropertyName(propName: ts.PropertyName) {
     }
 }
 
+export function propertyNameToString(propName: ts.PropertyName) {
+    if (!propName)
+        return `<undefined>`;
+
+    if (propName.getSourceFile()) {
+        return propName.getText();
+    }
+
+    if (ts.isComputedPropertyName(propName)) {
+        return `(computed property name)`;
+    } else if (ts.isIdentifier(propName)) {
+        return propName.text;
+    } else if (ts.isStringLiteral(propName)) {
+        return `"${propName.text}"`;
+    } else if (ts.isPrivateIdentifier(propName)) {
+        return propName.text;
+    } else {
+        throw new Error(`Unexpected property name node of type '${ts.SyntaxKind[propName.kind]}'! Please file a bug!`);
+    }
+}
+
 export function hasModifier(modifiers: ts.ModifiersArray | undefined, modifier: ts.SyntaxKind) {
     return modifiers?.some(x => x.kind === modifier) ?? false;
 }

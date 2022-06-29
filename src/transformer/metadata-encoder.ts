@@ -13,7 +13,7 @@ import { legacyMetadataDecorator, metadataDecorator } from './metadata-decorator
 import { RttiContext } from './rtti-context';
 import { serialize } from './serialize';
 import { TypeEncoder } from './type-encoder';
-import { expressionForPropertyName, hasFlag, hasModifier, referenceSymbol } from './utils';
+import { expressionForPropertyName, hasFlag, hasModifier, propertyNameToString, referenceSymbol } from './utils';
 
 /**
  * Extracts type metadata from various syntactic elements and outputs
@@ -173,7 +173,7 @@ export class MetadataEncoder {
             typeNode = node.parameters[0].type;
         }
 
-        this.ctx.locationHint = `Property '${node.name.getText()}' of ${this.getClassName(node)}`;
+        this.ctx.locationHint = `Property '${propertyNameToString(node.name)}' of ${this.getClassName(node)}`;
 
         if (typeNode) {
             type = this.checker.getTypeAtLocation(typeNode);
@@ -214,14 +214,16 @@ export class MetadataEncoder {
     }
 
     method(node: ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction) {
+        let propNameStr = propertyNameToString(node.name);
 
         if (ts.isMethodDeclaration(node) || ts.isMethodSignature(node)) {
-            this.ctx.locationHint = `Method ${node.name?.getText() ?? '<unknown>'}() of ${this.getClassName(node)}`;
+
+            this.ctx.locationHint = `Method ${propNameStr ?? '<unknown>'}() of ${this.getClassName(node)}`;
         } else if (ts.isFunctionDeclaration(node)) {
-            this.ctx.locationHint = `Function ${node.name?.getText() ?? '<unknown>'}()`;
+            this.ctx.locationHint = `Function ${propNameStr ?? '<unknown>'}()`;
         } else if (ts.isFunctionExpression(node)) {
             if (node.name)
-                this.ctx.locationHint = `Function ${node.name.getText()}()`;
+                this.ctx.locationHint = `Function ${propNameStr}()`;
             else
                 this.ctx.locationHint = `Unnamed function expression`;
         } else if (ts.isArrowFunction(node)) {
