@@ -259,7 +259,12 @@ export class MetadataEncoder {
         let serializedParamMeta: any[] = [];
 
         for (let param of node.parameters) {
-            if (param.name.getText() === 'this')
+            let name: string;
+
+            if (ts.isIdentifier(param.name))
+                name = param.name.text;
+
+            if (name === 'this')
                 continue;
 
             let expr = this.legacyTypeEncoder.referToTypeNode(param.type);

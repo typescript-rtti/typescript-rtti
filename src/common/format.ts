@@ -17,6 +17,19 @@ export const F_REST: '3' = '3';
 export const F_ASYNC: 'a' = 'a';
 export const F_EXPORTED: 'e' = 'e';
 export const F_INFERRED: '.' = '.';
+export const F_OMITTED: ',' = ',';
+
+/**
+ * Flag attached to parameters which indicates that the parameter
+ * is actually an array binding expression (aka destructured assignment).
+ */
+export const F_ARRAY_BINDING: '[' = '[';
+
+/**
+ * Flag attached to parameters which indicates that the parameter
+ * is actually an object binding expression (aka destructured assignment).
+ */
+export const F_OBJECT_BINDING: 'O' = 'O';
 
 export const T_UNION: '|' = '|';
 export const T_INTERSECTION: '&' = '&';
@@ -170,10 +183,44 @@ export interface RtEnumType {
     v?: Map<string,any>;
 }
 
+/**
+ * Represents an encoded function/method parameter.
+ */
 export interface RtParameter {
-    n: string;
-    t: () => any;
-    v: () => any;
+    /**
+     * Name of the parameter. Not present when this parameter is an array or object binding.
+     */
+    n?: string;
+
+    /**
+     * Whether this parameter is an array ('a') or object ('o') binding. Additionally RtParameters
+     * which have `bt` set to ',' are omitted expressions (only valid in array binding expressions).
+     * Array binding is Typescript's name for "destructuring assignment", see
+     * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment
+     * for details.
+     */
+    bt?: 'a' | 'o' | ',';
+
+    /**
+     * The bindings for this parameter slot. Only present when `bt` is set to 'a' or 'o'
+     * (meaning this parameter is an array or object binding, respectively)
+     */
+    b?: RtParameter[];
+
+    /**
+     * The type of this parameter.
+     */
+    t?: () => any;
+
+    /**
+     * The initializer for this parameter. Calling may cause side effects.
+     * Only present if we are not an array/object binding
+     */
+    v?: () => any;
+
+    /**
+     * The flags for this parameter.
+     */
     f?: string;
 }
 
@@ -183,7 +230,7 @@ export interface LiteralSerializedNode {
 }
 
 export type RtSerialized<T> = T | {
-    [K in keyof T]: T[K] | (T[K] extends Array<any> ? LiteralSerializedNode[] : LiteralSerializedNode);
+    [K in keyof T]: T[K] | RtSerialized<T[K]> | (T[K] extends Array<any> ? LiteralSerializedNode[] : LiteralSerializedNode);
 };
 
 export function isLiteralNode<T>(node: T | LiteralSerializedNode): node is LiteralSerializedNode {

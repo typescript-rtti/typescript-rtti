@@ -1,4 +1,5 @@
 # vNext
+- Adds support for array/object binding expressions in function/method parameters (ie destructuring assignment)
 - Fixes an issue where `type.isPromise()` returns false for `Promise<T>` (previously returned true only for bare `Promise`).
 - Adds `isVariadic()` to `ReflectedMethod` to match the call on `ReflectedFunction` ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/77))
 - Fixes an issue where metadata decorators were added twice for interfaces ([#79](https://github.com/typescript-rtti/typescript-rtti/issues/79))
