@@ -3,6 +3,8 @@
 - Fixes an issue where `type.isPromise()` returns false for `Promise<T>` (previously returned true only for bare `Promise`).
 - Adds `isVariadic()` to `ReflectedMethod` to match the call on `ReflectedFunction` ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/77))
 - Fixes an issue where metadata decorators were added twice for interfaces ([#79](https://github.com/typescript-rtti/typescript-rtti/issues/79))
+- Fixes issues where outboard decorators (ie outside of `__decorate`) were used when inline (normal) decorators would
+  suffice. This makes it easier to access reflection metadata within decorators ([#76](https://github.com/typescript-rtti/typescript-rtti/issues/76))
 
 # v0.8.0
 - Adds support for reflecting "rest" parameters ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/72))

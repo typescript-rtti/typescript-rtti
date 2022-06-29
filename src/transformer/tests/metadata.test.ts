@@ -2188,3 +2188,42 @@ describe('rt:i', it => {
         expect(count).to.equal(7);
     })
 });
+describe('decorator order', it => {
+    it('should be preserved for classes, methods and properties', async () => {
+        await runSimple({
+            code: `
+                function dec() {
+                    return (target, pk?) => {
+                        if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
+                            throw new Error('Metadata was not available to decorator!');
+                    }
+                };
+
+                @dec()
+                class Foo {
+                    @dec() public async bar(baz: number): Promise<void> {}
+                    @dec() public baz: boolean;
+                }
+            `
+        });
+    });
+    it.skip('should be preserved for parameters', async () => {
+        // Test fails, and not sure there's a way to make it pass :-\
+        // https://github.com/typescript-rtti/typescript-rtti/issues/76#issuecomment-1169451079
+        await runSimple({
+            trace: true,
+            code: `
+                function dec() {
+                    return (target, pk?, index?) => {
+                        if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
+                            throw new Error('Metadata was not available to decorator!');
+                    }
+                };
+
+                class Foo {
+                    public async bar(@dec() baz: number): Promise<void> {}
+                }
+            `
+        });
+    });
+});
