@@ -945,7 +945,7 @@ describe('rt:t', it => {
 
                 export const A = test(() => {
                     return class A {
-                        property: B;
+                        property: A;
                     }
                 });
 
