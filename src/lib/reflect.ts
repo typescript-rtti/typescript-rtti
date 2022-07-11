@@ -921,6 +921,9 @@ export class ReflectedFlags {
     @Flag(format.F_ASYNC) isAsync: boolean;
     @Flag(format.F_EXPORTED) isExported: boolean;
     @Flag(format.F_INFERRED) isInferred: boolean;
+    @Flag(format.F_OMITTED) isOmitted: boolean;
+    @Flag(format.F_ARRAY_BINDING) isArrayBinding: boolean;
+    @Flag(format.F_OBJECT_BINDING) isObjectBinding: boolean;
 
     toString() {
         return Object.keys(this.propertyToFlag)
@@ -944,8 +947,53 @@ export class ReflectedParameter<ValueT = any> {
 
     private _flags: ReflectedFlags;
 
+    get isBinding() {
+        return this.isArrayBinding || this.isObjectBinding;
+    }
+
     /**
-     * Get the unmangled original name for this parameter
+     * True if this parameter is an array binding expression (destructured assignment).
+     */
+    get isArrayBinding() {
+        return this.flags.isArrayBinding;
+    }
+
+    /**
+     * True if this parameter is an object binding expression (destructured assignment).
+     */
+    get isObjectBinding() {
+        return this.flags.isObjectBinding;
+    }
+
+    /**
+     * True if this parameter is an omitted slot within an array binding expression.
+     * ie, if the user declares [foo, ,bar], then the second binding will have isOmitted true.
+     * See: destructured assignment.
+     */
+    get isOmitted() {
+        return this.flags.isOmitted;
+    }
+
+    private _bindings: ReflectedParameter[];
+
+    /**
+     * If this is an object/array binding (ie destructured assignment),
+     * this will return the individual bindings that are part of this declaration.
+     */
+    get bindings() {
+        if (!this.isBinding)
+            return undefined;
+
+        if (!this._bindings) {
+            (this.rawMetadata.b || []).map((bindingElement, i) => new ReflectedParameter(bindingElement, i))
+        }
+
+        return this._bindings;
+    }
+
+    /**
+     * Get the unmangled original name for this parameter. This may be undefined if the parameter is an array/object
+     * binding expression (destructured assignment).
      */
     get name() {
         return this.rawMetadata.n;

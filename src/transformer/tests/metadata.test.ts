@@ -5,7 +5,13 @@ import ts from 'typescript';
 import {
     F_REST, F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
     F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
+    F_ARRAY_BINDING, F_OBJECT_BINDING,
+
     T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
+    T_OBJECT, T_VOID, T_ENUM, T_FUNCTION,
+
+    InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
+    RtParameter, RtArrayType
     T_OBJECT, T_VOID, T_ENUM, T_FUNCTION,T_ALIAS, InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
     RtUnionType
 } from '../../common/format';
@@ -867,6 +873,50 @@ describe('rt:p', it => {
         let params = Reflect.getMetadata('rt:p', exports.foo);
         expect(params[0].v()).to.be.instanceOf(exports.A);
     });
+    it('emits for array destructuring', async () => {
+        let exports = await runSimple({
+            code: `
+                export function foo(foo, [bar, baz]: string[]) { }
+            `
+        });
+
+        let params: RtParameter[] = Reflect.getMetadata('rt:p', exports.foo);
+        expect(params[0].n).to.equal('foo');
+        expect(params[0].f ?? '').not.to.contain(F_ARRAY_BINDING);
+        expect(params[0].f ?? '').not.to.contain(F_OBJECT_BINDING);
+        expect(params[1].f ?? '').to.contain(F_ARRAY_BINDING);
+        expect(params[1].f ?? '').not.to.contain(F_OBJECT_BINDING);
+        expect(params[1].n).not.to.exist;
+        expect(params[1].t()).to.eql(<RtArrayType>{ TΦ: T_ARRAY, e: String });
+        expect(Array.isArray(params[1].b)).to.be.true;
+        expect(params[1].b.length).to.equal(2);
+        expect(params[1].b[0].n).to.equal('bar');
+        expect(params[1].b[0].t()).to.equal(String);
+        expect(params[1].b[1].n).to.equal('baz');
+        expect(params[1].b[1].t()).to.equal(String);
+    });
+    it('emits for object destructuring', async () => {
+        let exports = await runSimple({
+            code: `
+                export function foo(foo, {bar, baz}: { bar: string, baz: number }) { }
+            `
+        });
+
+        let params: RtParameter[] = Reflect.getMetadata('rt:p', exports.foo);
+        expect(params[0].n).to.equal('foo');
+        expect(params[0].f ?? '').not.to.contain(F_ARRAY_BINDING);
+        expect(params[0].f ?? '').not.to.contain(F_OBJECT_BINDING);
+        expect(params[1].f ?? '').not.to.contain(F_ARRAY_BINDING);
+        expect(params[1].f ?? '').to.contain(F_OBJECT_BINDING);
+        expect(params[1].n).not.to.exist;
+        expect(params[1].t()).to.eql({ TΦ: "O", m: [{ n: "bar", f: "", t: String }, { n: "baz", f: "", t: Number }] });
+        expect(Array.isArray(params[1].b)).to.be.true;
+        expect(params[1].b.length).to.equal(2);
+        expect(params[1].b[0].n).to.equal('bar');
+        expect(params[1].b[0].t()).to.equal(String);
+        expect(params[1].b[1].n).to.equal('baz');
+        expect(params[1].b[1].t()).to.equal(Number);
+    });
 });
 describe('rt:t', it => {
     it('is emitted on alias', async () => {
@@ -944,7 +994,7 @@ describe('rt:t', it => {
 
                 export const A = test(() => {
                     return class A {
-                        property: B;
+                        property: A;
                     }
                 });
 
@@ -2186,4 +2236,43 @@ describe('rt:i', it => {
 
         expect(count).to.equal(7);
     })
+});
+describe('decorator order', it => {
+    it('should be preserved for classes, methods and properties', async () => {
+        await runSimple({
+            code: `
+                function dec() {
+                    return (target, pk?) => {
+                        if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
+                            throw new Error('Metadata was not available to decorator!');
+                    }
+                };
+
+                @dec()
+                class Foo {
+                    @dec() public async bar(baz: number): Promise<void> {}
+                    @dec() public baz: boolean;
+                }
+            `
+        });
+    });
+    it.skip('should be preserved for parameters', async () => {
+        // Test fails, and not sure there's a way to make it pass :-\
+        // https://github.com/typescript-rtti/typescript-rtti/issues/76#issuecomment-1169451079
+        await runSimple({
+            trace: true,
+            code: `
+                function dec() {
+                    return (target, pk?, index?) => {
+                        if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
+                            throw new Error('Metadata was not available to decorator!');
+                    }
+                };
+
+                class Foo {
+                    public async bar(@dec() baz: number): Promise<void> {}
+                }
+            `
+        });
+    });
 });

@@ -4,9 +4,50 @@ import { forwardRef, functionForwardRef } from './forward-ref';
 import { literalNode } from './literal-node';
 import { TypeEncoderImpl } from './type-literal';
 
-export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDeclaration): format.RtSerialized<format.RtParameter> {
+export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDeclaration | ts.BindingElement | ts.OmittedExpression): format.RtSerialized<format.RtParameter> {
+
+    if (ts.isOmittedExpression(param))
+        return { f: ',' };
+
+    let nameNode = param.name;
+    let bindings: format.RtSerialized<format.RtParameter>[];
+    let name: string;
     let f: string[] = [];
+    let typeExpr: ts.Expression;
     let checker = encoder.ctx.checker;
+
+    if (ts.isArrayBindingPattern(nameNode)) {
+        f.push(format.F_ARRAY_BINDING);
+
+        bindings = [];
+        for (let element of nameNode.elements) {
+            bindings.push(encodeParameter(encoder, element));
+        }
+    } else if (ts.isObjectBindingPattern(nameNode)) {
+        f.push(format.F_OBJECT_BINDING);
+
+        bindings = [];
+        for (let element of nameNode.elements) {
+            bindings.push(encodeParameter(encoder, element));
+        }
+    } else {
+        name = nameNode.text;
+    }
+
+    if (ts.isParameter(param)) {
+        if (param.questionToken)
+            f.push(format.F_OPTIONAL);
+
+        if (param.dotDotDotToken)
+            f.push(format.F_REST);
+
+        typeExpr = param.type
+            ? encoder.referToTypeNode(param.type)
+            : encoder.referToType(checker.getTypeAtLocation(param.initializer), param.type)
+        ;
+    } else {
+        typeExpr = encoder.referToType(checker.getTypeAtLocation(param));
+    }
 
     if (param.modifiers) {
         for (let modifier of Array.from(param.modifiers)) {
@@ -21,20 +62,10 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
         }
     }
 
-    if (param.questionToken)
-        f.push(format.F_OPTIONAL);
-
-    if (param.dotDotDotToken)
-        f.push(format.F_REST);
-
-    let typeExpr = param.type
-        ? encoder.referToTypeNode(param.type)
-        : encoder.referToType(checker.getTypeAtLocation(param.initializer), param.type)
-    ;
-
     let meta: format.RtSerialized<format.RtParameter> = {
-        n: param.name?.getText(),
+        n: name,
         t: literalNode(forwardRef(typeExpr)),
+        b: bindings,
         v: param.initializer ? literalNode(functionForwardRef(param.initializer)) : null
     };
 

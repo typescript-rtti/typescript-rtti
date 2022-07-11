@@ -41,7 +41,33 @@ export class MetadataEmitter extends RttiVisitor {
         let originalOutboardCollector = this.outboardCollector;
 
         let collector = new ExternalMetadataCollector();
-        this.collector = this.outboardCollector = collector;
+        //this.collector = collector; // to remove
+        this.outboardCollector = collector;
+
+        try {
+            return {
+                node: callback(),
+                decorators: collector.decorators
+            };
+        } finally {
+            this.collector = originalCollector;
+            this.outboardCollector = originalOutboardCollector;
+        }
+    }
+
+    /**
+     * In some cases we need to collect all metadata under an entire node subtree. An example is for class expressions
+     * which are not valid decorator targets, but we still support emitting for them.
+     * @param callback
+     * @returns
+     */
+    collectAllMetadata<T = any>(callback: () => T): { node: T, decorators: ExternalDecorator[]; } {
+        let originalCollector = this.collector;
+        let originalOutboardCollector = this.outboardCollector;
+
+        let collector = new ExternalMetadataCollector();
+        this.collector = collector;
+        this.outboardCollector = collector;
 
         try {
             return {
@@ -84,7 +110,7 @@ export class MetadataEmitter extends RttiVisitor {
     @Visit(ts.SyntaxKind.PropertySignature)
     propertySignature(signature: ts.PropertySignature) {
         if (ts.isInterfaceDeclaration(signature.parent))
-            signature = this.collector.collect(signature, this.metadataEncoder.property(signature));
+            signature = this.outboardCollector.collect(signature, this.metadataEncoder.property(signature));
 
         return signature;
     }
@@ -496,7 +522,7 @@ export class MetadataEmitter extends RttiVisitor {
     classExpr(decl: ts.ClassExpression) {
         let details = ClassAnalyzer.analyze(decl, this.context);
         return this.scope(decl, () => {
-            let result = this.collectMetadata(() => {
+            let result = this.collectAllMetadata(() => {
                 try {
                     decl = this.visitEachChild(decl);
                 } catch (e) {
@@ -543,7 +569,7 @@ export class MetadataEmitter extends RttiVisitor {
         if (this.trace)
             console.log(`Decorating interface method ${node.parent.name.text}#${node.name.getText()}`);
 
-        return this.collector.collect(node, this.metadataEncoder.method(node));
+        return this.outboardCollector.collect(node, this.metadataEncoder.method(node));
     }
 
     emitOutboardMetadataExpressions<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
