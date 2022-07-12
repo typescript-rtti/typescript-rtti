@@ -133,9 +133,9 @@ export class ApiCallTransformer extends RttiVisitor {
             args.push(serialize(<format.RtSerialized<format.RtCallSite>>{
                 TΦ: 'c',
                 t: undefined, // TODO: this type
-                p: expr.arguments.map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x)))),
+                p: expr.arguments.map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x)))), // TODO can we extract the TypeNode?
                 r: undefined, // TODO return type
-                tp: (expr.typeArguments ?? []).map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x))))
+                tp: (expr.typeArguments ?? []).map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x),x)))
             }));
 
             return ts.factory.updateCallExpression(this.visitEachChild(expr), expr.expression, expr.typeArguments, args);
@@ -144,7 +144,7 @@ export class ApiCallTransformer extends RttiVisitor {
         }
     }
 
-    private referToType(type: ts.Type) {
+    private referToType(type: ts.Type, node?: ts.TypeNode) {
         if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
             let symbol = type.symbol;
             let decl = symbol.declarations[0];
@@ -173,6 +173,6 @@ export class ApiCallTransformer extends RttiVisitor {
             }
         }
 
-        return this.typeEncoder.referToType(type);
+        return this.typeEncoder.referToType(type, node);
     }
 }

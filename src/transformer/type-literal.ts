@@ -16,7 +16,7 @@ import { encodeParameter } from './encode-parameter';
 
 export interface TypeEncoderImpl {
     ctx: RttiContext;
-    referToType(type: ts.Type, typeNode?: ts.TypeNode): ts.Expression;
+    referToType(type: ts.Type, typeNode?: ts.TypeNode,asAlias?:boolean): ts.Expression;
     referToTypeNode(typeNode: ts.TypeNode): ts.Expression;
 }
 
@@ -390,6 +390,7 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                 // import another way that doesn't depend on the type node anyway.
 
                 //throw new Error(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
+                console.warn(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
             }
         }
 

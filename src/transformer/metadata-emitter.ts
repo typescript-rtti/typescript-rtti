@@ -359,6 +359,7 @@ export class MetadataEmitter extends RttiVisitor {
                                 name: emitName,
                                 a: literalNode(ts.factory.createIdentifier(`t`)),
                                 t: literalNode(forwardRef(this.metadataEncoder.typeEncoder.referToType(type, typeNode, false))),
+                                p: decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []
                             })
                         )
                     ),

@@ -68,16 +68,20 @@ export interface InterfaceToken<T = any> {
     prototype: any;
     identity: symbol;
 }
+export interface AliasToken<T = any> {
+    name: string;
+    identity: symbol;
+}
 
 export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
     | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN } | RtFunctionType
-    | Function | Literal | InterfaceToken;
+    | Function | Literal | InterfaceToken | AliasToken;
 
 export type RtBrandedType = {
     TΦ:
     typeof T_UNION | typeof T_INTERSECTION | typeof T_ANY | typeof T_UNKNOWN | typeof T_VOID | typeof T_UNDEFINED
     | typeof T_NULL | typeof T_TUPLE | typeof T_ARRAY | typeof T_THIS | typeof T_GENERIC | typeof T_MAPPED
-    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN;
+    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN | typeof T_ALIAS;
 };
 
 export type RtIntrinsicIndicator = typeof T_VOID | typeof T_ANY | typeof T_UNKNOWN | typeof T_UNDEFINED | typeof T_TRUE | typeof T_FALSE | typeof T_THIS | typeof T_NULL;
@@ -109,6 +113,13 @@ export interface RtCallSite {
      */
     tp: RtType[];
     r: RtType;
+}
+
+export interface RtAliasType {
+    TΦ: typeof T_ALIAS;
+    name: string;
+    a: AliasToken;
+    t: ()=>RtType;
 }
 
 export interface RtUnionType {

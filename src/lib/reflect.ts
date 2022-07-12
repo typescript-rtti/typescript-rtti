@@ -38,7 +38,7 @@ function Flag(value: string) {
 
 export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any'
     | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'mapped' | 'literal'
-    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum' | 'function';
+    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum' | 'function' | 'alias';
 
 export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_UNKNOWN]: 'unknown',
@@ -53,6 +53,7 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_UNDEFINED]: 'undefined',
     [format.T_MAPPED]: 'mapped',
     [format.T_ENUM]: 'enum',
+    [format.T_ALIAS]: 'alias',
     [format.T_FALSE]: 'false',
     [format.T_TRUE]: 'true',
     [format.T_OBJECT]: 'object',
@@ -61,9 +62,19 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
 
 export class ReflectedTypeRef<T extends RtType = RtType> {
     /** @internal */
+    protected _aliased = null;
+
+    /** @internal */
     constructor(
         private _ref: T
     ) {
+        /* store alias reference if any */
+        if (this.isAlias(this._ref)){
+            this._aliased = this._ref;
+        }
+
+        /* resolve alias */
+        this._ref = this.resolveAlias(this._ref);
     }
 
     toString() {
@@ -109,6 +120,24 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     }
 
     private static kinds: Record<ReflectedTypeRefKind, Constructor<ReflectedTypeRef>> = <any>{};
+
+    /**
+     * Resolve the actual type expressed by this alias type reference.
+     * @param ref
+     * @protected
+     */
+    /** @internal */
+    protected resolveAlias(ref){
+        if (typeof ref === 'object' && 'TΦ' in ref && ref.TΦ === format.T_ALIAS)
+            return this.resolveAlias(ref.t());
+        return ref;
+    }
+    /** @internal */
+    protected isAlias(ref): boolean{
+        if (typeof ref === 'object' && 'TΦ' in ref)
+            return ref.TΦ === format.T_ALIAS;
+        return false;
+    }
 
     get kind(): ReflectedTypeRefKind {
         let ref = this._ref;
@@ -296,11 +325,31 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
      */
     as(kind: 'literal'): ReflectedLiteralRef;
     /**
+     * Assert that this type reference is a alias type and cast it to ReflectedAliasRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind: 'alias'): ReflectedAliasRef;
+    /**
      * Assert that this type reference is the given ReflectedTypeRef subclass.
      * If the reference is not the correct type an error is thrown.
      */
     as<T, U extends T>(this: T, subclass: Constructor<U>): U;
     as(this, subclass: ReflectedTypeRefKind | Constructor<any>) {
+        // handle to alias conversion
+        if (subclass === 'alias' && this.isAliased()){
+            if (this instanceof ReflectedAliasRef){
+                return this;
+            }
+            return ReflectedTypeRef.createFromRtRef(this._aliased);
+        }else if (subclass === 'alias'){
+            throw new TypeError(`Type kind ${this.kind}, does not have ${subclass}`);
+        }
+        // handle from alias conversion & cast
+        if (this.isAliased() && this instanceof ReflectedAliasRef){
+            const ref = ReflectedTypeRef.createFromRtRef(this.ref);
+            ref._aliased = this._aliased;
+            return ref.as(subclass as any);
+        }
         if (typeof subclass === 'function' && !(this instanceof subclass))
             throw new TypeError(`Value of type ${this.constructor.name} cannot be converted to ${subclass.name}`);
         else if (typeof subclass === 'string' && this.kind !== subclass)
@@ -367,6 +416,8 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     isAny() {
         return this.kind === 'any';
     }
+
+    isAliased(): this is ReflectedAliasRef { return this._aliased != null; }
 
     /**
      * Creates an "unknown"
@@ -520,7 +571,38 @@ export class ReflectedInterfaceRef extends ReflectedTypeRef<format.InterfaceToke
     }
 
     override matchesValue(value: any, errors: Error[] = [], context?: string) {
-        return ReflectedClass.for(this.ref).matchesValue(value);
+        return ReflectedClass.for(this.ref).matchesValue(value, errors);
+    }
+}
+
+@ReflectedTypeRef.Kind('alias')
+export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
+    get token(): format.AliasToken { return this._aliased.a; }
+    get reflectedType() { return ReflectedTypeRef.createFromRtRef(this.ref) }
+
+    toString() { return `alias ${this._aliased.name}`; }
+
+    private _alias: any;
+    private _name: string;
+
+    get name() {
+        if (!this._name)
+            this._name = this._aliased.name;
+        return this._name;
+    }
+
+    get alias() {
+        if (!this._alias)
+            this._alias = this._aliased;
+        return this._alias;
+    }
+
+    protected override matches(ref : this) {
+        return this.token === ref.token;
+    }
+
+    override matchesValue(value: any, errors: Error[] = [], context?: string) {
+        return this.reflectedType.matchesValue(value, errors, context);
     }
 }
 
@@ -2509,6 +2591,7 @@ export function reflect<T>(unused?: never, callSite?: CallSite): ReflectedTypeRe
 export function reflect<T>(value: Constructor<T>): ReflectedClass<Constructor<T>>;
 export function reflect<T extends Function>(value: T): (ReflectedFunction<T> | ReflectedMethod<T>);
 export function reflect<T>(value: T): ReflectedClass<Constructor<T>>;
+// export function reflect<T>(value: Format.AliasToken): ReflectedAliasRef;
 /**
  * @rtti:callsite 1
  */
@@ -2540,6 +2623,11 @@ export function reflect(value: any = NotProvided, callSite?: CallSite) {
 
     if (typeof value === 'function' && !value.prototype)
         return ReflectedFunction.for(value);
+
+    // @TODO handle enum value
+
+    // @TODO handle type alias value
+
 
     return ReflectedClass.for(value);
 }

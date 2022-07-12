@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { T_STAND_IN } from "../common/format";
+import {T_GENERIC, T_STAND_IN} from "../common/format";
 import { literalNode } from "./literal-node";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
@@ -86,7 +86,21 @@ export class TypeEncoder {
             // Allocate the typeMap slot so that we do not recurse if we encounter this type again
             this.typeMap.set(type['id'], null);
 
-            let expr = typeLiteral(this, type, typeNode);
+            /* handle alias and generic alias */
+            let expr;
+            let typeAlias:ts.TypeAliasDeclaration = this.extractTypeAliasDeclarationFromType(type) || this.extractTypeAliasDeclarationFromTypeNode(typeNode);
+            if (typeAlias){
+                if (typeNode && typeNode.kind === ts.SyntaxKind.TypeReference && (typeNode as ts.TypeReferenceNode).typeArguments){
+                    const ref = typeNode as ts.TypeReferenceNode;
+                    expr = serialize({
+                        TΦ: T_GENERIC,
+                        t: literalNode(this.referToType(type)),
+                        ppppp: [] //(ref.typeArguments ?? []).map(x => literalNode(this.referToType(x)))
+                    });
+                }else expr = typeLiteral(this, type, typeNode);
+            }else
+            // @ TODO fix typereference parameter
+            expr = typeLiteral(this, type, typeNode);
             let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
             let isEnum = hasFlag(type.flags, ts.TypeFlags.Enum) || (hasFlag(type.flags, ts.TypeFlags.EnumLiteral) && (
                 hasFlag(type.aliasSymbol?.flags, ts.SymbolFlags.Enum
