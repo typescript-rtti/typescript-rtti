@@ -1,7 +1,7 @@
 import * as format from '../common/format';
 import { getParameterNames } from './get-parameter-names';
 import { Sealed } from './sealed';
-import { RtType, RtObjectType, RtObjectMember } from '../common/format';
+import {RtType, RtObjectType, RtObjectMember, RtAliasType} from '../common/format';
 
 const NotProvided = Symbol();
 
@@ -62,7 +62,7 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
 
 export class ReflectedTypeRef<T extends RtType = RtType> {
     /** @internal */
-    protected _aliased = null;
+    protected _aliased: RtAliasType = null;
 
     /** @internal */
     constructor(
@@ -70,7 +70,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     ) {
         /* store alias reference if any */
         if (this.isAlias(this._ref)){
-            this._aliased = this._ref;
+            this._aliased = this._ref as unknown as RtAliasType;
         }
 
         /* resolve alias */
@@ -582,19 +582,21 @@ export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
 
     toString() { return `alias ${this._aliased.name}`; }
 
-    private _alias: any;
-    private _name: string;
 
     get name() {
-        if (!this._name)
-            this._name = this._aliased.name;
-        return this._name;
+        return this._aliased.name;
     }
 
-    get alias() {
-        if (!this._alias)
-            this._alias = this._aliased;
-        return this._alias;
+    get arguments() {
+        return this._aliased.p || [];
+    }
+
+    hasArgument(name: string) {
+        return this.arguments.find(x => x === name) !== undefined;
+    }
+
+    get hasArguments() {
+        return this.arguments.length > 0;
     }
 
     protected override matches(ref : this) {
@@ -602,6 +604,11 @@ export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
     }
 
     override matchesValue(value: any, errors: Error[] = [], context?: string) {
+        /* alias with argument, match everything with false */
+        if (this.hasArguments){
+            return false;
+        }
+
         return this.reflectedType.matchesValue(value, errors, context);
     }
 }
@@ -829,6 +836,8 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
             return this._typeParameters;
         return this._typeParameters = this.ref.p.map(p => ReflectedTypeRef.createFromRtRef(p));
     }
+
+    /* TODO create baseType with replaced arguments */
 
     protected override matches(ref : this) {
         if (this.typeParameters.length !== ref.typeParameters.length)

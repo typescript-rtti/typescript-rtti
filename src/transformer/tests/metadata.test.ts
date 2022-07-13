@@ -48,7 +48,7 @@ import {
     RtParameter,
     RtUnionType,
     RtAliasType,
-    RtMappedType
+    RtMappedType, AliasToken
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 
@@ -974,8 +974,7 @@ describe('rt:t', it => {
                     c:C,
                     k:K<number>;
                  }
-            `,
-            trace: true
+            `
         });
 
         const aliases = [
@@ -996,7 +995,6 @@ describe('rt:t', it => {
             expect(type.name).to.equal(alias.name);
             expect(type.a.identity).to.equal(talias.identity);
             // resolve alias type
-            console.log("type.t()",alias.name,type.t(),alias.type);
             expect(type.t()).to.eql(alias.type);
         })
 
@@ -1818,25 +1816,21 @@ describe('rt:t', it => {
             code: `
                 export class A {}
                 type Px<T> = {
-                    [P in keyof T]?: T[P];
+                    [P in keyof T]?: T[P]; // this is a mapped type but it's not supported atm
                 };
                 export class C {
                     method<T>(): Px<A> { return null; }
-                    methodb<T>(): A { return null; }
                 }
             `,
-            trace: true
         });
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-        let typeResolver2 = Reflect.getMetadata('rt:t', exports.C.prototype, 'methodb');
-        console.log("typeResolver",typeResolver,typeResolver());
-        console.log("typeResolver2",typeResolver2,typeResolver2());
-        let aliastype:RtAliasType = typeResolver();
-        let type:RtMappedType = aliastype.t() as RtMappedType;
+        let type:RtMappedType = typeResolver();
+        let reference = type.t as unknown as RtAliasType;
 
-        expect(type.TΦ).to.equal(T_MAPPED);
-        expect(type.t).to.equal(Object);
+        expect(type.TΦ).to.equal(T_GENERIC);
+        expect(reference.TΦ).to.equal(T_ALIAS);
+        expect(reference.name).to.equal("Px");
         expect(type.p).to.eql([exports.A]);
     });
     it('emits for mapped types from TS lib', async () => {
@@ -1850,12 +1844,12 @@ describe('rt:t', it => {
         });
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-        let aliasType:RtAliasType = typeResolver();
-        let type = aliasType.t() as RtMappedType;
+        let type:RtMappedType = typeResolver();
+        let reference = type.t as unknown as RtAliasType;
 
-        expect(type.TΦ).to.equal(T_MAPPED);
+        expect(type.TΦ).to.equal(T_GENERIC);
+        expect(reference.TΦ).to.equal(T_OBJECT);
         expect(type.p).to.eql([exports.A]);
-        expect(type.t).to.equal(Object);
     });
     it('emits for inferred class return type', async () => {
         let exports = await runSimple({
@@ -2321,7 +2315,6 @@ describe('decorator order', it => {
         // Test fails, and not sure there's a way to make it pass :-\
         // https://github.com/typescript-rtti/typescript-rtti/issues/76#issuecomment-1169451079
         await runSimple({
-            trace: true,
             code: `
                 function dec() {
                     return (target, pk?, index?) => {

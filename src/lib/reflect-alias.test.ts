@@ -1,6 +1,6 @@
 import {expect} from "chai";
 import {describe} from "razmin";
-import {ReflectedClassRef, ReflectedInterfaceRef, ReflectedTypeRef} from ".";
+import {ReflectedClassRef, ReflectedGenericRef, ReflectedInterfaceRef, ReflectedTypeRef} from ".";
 import {runSimple} from "../runner.test";
 import {reify, reflect} from "./reflect";
 
@@ -59,12 +59,18 @@ describe('reflect<T>()', it => {
                     a: Something;
                     b: SomethingLiteral;
                 }
+                export interface D<T> {
+                    a: T;
+                    b: T;
+                }
                 export type B = C;
                 export type A = B;
+                export type C2 = D<A>;
                 export const reflectedTypeRef = reflect<A>();
+                export const reflectedTypeRef2 = reflect<C2>();
             `,
         });
-        const alias = exports.reflectedTypeRef as ReflectedTypeRef;
+        let alias = exports.reflectedTypeRef as ReflectedTypeRef;
         expect(alias.isAliased()).to.equal(true);
         expect(alias.kind)
             .to.equal("interface");
@@ -84,6 +90,17 @@ describe('reflect<T>()', it => {
             .to.equal(Number);
         expect(alias.as('interface').as("alias").token)
             .to.equal(exports.AΦA);
+
+        alias = exports.reflectedTypeRef2 as ReflectedTypeRef;
+        expect(alias.isAliased()).to.equal(true);
+        expect(alias.kind)
+            .to.equal("generic");
+        expect(alias.as(ReflectedGenericRef).kind)
+            .to.equal("generic");
+        expect(alias.as(ReflectedGenericRef).typeParameters[0].kind).to.equal("interface");
+        expect(alias.as(ReflectedGenericRef).baseType.kind).to.equal("interface");
+        expect(alias.as('generic').as("alias").token)
+            .to.equal(exports.AΦC2);
     });
     it(`reflects properly for alias object`, async () => {
         let exports = await runSimple({
@@ -103,12 +120,9 @@ describe('reflect<T>()', it => {
                 export const reflectedTypeRef = reflect<A>();
             `,
         });
-        // @ TODO
-        let ref = reflect(exports.reflectedTypeRef.as("alias").token);
-        // @ts-ignore
+        let ref = exports.reflectedTypeRef;
         expect(ref.isAliased()).to.equal(true);
-        // @ts-ignore
-        expect(ref.name).to.equal('IMovable');
+        expect(ref.as("alias").name).to.equal('A');
     });
     it('alias match value', async () => {
         let exports = await runSimple({

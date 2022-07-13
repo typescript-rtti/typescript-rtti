@@ -120,6 +120,7 @@ export interface RtAliasType {
     name: string;
     a: AliasToken;
     t: ()=>RtType;
+    p: Array<string> | undefined;
 }
 
 export interface RtUnionType {
