@@ -62,6 +62,19 @@ export class TypeEncoder {
     }
 
     extractTypeAliasDeclarationFromSymbol(symbol: ts.Symbol): ts.TypeAliasDeclaration | undefined {
+        return this.extractDeclarationFromSymbol(ts.SyntaxKind.TypeAliasDeclaration, symbol) as ts.TypeAliasDeclaration | undefined;
+    }
+
+    extractDeclarationFromSymbol(syntaxKind:ts.SyntaxKind,...symbol: ts.Symbol[]): ts.Node | undefined {
+        for (const s of symbol) {
+            const d = this._extractDeclarationFromSymbol(syntaxKind,s);
+            if (d) {
+                return d;
+            }
+        }
+        return undefined;
+    }
+    protected _extractDeclarationFromSymbol(syntaxKind:ts.SyntaxKind,symbol: ts.Symbol): ts.Node | undefined {
         if (symbol == null) {
             return undefined;
         }
@@ -80,8 +93,8 @@ export class TypeEncoder {
         }
         for (const d of decls) {
             // @TODO should we check the fully qualified name?
-            if (d.kind === ts.SyntaxKind.TypeAliasDeclaration) {
-                return d as ts.TypeAliasDeclaration;
+            if (d.kind === syntaxKind) {
+                return d;
             }
         }
         return undefined;

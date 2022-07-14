@@ -19,6 +19,14 @@ export const F_EXPORTED: 'e' = 'e';
 export const F_INFERRED: '.' = '.';
 export const F_OMITTED: ',' = ',';
 
+/* all allowed flags */
+export type F_FLAG = typeof F_READONLY | typeof F_ABSTRACT | typeof F_PUBLIC
+    | typeof F_PRIVATE | typeof F_PROTECTED | typeof F_PROPERTY | typeof F_METHOD
+    | typeof F_STATIC | typeof F_CLASS | typeof F_INTERFACE | typeof F_FUNCTION
+    | typeof F_ARROW_FUNCTION | typeof F_OPTIONAL | typeof F_REST | typeof F_ASYNC
+    | typeof F_EXPORTED | typeof F_INFERRED | typeof F_OMITTED | "";
+
+export type F_FLAGS = `${F_FLAG| ''}`;
 /**
  * Flag attached to parameters which indicates that the parameter
  * is actually an array binding expression (aka destructured assignment).
@@ -51,6 +59,7 @@ export const T_OBJECT: 'O' = 'O';
 export const T_ENUM: 'e' = 'e';
 export const T_FUNCTION: 'F' = 'F';
 export const T_ALIAS: 'd' = 'd';
+export const T_VARIABLE: 'v' = 'v';
 export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
 
 export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };
@@ -75,7 +84,7 @@ export interface AliasToken<T = any> {
 
 export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
     | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN } | RtFunctionType
-    | Function | Literal | InterfaceToken | AliasToken;
+    | Function | Literal | InterfaceToken | AliasToken | RtVariableType | RtAliasType;
 
 export type RtBrandedType = {
     TΦ:
@@ -123,6 +132,12 @@ export interface RtAliasType {
     p: Array<string> | undefined;
 }
 
+export interface RtVariableType {
+    TΦ: typeof T_VARIABLE;
+    name: string;
+    t: ()=>RtType; // type reference
+}
+
 export interface RtUnionType {
     TΦ: typeof T_UNION;
     t: RtType[];
@@ -137,11 +152,11 @@ export interface RtFunctionType {
     TΦ: typeof T_FUNCTION;
     r: RtType;
     p: RtParameter[];
-    f: string;
+    f: F_FLAGS;
 }
 export interface RtObjectMember {
     n: string;
-    f: string;
+    f: F_FLAGS;
     t: RtType;
 }
 
@@ -234,7 +249,7 @@ export interface RtParameter {
     /**
      * The flags for this parameter.
      */
-    f?: string;
+    f?: F_FLAGS;
 }
 
 export interface LiteralSerializedNode {

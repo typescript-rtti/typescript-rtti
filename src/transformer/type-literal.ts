@@ -1,23 +1,63 @@
 import * as ts from 'typescript';
-import { F_OPTIONAL, RtFunctionType, RtObjectMember, RtParameter, RtSerialized, RtType, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
-    T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
-import { findRelativePathToFile } from './find-relative-path';
-import { getPreferredExportForImport } from './get-exports-for-symbol';
-import { literalNode } from './literal-node';
-import { serialize } from './serialize';
-import { MappedType } from './ts-internal-types';
-import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
-    serializeEntityNameAsExpression, typeHasValue } from './utils';
+import {
+    F_OPTIONAL,
+    RtFunctionType,
+    RtObjectMember,
+    RtParameter,
+    RtSerialized,
+    RtType,
+    T_ANY,
+    T_ARRAY,
+    T_ENUM,
+    T_FALSE,
+    T_FUNCTION,
+    T_GENERIC,
+    T_INTERSECTION,
+    T_MAPPED,
+    T_NULL,
+    T_OBJECT,
+    T_THIS,
+    T_TRUE,
+    T_TUPLE,
+    T_UNDEFINED,
+    T_UNION,
+    T_UNKNOWN,
+    T_VARIABLE,
+    T_VOID
+} from '../common';
+import {findRelativePathToFile} from './find-relative-path';
+import {getPreferredExportForImport} from './get-exports-for-symbol';
+import {literalNode} from './literal-node';
+import {serialize} from './serialize';
+import {MappedType} from './ts-internal-types';
+import {
+    fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
+    serializeEntityNameAsExpression, typeHasValue
+} from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
-import { RttiContext } from './rtti-context';
-import { forwardRef } from './forward-ref';
-import { encodeParameter } from './encode-parameter';
+import {RttiContext} from './rtti-context';
+import {forwardRef} from './forward-ref';
+import {encodeParameter} from './encode-parameter';
 
 export interface TypeEncoderImpl {
     ctx: RttiContext;
-    referToType(type: ts.Type, typeNode?: ts.TypeNode,asAlias?:boolean): ts.Expression;
+
+    referToType(type: ts.Type, typeNode?: ts.TypeNode, asAlias?: boolean): ts.Expression;
+
     referToTypeNode(typeNode: ts.TypeNode): ts.Expression;
+
+    extractTypeAliasDeclarationFromTypeNode?(node: ts.TypeNode): ts.TypeAliasDeclaration | undefined;
+
+    extractTypeAliasDeclarationFromType?(type: ts.Type): ts.TypeAliasDeclaration | undefined
+
+    extractTypeAliasDeclarationFromSymbol?(symbol: ts.Symbol): ts.TypeAliasDeclaration | undefined
+
+    isTypeReferenceWithTypeArguments?(typeNode?: ts.TypeNode): boolean;
+
+    retrieveTypeAliasDeclaration?(type: ts.Type, typeNode?: ts.TypeNode): ts.TypeAliasDeclaration | undefined;
+
+    extractDeclarationFromSymbol?(syntaxKind:ts.SyntaxKind,...symbol: ts.Symbol[]): ts.Node | undefined;
 }
 
 export interface TypeLiteralOptions {
@@ -42,7 +82,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
     } else if ((type.flags & ts.TypeFlags.Boolean) !== 0) {
         return ts.factory.createIdentifier('Boolean');
     } else if ((type.flags & ts.TypeFlags.Void) !== 0) {
-        return serialize({ TΦ: T_VOID });
+        return serialize({TΦ: T_VOID});
     } else if ((type.flags & ts.TypeFlags.BigInt) !== 0) {
         return ts.factory.createIdentifier('BigInt');
     } else if (hasFlag(type.flags, ts.TypeFlags.EnumLiteral)) {
@@ -73,22 +113,33 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
             t: type.types.map(x => literalNode(encoder.referToType(x)))
         });
     } else if (hasFlag(type.flags, ts.TypeFlags.Null)) {
-        return serialize({ TΦ: T_NULL });
+        return serialize({TΦ: T_NULL});
     } else if (hasFlag(type.flags, ts.TypeFlags.Undefined)) {
-        return serialize({ TΦ: T_UNDEFINED });
+        return serialize({TΦ: T_UNDEFINED});
     } else if (hasFlag(type.flags, ts.TypeFlags.Unknown)) {
-        return serialize({ TΦ: T_UNKNOWN });
+        return serialize({TΦ: T_UNKNOWN});
     } else if (hasFlag(type.flags, ts.TypeFlags.Any)) {
-        return serialize({ TΦ: T_ANY });
+        return serialize({TΦ: T_ANY});
     } else if (isFlagType<ts.LiteralType>(type, ts.TypeFlags.Literal)) {
         if (type['intrinsicName'] === 'true')
-            return serialize({ TΦ: T_TRUE });
+            return serialize({TΦ: T_TRUE});
         else if (type['intrinsicName'] === 'false')
-            return serialize({ TΦ: T_FALSE });
+            return serialize({TΦ: T_FALSE});
         return serialize(type.value);
     } else if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
         if (type['isThisType'])
-            return serialize({ TΦ: T_THIS });
+            return serialize({TΦ: T_THIS});
+
+        if (type.symbol || type.aliasSymbol) {
+            /* handle type variable */
+            const dec = encoder.extractDeclarationFromSymbol(ts.SyntaxKind.TypeParameter,type.symbol, type.aliasSymbol);
+            const t = checker.getTypeAtLocation(dec);
+            return serialize({
+                TΦ: T_VARIABLE,
+                name: type.symbol?.name ?? type.aliasSymbol?.name,
+                t: literalNode(encoder.referToType(t))
+            });
+        }
 
         // TODO
         return ts.factory.createIdentifier('Object');
@@ -474,6 +525,7 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
 
                     if (isNodeJS()) {
                         let requireN = require;
+
                         function requireX(path) {
                             return requireN(path);
                         }
@@ -561,8 +613,8 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                     ts.factory.createCallExpression(
                         ts.factory.createIdentifier('require'),
                         [], [
-                        ts.factory.createStringLiteral(modulePath)
-                    ]
+                            ts.factory.createStringLiteral(modulePath)
+                        ]
                     ), exportedName);
             } else {
 

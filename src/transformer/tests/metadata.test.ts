@@ -48,7 +48,7 @@ import {
     RtParameter,
     RtUnionType,
     RtAliasType,
-    RtMappedType, AliasToken
+    RtMappedType, AliasToken, T_VARIABLE
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 
@@ -965,6 +965,7 @@ describe('rt:t', it => {
                  export type E<T> = {v:T,a:D<string>};
                  export type F = B | C | D<E<B>>;
                  export type K<T> = T;
+                 export type L = K<any>;
 
                  export type H = E<number>;
 
@@ -974,15 +975,18 @@ describe('rt:t', it => {
                     c:C,
                     k:K<number>;
                  }
-            `
+            `,
+            trace: true
         });
-
+        // @ TODO bugged
         const aliases = [
             {name:"A",type:Number},
             {name:"B",type:Number},
             {name:"C",type:String},
             {name:"G",type:String},
             {name:"D",type:BigInt},
+
+            {name:"K",type:BigInt},
         ];
 
 
@@ -1809,7 +1813,9 @@ describe('rt:t', it => {
         });
 
         let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-        expect(type()).to.equal(Object);
+        const resolveT = type();
+        expect(resolveT.TΦ).to.equal(T_VARIABLE);
+        expect(resolveT.name).to.equal("T");
     });
     it('emits for mapped types', async () => {
         let exports = await runSimple({
@@ -2144,7 +2150,8 @@ describe('rt:t', it => {
                         return <A>null;
                     }
                 }
-            `
+            `,
+            trace: true
         });
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');

@@ -3,6 +3,7 @@ import * as format from '../common/format';
 import { forwardRef, functionForwardRef } from './forward-ref';
 import { literalNode } from './literal-node';
 import { TypeEncoderImpl } from './type-literal';
+import {F_FLAGS} from "../common/format";
 
 export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDeclaration | ts.BindingElement | ts.OmittedExpression): format.RtSerialized<format.RtParameter> {
 
@@ -70,7 +71,7 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
     };
 
     if (f.length > 0)
-        meta.f = f.join('');
+        meta.f = f.join('') as F_FLAGS;
 
     return meta;
 }
