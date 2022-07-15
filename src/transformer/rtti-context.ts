@@ -14,7 +14,7 @@ export interface RttiContext {
     throwOnFailure: boolean;
     transformationContext: ts.TransformationContext;
     importMap: Map<string, TypeImport>;
-    typeMap: Map<number, ts.Expression>;
+    typeMap: Map<number|string, ts.Expression>;
     freeImportReference: number;
     currentNameScope: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.ClassExpression;
     emitStandardMetadata: boolean;

@@ -64,5 +64,8 @@
   "peerDependencies": {
     "reflect-metadata": "^0.1.13",
     "typescript": "4.6"
+  },
+  "dependencies": {
+    "ts-clone-node": "^1.0.0"
   }
 }

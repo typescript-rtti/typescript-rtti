@@ -15,7 +15,7 @@ import {
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
 import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
-import { serialize } from './serialize';
+import {Serialize, serializeExpression, serializeStringToExpression} from './serialize';
 import { literalNode } from './literal-node';
 import {T_ALIAS, T_ENUM} from '../common';
 import {forwardRef} from "./forward-ref";
@@ -286,7 +286,7 @@ export class MetadataEmitter extends RttiVisitor {
                                 type['id']
                             ),
                             ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-                            serialize({ TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t')) })
+                            serializeExpression({ TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t')) })
                         )
                     ),
                     [],
@@ -304,30 +304,26 @@ export class MetadataEmitter extends RttiVisitor {
         if (hasModifiers(decl.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
             emitName = 'default';
 
+        const encoder = this.metadataEncoder.typeEncoder;
+
         const identifierName = `AΦ${emitName}`;
 
-        let tokenDecl = ts.factory.createVariableStatement(
-            [],
-            ts.factory.createVariableDeclarationList(
-                [ts.factory.createVariableDeclaration(
-                    ts.factory.createIdentifier(identifierName),
-                    undefined,
-                    undefined,
-                    serialize({
-                        name: decl.name.text,
-                        identity: literalNode(ts.factory.createCallExpression(
-                            ts.factory.createIdentifier("Symbol"),
-                            undefined,
-                            [ts.factory.createStringLiteral(`${decl.name.text} (alias)`)]
-                        ))
-                    })
-                )],
-                ts.NodeFlags.None
-            )
-        );
+        let tokenDecl = Serialize`var ${identifierName} = ${
+            {
+                name: decl.name.text,
+                identity: Symbol(decl.name.text + " (alias)")
+            }
+        };`;
+
+
+
         decl = this.visitEachChild(decl);
+
         let type = this.checker.getTypeAtLocation(decl);
         let typeNode: ts.TypeNode = decl.type;
+
+        const customId = encoder.getTypeHash(decl);
+
         return [
             decl,
             tokenDecl,
@@ -336,40 +332,14 @@ export class MetadataEmitter extends RttiVisitor {
                     ? [this.exportToken(identifierName)]
                     : []
             ),
-            ts.factory.createExpressionStatement(
-                ts.factory.createCallExpression(
-                    ts.factory.createArrowFunction(
-                        [], [],
-                        [
-                            ts.factory.createParameterDeclaration([], [], undefined, 't')
-                        ],
-                        undefined,
-                        ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                        ts.factory.createBinaryExpression(
-                            ts.factory.createElementAccessExpression(
-                                ts.factory.createPropertyAccessExpression(
-                                    ts.factory.createIdentifier('__RΦ'),
-                                    't'
-                                ),
-                                ts.factory.createStringLiteral(emitName + ':' + type['id'])
-                            ),
-                            ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-                            serialize({
-                                TΦ: T_ALIAS,
-                                name: emitName,
-                                a: literalNode(ts.factory.createIdentifier(`t`)),
-                                t: literalNode(forwardRef(this.metadataEncoder.typeEncoder.referToType(type, typeNode, false))),
-                                p: decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []
-                            })
-                        )
-                    ),
-                    [],
-                    [
-                        ts.factory.createIdentifier(identifierName)
-                    ]
-                )
-            ),
-            [metadataDecorator('rt:t', literalNode(forwardRef(this.metadataEncoder.typeEncoder.referToType(type, typeNode))))]
+            Serialize`(t => __RΦ.t["${customId}"] =
+            {TΦ: "${T_ALIAS}",
+            name: "${emitName}",
+            a: t,
+            t: () => ${encoder.referToType(type, typeNode,false)},
+            p: ${decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []}
+            })(${identifierName});`,
+            [metadataDecorator('rt:t', literalNode(forwardRef(encoder.accessDeclaredType(customId))))]
                 .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
                     ts.factory.createIdentifier(identifierName)
                 ])))
@@ -389,7 +359,7 @@ export class MetadataEmitter extends RttiVisitor {
                     ts.factory.createIdentifier(`IΦ${emitName}`),
                     undefined,
                     undefined,
-                    serialize({
+                    serializeExpression({
                         name: decl.name.text,
                         prototype: {},
                         identity: literalNode(ts.factory.createCallExpression(

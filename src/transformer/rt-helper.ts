@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { literalNode } from './literal-node';
-import { serialize } from './serialize';
+import {serialize, serializeExpression} from './serialize';
 
 /*
 const __RΦ = {
@@ -24,11 +24,11 @@ const __RΦ = {
 }
  */
 
-export function rtStore(typeMap: Map<number, ts.Expression>) {
+export function rtStore(typeMap: Map<number|string, ts.Expression>) {
     const factory = ts.factory;
 
     let typeEntries = Array.from(typeMap.entries()).map(([i, t]) => factory.createPropertyAssignment(
-        factory.createComputedPropertyName(ts.factory.createNumericLiteral(i)),
+        factory.createComputedPropertyName(typeof i === 'number'? ts.factory.createNumericLiteral(i) : ts.factory.createStringLiteral(i)),
         t
     ));
     let typeStore = factory.createObjectLiteralExpression(typeEntries);
@@ -42,7 +42,7 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                 factory.createIdentifier("__RΦ"),
                 undefined,
                 undefined,
-                serialize({
+                serializeExpression({
                     m: literalNode(factory.createArrowFunction(
                         undefined,
                         undefined,

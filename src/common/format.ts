@@ -257,10 +257,21 @@ export interface LiteralSerializedNode {
     node: ts.Expression;
 }
 
+export interface CodeSerializedNode {
+    $__isTSNode: true;
+    code: string;
+}
+
 export type RtSerialized<T> = T | {
-    [K in keyof T]: T[K] | RtSerialized<T[K]> | (T[K] extends Array<any> ? LiteralSerializedNode[] : LiteralSerializedNode);
+    [K in keyof T]: T[K] | RtSerialized<T[K]> | (T[K] extends Array<any> ? LiteralSerializedNode[] : LiteralSerializedNode) | typeof Object | Function;
 };
 
 export function isLiteralNode<T>(node: T | LiteralSerializedNode): node is LiteralSerializedNode {
     return !!node['$__isTSNode'];
+}
+export function isCodeNode<T>(node: T | CodeSerializedNode): node is CodeSerializedNode {
+    return !!node['$__isTSNode'] && node['code'] !== undefined;
+}
+export function isStatementNode<T>(node: ts.Node): boolean {
+    return node.hasOwnProperty('_statementBrand');
 }

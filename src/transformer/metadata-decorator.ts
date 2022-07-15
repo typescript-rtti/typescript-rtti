@@ -2,7 +2,7 @@ import ts from 'typescript';
 import { legacyDecorator } from './legacy-decorator';
 import { literalNode } from './literal-node';
 import { ExternalDecorator } from './metadata-collector';
-import { serialize } from './serialize';
+import {serialize, serializeExpression} from './serialize';
 import { expressionForPropertyName, hasFlag, hasModifier } from './utils';
 
 export function metadataDecorator(key: string, object: any) {
@@ -12,7 +12,7 @@ export function metadataDecorator(key: string, object: any) {
             [],
             [
                 ts.factory.createStringLiteral(key),
-                serialize(object)
+                serializeExpression(object)
             ]
         )
     );
@@ -148,15 +148,15 @@ export function decorateClassExpression(classExpr: ts.ClassExpression, decorator
         ),
         [], [
         classExpr,
-        serialize(decorators.map(d => literalNode(d.expression))), // on class
-        serialize(
+            serializeExpression(decorators.map(d => literalNode(d.expression))), // on class
+            serializeExpression(
             instancePropDecorators
                 .map(x => [
                     literalNode(expressionForPropertyName(x.property)),
                     literalNode(x.decorator.expression)
                 ])
         ),
-        serialize(
+            serializeExpression(
             staticPropDecorators
                 .map(x => [
                     literalNode(expressionForPropertyName(x.property)),

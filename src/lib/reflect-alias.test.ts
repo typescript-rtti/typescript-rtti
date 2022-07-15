@@ -4,7 +4,7 @@ import {ReflectedClassRef, ReflectedGenericRef, ReflectedInterfaceRef, Reflected
 import {runSimple} from "../runner.test";
 import {reify, reflect} from "./reflect";
 
-describe('reflect<T>()', it => {
+describe('reflect<T>() alias', it => {
     it('reifies and reflects', async () => {
         let exports = await runSimple({
             modules: {
@@ -14,13 +14,56 @@ describe('reflect<T>()', it => {
                 import { reflect } from 'typescript-rtti';
                 export type Something = number;
                 export const reflectedTypeRef = reflect<Something>();
-                export function test(x: Something) {
-                    return reflect<Something>();
-                }
+                console.log("reifies and reflects")
             `,
+            trace: true
         });
         expect(exports.reflectedTypeRef.isAliased()).to.equal(true);
         expect((exports.reflectedTypeRef as ReflectedTypeRef).as('alias').token)
+            .to.equal(exports.AΦSomething);
+    });
+    it('reflects A<T> = T', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reify, reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export type Something<T> = T;
+                export const reflectedTypeRef = reflect<Something<number>>();
+                export const reflectedTypeRef2 = reflect<Something<number>>();
+                console.log("reflects A<T> = T")
+            `,
+            trace: true
+        });
+        expect(exports.reflectedTypeRef.isGeneric()).to.equal(true);
+        expect((exports.reflectedTypeRef as ReflectedTypeRef).as('generic').baseType.as('alias').token)
+            .to.equal(exports.AΦSomething);
+
+        expect(exports.reflectedTypeRef2.isGeneric()).to.equal(true);
+        expect((exports.reflectedTypeRef2 as ReflectedTypeRef).as('generic').baseType.as('alias').token)
+            .to.equal(exports.AΦSomething);
+    });
+    it('reflects A<T,K> = T | K', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reify, reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export type Something<T,K> = T | K;
+                export const reflectedTypeRef = reflect<Something<number,number>>();
+                export const reflectedTypeRef2 = reflect<Something<number,number>>();
+                console.log("reflects A<T,K> = T | K")
+            `,
+            trace: true
+        });
+        expect(exports.reflectedTypeRef.isGeneric()).to.equal(true);
+        expect((exports.reflectedTypeRef as ReflectedTypeRef).as('generic').baseType.as('alias').token)
+            .to.equal(exports.AΦSomething);
+
+        expect(exports.reflectedTypeRef2.isGeneric()).to.equal(true);
+        expect((exports.reflectedTypeRef2 as ReflectedTypeRef).as('generic').baseType.as('alias').token)
             .to.equal(exports.AΦSomething);
     });
     it('alias conversions', async () => {
