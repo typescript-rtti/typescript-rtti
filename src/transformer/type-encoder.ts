@@ -1,10 +1,11 @@
 import ts from "typescript";
-import {T_GENERIC, T_MAPPED, T_STAND_IN} from "../common/format";
+import {T_GENERIC, T_STAND_IN} from "../common/format";
 import {literalNode} from "./literal-node";
 import {RttiContext} from "./rtti-context";
-import {serializeExpression, Serialize} from "./serialize";
+import {serializeExpression} from "./serialize";
 import {typeLiteral} from "./type-literal";
 import {hasFlag} from './utils';
+import {forwardRef} from "./forward-ref";
 
 export class TypeEncoder {
     constructor(
@@ -47,9 +48,9 @@ export class TypeEncoder {
             return node as unknown as ts.TypeAliasDeclaration;
         }
 
-        if (node.parent?.kind === ts.SyntaxKind.TypeAliasDeclaration) {
-            return node.parent as unknown as ts.TypeAliasDeclaration;
-        }
+         if (node.parent?.kind === ts.SyntaxKind.TypeAliasDeclaration) {
+             return node.parent as ts.TypeAliasDeclaration;
+         }
 
         if (node.kind !== ts.SyntaxKind.TypeReference) {
             return undefined;
@@ -107,8 +108,28 @@ export class TypeEncoder {
         return undefined;
     }
 
-    referToTypeNode(typeNode: ts.TypeNode): ts.Expression {
-        return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
+    referToTypeNode(typeNode: ts.TypeNode, asAlias = true): ts.Expression {
+        if (typeNode == null){
+            throw new Error("referToTypeNode typeNode is null");
+        }
+
+        return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode, asAlias);
+    }
+
+    referToNode(node: ts.Node, asAlias = true): ts.Expression {
+        if (node == null){
+            throw new Error("referToNode node is null");
+        }
+
+        if (ts.isTypeNode(node)){
+            return this.referToTypeNode(node as ts.TypeNode, asAlias);
+        }
+        if (ts.isTypeAliasDeclaration(node)){
+            return this.referToTypeNode(node.type, asAlias);
+        }
+
+        // expression, computed/implicit types ect
+        return this.referToType(this.checker.getTypeAtLocation(node), undefined, asAlias);
     }
 
     isTypeReferenceWithTypeArguments(typeNode?: ts.TypeNode): boolean {
@@ -122,16 +143,6 @@ export class TypeEncoder {
 
     retrieveTypeAliasDeclaration(type: ts.Type, typeNode?: ts.TypeNode): ts.TypeAliasDeclaration | undefined {
         return this.extractTypeAliasDeclarationFromType(type) || this.extractTypeAliasDeclarationFromTypeNode(typeNode);
-    }
-
-    /* retrieve the customTypeId from the type if any, otherwise the type id */
-    getCustomTypeId(node: ts.Node | ts.Type): any {
-        if (node) {
-            if ("kind" in node && node.kind === ts.SyntaxKind.TypeAliasDeclaration) {
-                return this.getTypeHash(node as ts.TypeAliasDeclaration);
-            }
-            return node["_customTypeId"];
-        }
     }
 
     getTypeHash(node: ts.TypeAliasDeclaration | ts.TypeReferenceNode): string {
@@ -170,49 +181,50 @@ export class TypeEncoder {
                     const ref = typeNode as ts.TypeReferenceNode;
                     // get node id
                     const Tid = this.getTypeHash(ref);
-                    console.log(`Tid: ${Tid}`);
                     if (this.declaredTypeExists(Tid)) {
                         return Tid;
                     }
 
                     // create new type
-                    this.declareType(serializeExpression(null), Tid);
+                    this.declareType(null, Tid);
 
                     /* emit as generic */
                     // @TODO handle builtin types aliases like Partial<T>
 
+                    // const tp = this.referToType(this.checker.getTypeAtLocation(typeAlias), typeAlias.type, false);
+                    //
+                    // const aliasOrType = ts.factory.createBinaryExpression(
+                    //     this.referToType(this.checker.getTypeAtLocation(typeAlias), typeAlias.type),
+                    //     ts.factory.createToken(ts.SyntaxKind.BarBarToken),
+                    //     tp
+                    // )
+
+                    const tp = this.referToNode(typeAlias,false);
+
                     const aliasOrType = ts.factory.createBinaryExpression(
-                        this.referToType(this.checker.getTypeAtLocation(typeAlias), typeAlias.type),
+                        this.referToNode(typeAlias),
                         ts.factory.createToken(ts.SyntaxKind.BarBarToken),
-                        this.referToType(this.checker.getTypeAtLocation(typeAlias), typeAlias.type, false)
+                        tp
                     )
 
-                    const T = serializeExpression({
+                    this.declareType({
                         TΦ: T_GENERIC,
-                        t: aliasOrType, // reference to the original type alias
-                        p: ref.typeArguments.map(x => this.referToType(this.checker.getTypeAtLocation(x), x))
-                    });
-
-                    this.declareType(T, Tid);
+                        t: forwardRef(aliasOrType), // reference to the original type alias
+                        p: ref.typeArguments.map(x => this.referToNode(x)),
+                    }, Tid);
 
                     return Tid;
 
-                }
-            }
-
-
-            /* ignore type reference with arguments as it's emitted as new type with new id */
-            if (!this.isTypeReferenceWithTypeArguments(typeNode)) {
-                const cid = this.getCustomTypeId(type) || this.getCustomTypeId(typeNode) || this.getCustomTypeId(typeAlias);
-                if (cid) {
-                    typeRef = cid;
+                }else{
+                    return this.getTypeHash(typeAlias);
                 }
             }
         }
         return typeRef;
     }
 
-    declareType(expr: ts.Expression, id: number | string, name?: string, useStandIn = false): ts.Expression {
+    declareType(expr: any, id: number | string, name?: string, useStandIn = false): ts.Expression {
+        expr = serializeExpression(expr);
         let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
         if (useStandIn) {
             // The class or interface may not be defined at the top level of the module.

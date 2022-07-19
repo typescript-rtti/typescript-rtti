@@ -66,7 +66,7 @@ describe('ReflectedClass#matchesValue()', it => {
         expect(ref2.matchesValue({foo: 123, bar: 'world', baz: 'hey'})).to.be.true;
         expect(ref2.matchesValue({foo: 123, bar: 'world', baz: 123})).to.be.false;
     });
-    it('infinite recursion', async () => {
+    it('infinite recursion alias', async () => {
         let exports = await runSimple({
             modules: {
                 "typescript-rtti": {reflect},
@@ -84,11 +84,90 @@ describe('ReflectedClass#matchesValue()', it => {
                 };
                 export type A1<T> = B1<T,number>;
                 export const refA1 = reflect<A1<number>>();
+                console.log("infinite recursion");
+            `,
+            trace:true
+        });
+        expect(exports.refA.matchesValue(1)).to.be.false;
+        expect(exports.refA.matchesValue({a: {a: {a: {a: {}}}}})).to.be.false; // it would never match as it's an infinite recursion
+
+        expect(exports.refA1.matchesValue(1)).to.be.false;
+        expect(exports.refA1.matchesValue({a: {a: {}}})).to.be.true;
+    });
+    it('infinite recursion multiple hops alias', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export type B<T> = {
+                    b:A<T,string>
+                }
+                export type A<T,K> = {
+                    a?: B<K>
+                };
+                export type C<T> = A<T,number>;
+                export const refA = reflect<C<number>>();
+            `
+        });
+        expect(exports.refA.matchesValue(1)).to.be.false;
+        expect(exports.refA.matchesValue({a: {a: {}}})).to.be.false;
+        expect(exports.refA.matchesValue({a: {b: {a: {b: {}}}}})).to.be.true;
+    });
+    it('infinite recursion interface + alias', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export interface B<T,K> {
+                    a: A<K>
+                };
+                export type A<T> = B<T,number>;
+                export const refA = reflect<A<number>>();
+
+                export interface B1<T,K> {
+                    a?: A1<K>
+                };
+                export type A1<T> = B1<T,number>;
+                export const refA1 = reflect<A1<number>>();
+                console.log("infinite recursion interface + alias");
             `,
             trace: true
         });
         expect(exports.refA.matchesValue(1)).to.be.false;
-        expect(exports.refA.matchesValue({a: {a: 1}})).to.be.false; // it would never match as it's an infinite recursion
+        expect(exports.refA.matchesValue({a: {a: {a: {a: {}}}}})).to.be.false; // it would never match as it's an infinite recursion
+
+        expect(exports.refA1.matchesValue(1)).to.be.false;
+        expect(exports.refA1.matchesValue({a: {a: {}}})).to.be.true;
+    });
+    it('infinite recursion interface', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export interface B<T,K> {
+                    a: A<K>
+                };
+                export interface A<T> extends B<T,number>{
+                }
+                export const refA = reflect<A<number>>();
+
+                export interface B1<T,K> {
+                    a?: A1<K>
+                };
+                export interface A1<T> extends B1<T,number>{
+                }
+                export const refA1 = reflect<A1<number>>();
+                console.log("infinite recursion");
+            `
+        });
+        expect(exports.refA.matchesValue(1)).to.be.false;
+        expect(exports.refA.matchesValue({a: {a: {a: {a: {}}}}})).to.be.false; // it would never match as it's an infinite recursion
 
         expect(exports.refA1.matchesValue(1)).to.be.false;
         expect(exports.refA1.matchesValue({a: {a: {}}})).to.be.true;
@@ -114,8 +193,7 @@ describe('ReflectedClass#matchesValue()', it => {
                 export const refC = reflect<C<number>>();
                 export const refE = reflect<E<boolean>>();
                 export const refD = reflect<D<number>>();
-            `,
-            trace: true
+            `
         });
         expect(exports.refA.matchesValue(1)).to.be.true;
         expect(exports.refA.matchesValue("1")).to.be.false;
@@ -170,11 +248,15 @@ describe('ReflectedClass#matchesValue()', it => {
                     a:D<T>, b:D<T>, c:K;
                 }
 
+                export type Arr<T> = Array<T>;
+                export type Tup<T> = [T,T];
+
                 export const refD = reflect<D<number>>();
                 export const refD1 = reflect<D<1>>();
                 export const refE = reflect<E<[1,2],number>>();
-            `,
-            trace: true
+                export const refArr = reflect<Arr<string>>();
+                export const refTup = reflect<Tup<boolean>>();
+            `
         });
         expect(exports.refD.matchesValue(1)).to.be.false;
         expect(exports.refD.matchesValue({a: "", b: 1})).to.be.false;
@@ -184,6 +266,14 @@ describe('ReflectedClass#matchesValue()', it => {
 
         expect(exports.refD1.matchesValue({a: 2, b: 2})).to.be.false;
         expect(exports.refD1.matchesValue({a: 1, b: 1})).to.be.true;
+
+        expect(exports.refArr.matchesValue([1,2])).to.be.false;
+        expect(exports.refArr.matchesValue([])).to.be.true;
+        expect(exports.refArr.matchesValue(["hello"])).to.be.true;
+
+        expect(exports.refTup.matchesValue([1,2])).to.be.false;
+        expect(exports.refTup.matchesValue([])).to.be.true;
+        expect(exports.refTup.matchesValue([true,false])).to.be.true;
 
         expect(exports.refE.matchesValue({a: "", b: 1, c: 1})).to.be.false;
         expect(exports.refE.matchesValue({a: {}, b: {}, c: 1})).to.be.false;

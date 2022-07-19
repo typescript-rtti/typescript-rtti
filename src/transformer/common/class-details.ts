@@ -5,4 +5,5 @@ export interface ClassDetails {
     propertyNames: ts.PropertyName[];
     staticPropertyNames: ts.PropertyName[];
     staticMethodNames: ts.PropertyName[];
+    typeParameters: string[];
 }

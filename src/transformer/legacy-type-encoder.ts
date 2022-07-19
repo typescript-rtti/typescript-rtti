@@ -18,6 +18,14 @@ export class LegacyTypeEncoder {
         return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }
 
+    referToNode(node: ts.Node): ts.Expression {
+        if (node && ts.isTypeNode(node)){
+            return this.referToTypeNode(node as ts.TypeNode);
+        }
+        // expression, computed/implicit types ect
+        return this.referToType(this.checker.getTypeAtLocation(node), undefined);
+    }
+
     referToType(type: ts.Type, typeNode?: ts.TypeNode): ts.Expression {
         if (!type)
             return ts.factory.createIdentifier('Object');

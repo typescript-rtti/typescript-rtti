@@ -82,6 +82,7 @@ export interface AliasToken<T = any> {
     identity: symbol;
 }
 
+
 export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
     | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN } | RtFunctionType
     | Function | Literal | InterfaceToken | AliasToken | RtVariableType | RtAliasType;
@@ -92,6 +93,8 @@ export type RtBrandedType = {
     | typeof T_NULL | typeof T_TUPLE | typeof T_ARRAY | typeof T_THIS | typeof T_GENERIC | typeof T_MAPPED
     | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN | typeof T_ALIAS;
 };
+
+export type RtTypeRef = RtType | (()=>RtType);
 
 export type RtIntrinsicIndicator = typeof T_VOID | typeof T_ANY | typeof T_UNKNOWN | typeof T_UNDEFINED | typeof T_TRUE | typeof T_FALSE | typeof T_THIS | typeof T_NULL;
 export type RtIntrinsicType<T extends RtIntrinsicIndicator = RtIntrinsicIndicator> = { TΦ: T; };
@@ -128,14 +131,14 @@ export interface RtAliasType {
     TΦ: typeof T_ALIAS;
     name: string;
     a: AliasToken;
-    t: ()=>RtType;
+    t: RtTypeRef;
     p: Array<string> | undefined;
 }
 
 export interface RtVariableType {
     TΦ: typeof T_VARIABLE;
     name: string;
-    t: ()=>RtType; // type reference
+    t: RtTypeRef; // type reference
 }
 
 export interface RtUnionType {
@@ -188,7 +191,7 @@ export interface RtMappedType {
 
 export interface RtGenericType {
     TΦ: typeof T_GENERIC;
-    t: RtType;
+    t: RtTypeRef; // base type that can be another generic, alias ect
     p: RtType[];
 }
 
@@ -274,4 +277,27 @@ export function isCodeNode<T>(node: T | CodeSerializedNode): node is CodeSeriali
 }
 export function isStatementNode<T>(node: ts.Node): boolean {
     return node.hasOwnProperty('_statementBrand');
+}
+
+const handler = {
+    construct() {
+        return handler
+    }
+}
+
+export const isConstructorFunction = x => {
+    if (typeof x !== 'function') {
+        return false;
+    }
+    try {
+        return !!(new (new Proxy(x, handler))())
+    } catch (e) {
+        return false
+    }
+}
+
+export function resolveType(value:RtTypeRef): RtType {
+    if (typeof value === 'function' && !isConstructorFunction(value))
+        return value()
+    return value;
 }

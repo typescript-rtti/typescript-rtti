@@ -84,6 +84,8 @@ export class MetadataEncoder {
             decs.push(metadataDecorator('rt:Sm', this.prepareElementNames(details.staticMethodNames)));
         decs.push(metadataDecorator('rt:m', this.prepareElementNames(details.methodNames)));
 
+        decs.push(metadataDecorator('rt:tp', details.typeParameters));
+
         if (ts.isClassDeclaration(klass) || ts.isClassExpression(klass)) {
             let constructor = klass.members.find(x => ts.isConstructorDeclaration(x)) as ts.ConstructorDeclaration;
             if (constructor) {

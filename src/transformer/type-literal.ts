@@ -45,7 +45,8 @@ export interface TypeEncoderImpl {
 
     referToType(type: ts.Type, typeNode?: ts.TypeNode, asAlias?: boolean): ts.Expression;
 
-    referToTypeNode(typeNode: ts.TypeNode): ts.Expression;
+    referToTypeNode(typeNode: ts.TypeNode, asAlias?: boolean): ts.Expression;
+    referToNode(node: ts.Node, asAlias?: boolean): ts.Expression;
 
     extractTypeAliasDeclarationFromTypeNode?(node: ts.TypeNode): ts.TypeAliasDeclaration | undefined;
 
@@ -133,11 +134,10 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         if (type.symbol || type.aliasSymbol) {
             /* handle type variable */
             const dec = encoder.extractDeclarationFromSymbol(ts.SyntaxKind.TypeParameter,type.symbol, type.aliasSymbol);
-            const t = checker.getTypeAtLocation(dec);
             return serializeExpression({
                 TΦ: T_VARIABLE,
                 name: type.symbol?.name ?? type.aliasSymbol?.name,
-                t: literalNode(encoder.referToType(t))
+                t: literalNode(encoder.referToNode(dec))
             });
         }
 
@@ -198,8 +198,8 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 try {
                     return serializeExpression({
                         TΦ: T_GENERIC,
-                        t: literalNode(encoder.referToType(typeRef.target)),
-                        p: (typeRef.typeArguments ?? []).map(x => literalNode(encoder.referToType(x)))
+                        t: forwardRef(encoder.referToType(typeRef.target)),
+                        p: (typeRef.typeArguments ?? []).map(x => encoder.referToType(x)),
                     });
                 } catch (e) {
                     console.error(`RTTI: Error while serializing type '${typeRef.symbol.name}': ${e.message}`);
@@ -214,10 +214,10 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         // the array type and work around the lack of the Array symbol.
 
         if (!type.symbol && typeNode && ts.isArrayTypeNode(typeNode)) {
-            let typeRef = checker.getTypeAtLocation(typeNode.elementType);
+            //let typeRef = checker.getTypeAtLocation(typeNode.elementType);
             return serializeExpression({
                 TΦ: T_ARRAY,
-                e: literalNode(encoder.referToType(typeRef))
+                e: literalNode(encoder.referToNode(typeNode.elementType))
             });
         }
 

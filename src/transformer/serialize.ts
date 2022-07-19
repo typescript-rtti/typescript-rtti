@@ -1,20 +1,6 @@
 import ts, {Statement, TransformationContext} from 'typescript';
-import {isCodeNode, isLiteralNode, isStatementNode, RtSerialized} from '../common';
+import {isCodeNode, isConstructorFunction, isLiteralNode, isStatementNode, RtSerialized} from '../common';
 import {cloneNode} from "ts-clone-node";
-
-const handler = {
-    construct() {
-        return handler
-    }
-}
-
-const isConstructor = x => {
-    try {
-        return !!(new (new Proxy(x, handler))())
-    } catch (e) {
-        return false
-    }
-}
 
 /**
  * String template literal serializer.
@@ -252,7 +238,7 @@ export function serialize<T>(object: any): ts.Expression | ts.Statement {
 
 
     // Classes references like Date,Number,String,Boolean,Function, serialize as identifiers
-    if (isConstructor(object) && object.name) {
+    if (isConstructorFunction(object) && object.name) {
         return ts.factory.createIdentifier(object.name)
     }
 

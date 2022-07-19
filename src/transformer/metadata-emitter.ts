@@ -319,10 +319,8 @@ export class MetadataEmitter extends RttiVisitor {
 
         decl = this.visitEachChild(decl);
 
-        let type = this.checker.getTypeAtLocation(decl);
-        let typeNode: ts.TypeNode = decl.type;
-
         const customId = encoder.getTypeHash(decl);
+        const forwardedType = encoder.referToTypeNode(decl.type, false);
 
         return [
             decl,
@@ -336,7 +334,7 @@ export class MetadataEmitter extends RttiVisitor {
             {TΦ: "${T_ALIAS}",
             name: "${emitName}",
             a: t,
-            t: () => ${encoder.referToType(type, typeNode,false)},
+            t: () => ${forwardedType},
             p: ${decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []}
             })(${identifierName});`,
             [metadataDecorator('rt:t', literalNode(forwardRef(encoder.accessDeclaredType(customId))))]
