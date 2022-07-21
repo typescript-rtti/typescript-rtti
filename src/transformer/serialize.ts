@@ -105,7 +105,12 @@ export function serializeStringToExpression(str: string): ts.Expression {
         filename, code, ts.ScriptTarget.ES2016, true, ts.ScriptKind.TS
     );
 
-    const statement = cloneNode(sourceFile).statements[0]; // we need to clone the node to prevent emit errors and corruptions
+    const statement = cloneNode(sourceFile,{
+        setParents: false,
+        setOriginalNodes: false,
+        preserveSymbols: false,
+        preserveComments: false,
+    }).statements[0]; // we need to clone the node to prevent emit errors and corruptions
     if (statement == null) {
         throw new Error(`serializeStringToAst code does not contain a statement ${code}`);
     }
@@ -122,7 +127,12 @@ export function serializeString(str: string): ts.SourceFile {
         filename, code, ts.ScriptTarget.ES2016, true, ts.ScriptKind.TS
     );
 
-    return cloneNode(sourceFile); // we need to clone the node to prevent emit errors and corruptions
+    return cloneNode(sourceFile,{
+        setParents: false,
+        setOriginalNodes: false,
+        preserveSymbols: false,
+        preserveComments: false,
+    }); // we need to clone the node to prevent emit errors and corruptions
 }
 
 function isTypescriptNode(x: any): x is ts.Node {

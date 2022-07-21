@@ -15,7 +15,7 @@ import {
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
 import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
-import {Serialize, serializeExpression, serializeStringToExpression} from './serialize';
+import {Serialize, serializeExpression} from './serialize';
 import { literalNode } from './literal-node';
 import {T_ALIAS, T_ENUM} from '../common';
 import {forwardRef} from "./forward-ref";

@@ -90,6 +90,7 @@ const PACKAGES: Record<string, Package> = {
 const TYPESCRIPTS = [
     '4.5',
     '4.6',
+    '4.7'
     //'4', 'latest', 'next', 'beta', 'rc', 'insiders'
 ];
 

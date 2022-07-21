@@ -332,7 +332,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 type.symbol.members.forEach((value, key) => {
                     // handle { } object literal alias
                     if (value.valueDeclaration){
-                        if (ts.isPropertySignature(value.valueDeclaration)){
+                        if (ts.isPropertySignature(value.valueDeclaration) && value.valueDeclaration.type){
                             members.push({
                                 n: <string>key,
                                 f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
