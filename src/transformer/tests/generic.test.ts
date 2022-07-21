@@ -55,6 +55,29 @@ describe('generics compiler', it => {
         expect(params).to.eql(["T", "K", "L"]);
     });
 
+    it('reference alias inside <T> argument', async () => {
+        let exports = await runSimple({
+            code: `
+                export interface I<T> {
+                    a: T;
+                    b: T;
+                }
+                export type B = number;
+                export type A = I<B>;
+            `
+        });
+        const cls = exports.AΦA;
+        const AA = Reflect.getMetadata('rt:t', cls)() as RtAliasType;
+        expect(AA.TΦ).to.eql(T_ALIAS);
+        expect(AA.name).to.eql("A");
+        const IB = resolveType(AA.t) as RtGenericType;
+        expect(IB.TΦ).to.eql(T_GENERIC);
+        expect(IB.p[0]).to.eql(Reflect.getMetadata('rt:t', exports.AΦB)());
+
+        const AB = resolveType(IB.t) as InterfaceToken;
+        expect(AB.name).to.eql("I");
+
+    });
 
     it('deep aliased generics', async () => {
         let exports = await runSimple({
@@ -76,16 +99,19 @@ describe('generics compiler', it => {
             `
         });
         const cls = exports.AΦC;
-        const c = Reflect.getMetadata('rt:t', cls)() as RtAliasType;
-        expect(c.TΦ).to.eql(T_ALIAS);
-        const c2 = resolveType(c.t) as RtAliasType;
-        expect(c2.TΦ).to.eql(T_ALIAS);
-        const da = resolveType(c2.t) as RtGenericType;
-        expect(da.TΦ).to.eql(T_GENERIC);
-        expect(da.p.length).to.eql(1);
-        const pa = da.p[0] as RtAliasType;
-        expect(pa.TΦ).to.eql(T_ALIAS);
-        expect(pa.name).to.eql("A");
+        const AC = Reflect.getMetadata('rt:t', cls)() as RtAliasType;
+        expect(AC.TΦ).to.eql(T_ALIAS);
+        expect(AC.name).to.eql("C");
+        const AC2 = resolveType(AC.t) as RtAliasType;
+        expect(AC2.TΦ).to.eql(T_ALIAS);
+        expect(AC2.name).to.eql("C2");
+        const DA = resolveType(AC2.t) as RtGenericType;
+        expect(DA.TΦ).to.eql(T_GENERIC);
+        expect(DA.p[0]).to.eql(Reflect.getMetadata('rt:t', exports.AΦA)());
+
+        const D = resolveType(DA.t) as InterfaceToken;
+        expect(D.name).to.eql("D");
+
     });
 
     it('deep aliased generics 2', async () => {

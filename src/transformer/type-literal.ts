@@ -197,10 +197,17 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 }
 
                 try {
+                    /* resolve aliases */
+                    let args=[];
+                    if (typeNode && ts.isTypeReferenceNode(typeNode) && typeNode.typeArguments) {
+                        args = typeNode.typeArguments.map(t => encoder.referToTypeNode(t));
+                    }else{
+                        args = (typeRef.typeArguments ?? []).map(t => encoder.referToType(t));
+                    }
                     return serializeExpression({
                         TΦ: T_GENERIC,
                         t: forwardRef(encoder.referToType(typeRef.target)),
-                        p: (typeRef.typeArguments ?? []).map(x => encoder.referToType(x)),
+                        p: args,
                     });
                 } catch (e) {
                     console.error(`RTTI: Error while serializing type '${typeRef.symbol.name}': ${e.message}`);

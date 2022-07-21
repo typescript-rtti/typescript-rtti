@@ -61,6 +61,20 @@ export class TypeEncoder {
         return this.extractTypeAliasDeclarationFromSymbol(symb);
     }
 
+    extractDeclarationsFromTypeNode(node: ts.TypeNode): ts.Declaration[] | undefined {
+        if (node == null) {
+            return undefined;
+        }
+
+        if (node.kind !== ts.SyntaxKind.TypeReference) {
+            return undefined;
+        }
+        const anode = node as ts.TypeReferenceNode;
+        const symb = this.checker.getSymbolAtLocation(anode.typeName);
+
+        return this.extractDeclarationsFromSymbol(symb);
+    }
+
     extractTypeAliasDeclarationFromType(type: ts.Type): ts.TypeAliasDeclaration | undefined {
         if (type == null) {
             return undefined;
@@ -74,21 +88,27 @@ export class TypeEncoder {
 
     extractDeclarationFromSymbol(syntaxKind: ts.SyntaxKind, ...symbol: ts.Symbol[]): ts.Node | undefined {
         for (const s of symbol) {
-            const d = this._extractDeclarationFromSymbol(syntaxKind, s);
-            if (d) {
-                return d;
+            const decls = this.extractDeclarationsFromSymbol(s);
+            if (decls == null) {
+                continue;
+            }
+            for (const d of decls) {
+                // @TODO should we check the fully qualified name?
+                if (d.kind === syntaxKind) {
+                    return d;
+                }
             }
         }
         return undefined;
     }
 
-    protected _extractDeclarationFromSymbol(syntaxKind: ts.SyntaxKind, symbol: ts.Symbol): ts.Node | undefined {
+    protected extractDeclarationsFromSymbol(symbol: ts.Symbol): ts.Declaration[] | undefined {
         if (symbol == null) {
             return undefined;
         }
         if ((symbol.flags & ts.SymbolFlags.Alias) === ts.SymbolFlags.Alias) {
             //console.log(`Symbol ${symbol.name} is an alias`);
-            symbol = this.checker.getAliasedSymbol(symbol)
+            //symbol = this.checker.getAliasedSymbol(symbol)
         }
         if ((symbol.flags & ts.SymbolFlags.TypeAlias) === ts.SymbolFlags.TypeAlias) {
             //console.log(`Symbol ${symbol.name} is an typeAlias`);
@@ -99,13 +119,7 @@ export class TypeEncoder {
         if (decls == null) {
             return undefined;
         }
-        for (const d of decls) {
-            // @TODO should we check the fully qualified name?
-            if (d.kind === syntaxKind) {
-                return d;
-            }
-        }
-        return undefined;
+        return decls;
     }
 
     referToTypeNode(typeNode: ts.TypeNode, asAlias = true): ts.Expression {
@@ -175,16 +189,22 @@ export class TypeEncoder {
     /* get type id number or the alias identifier */
     getTypeId(type: ts.Type, typeNode?: ts.TypeNode, asAlias = true): number | string | ts.Expression {
         let typeRef = type['id'];
-        let typeAlias: ts.TypeAliasDeclaration = this.extractTypeAliasDeclarationFromTypeNode(typeNode) || this.extractTypeAliasDeclarationFromType(type);
+        let typeAliasDeclaration: ts.TypeAliasDeclaration = this.extractTypeAliasDeclarationFromTypeNode(typeNode) || this.extractTypeAliasDeclarationFromType(type);
 
-        if (typeAlias) {
+        // @TODO handle only alias and type reference of alias
+        if (typeAliasDeclaration && typeNode && ts.isTypeReferenceNode(typeNode)) {
+            const t = this.extractDeclarationsFromTypeNode(typeNode)
+            // we need to handle only type alias here
+            if (t && t[0].kind !== ts.SyntaxKind.TypeAliasDeclaration) {
+                return typeRef;
+            }
+        }
+
+
+        if (typeAliasDeclaration) {
             /* create new type */
             if (this.isTypeReferenceWithTypeArguments(typeNode)) {
 
-                /* ignore declaration */
-                // if (typeNode && typeAlias.type === typeNode) {
-                //     return this.referToNode(typeAlias.type, false);
-                // }
 
                 const ref = typeNode as ts.TypeReferenceNode;
                 // get node id
@@ -200,9 +220,9 @@ export class TypeEncoder {
                 // @TODO handle builtin types aliases like Partial<T>
 
                 const aliasOrType = ts.factory.createBinaryExpression(
-                    this.referToNode(typeAlias),
+                    this.referToNode(typeAliasDeclaration),
                     ts.factory.createToken(ts.SyntaxKind.BarBarToken),
-                    this.referToNode(typeAlias, false)
+                    this.referToNode(typeAliasDeclaration, false)
                 )
 
                 this.declareType({
@@ -220,7 +240,7 @@ export class TypeEncoder {
                     return typeRef;
                 }
 
-                return this.getTypeHash(typeAlias);
+                return this.getTypeHash(typeAliasDeclaration);
 
             } else {
                 if (typeNode && typeNode.kind === ts.SyntaxKind.TypeReference) {
@@ -228,14 +248,15 @@ export class TypeEncoder {
                 }
 
                 /* ignore declaration */
-                if (asAlias && typeNode && typeAlias.type === typeNode) {
-                    return this.referToNode(typeAlias.type, false);
+                if (asAlias && typeNode && typeAliasDeclaration.type === typeNode) {
+                    return this.referToNode(typeAliasDeclaration.type, false);
                 }
 
                 if (asAlias)
-                    return this.getTypeHash(typeAlias);
+                    return this.getTypeHash(typeAliasDeclaration);
             }
         }
+
         return typeRef;
     }
 

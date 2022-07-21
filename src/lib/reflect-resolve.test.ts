@@ -89,7 +89,6 @@ describe('reflect<T>() resolveType', it => {
                 export const a = reflect<A<{a:string}>>();
             `
         });
-        throw new Error("TODO");
         let t = (exports.a as ReflectedTypeRef).resolveType();
         expect(t.kind)
             .to.equal("interface");
