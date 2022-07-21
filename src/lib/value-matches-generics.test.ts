@@ -1,8 +1,6 @@
 import {expect} from "chai";
 import {describe} from "razmin";
-import {reflect, reify} from "./reflect";
-import {F_OPTIONAL, RtObjectType, T_OBJECT} from '../common';
-import {ReflectedTypeRef} from './reflect';
+import {reflect} from "./reflect";
 import {runSimple} from "../runner.test";
 
 describe('matchesValue generics <T>', it => {
@@ -271,7 +269,7 @@ describe('matchesValue generics <T>', it => {
         expect(exports.t.matchesValue({a:1,b:"",c:true})).to.be.true;
     });
 
-    it('Object<T -> number>', async () => {
+    it('alias Object<T -> number>', async () => {
         let exports = await runSimple({
             modules: {
                 "typescript-rtti": {reflect},
@@ -279,6 +277,70 @@ describe('matchesValue generics <T>', it => {
             code: `
                 import { reflect } from 'typescript-rtti';
                 export type A<T> = {
+                    a: T,
+                    b: T,
+                    c: T,
+                };
+                export const t = reflect<A<number>>();
+            `
+        });
+        expect(exports.t.matchesValue(1)).to.be.false;
+        expect(exports.t.matchesValue("")).to.be.false;
+        expect(exports.t.matchesValue(true)).to.be.false;
+        expect(exports.t.matchesValue(false)).to.be.false;
+        expect(exports.t.matchesValue(Symbol())).to.be.false;
+        expect(exports.t.matchesValue({})).to.be.false;
+        expect(exports.t.matchesValue([])).to.be.false;
+        expect(exports.t.matchesValue(null)).to.be.false;
+        expect(exports.t.matchesValue(undefined)).to.be.false;
+        expect(exports.t.matchesValue([1,1])).to.be.false;
+        expect(exports.t.matchesValue([1])).to.be.false;
+        expect(exports.t.matchesValue([""])).to.be.false;
+        expect(exports.t.matchesValue({a:1,b:"",c:1})).to.be.false;
+
+        expect(exports.t.matchesValue({a:1,b:1,c:1})).to.be.true;
+    });
+
+    it('interface Object<T -> number>', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export interface A<T> {
+                    a: T,
+                    b: T,
+                    c: T,
+                };
+                export const t = reflect<A<number>>();
+            `
+        });
+        expect(exports.t.matchesValue(1)).to.be.false;
+        expect(exports.t.matchesValue("")).to.be.false;
+        expect(exports.t.matchesValue(true)).to.be.false;
+        expect(exports.t.matchesValue(false)).to.be.false;
+        expect(exports.t.matchesValue(Symbol())).to.be.false;
+        expect(exports.t.matchesValue({})).to.be.false;
+        expect(exports.t.matchesValue([])).to.be.false;
+        expect(exports.t.matchesValue(null)).to.be.false;
+        expect(exports.t.matchesValue(undefined)).to.be.false;
+        expect(exports.t.matchesValue([1,1])).to.be.false;
+        expect(exports.t.matchesValue([1])).to.be.false;
+        expect(exports.t.matchesValue([""])).to.be.false;
+        expect(exports.t.matchesValue({a:1,b:"",c:1})).to.be.false;
+
+        expect(exports.t.matchesValue({a:1,b:1,c:1})).to.be.true;
+    });
+
+    it('class Object<T -> number>', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export class A<T> {
                     a: T,
                     b: T,
                     c: T,
