@@ -48,7 +48,7 @@ import {
     RtParameter,
     RtUnionType,
     RtAliasType,
-    RtMappedType, AliasToken, T_VARIABLE, resolveType
+    RtMappedType, AliasToken, T_VARIABLE, resolveType, RtType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 
@@ -954,64 +954,6 @@ describe('rt:p', it => {
     });
 });
 describe('rt:t', it => {
-    it('is emitted on alias', async () => {
-        let exports = await runSimple({
-            code: `
-                 export type A = number;
-                 export type B = number;
-                 export type C = string;
-                 export type G = C;
-                 export type D<T> = bigint;
-                 export type E<T> = {v:T,a:D<string>};
-                 export type F = B | C | D<E<B>>;
-                 export type K<T> = T;
-                 export type L = K<any>;
-
-                 export type H = E<number>;
-
-                 export interface I{
-                    a:H;
-                    b:E<string>;
-                    c:C,
-                    k:K<number>;
-                 }
-            `
-        });
-        // @ TODO bugged
-        const aliases = [
-            {name:"A",type:Number},
-            {name:"B",type:Number},
-            {name:"C",type:String},
-            {name:"G",type:String},
-            {name:"D",type:BigInt},
-
-            {name:"K",type:BigInt},
-        ];
-
-
-        aliases.forEach(alias => {
-            const talias = exports["AΦ"+alias.name];
-            let ftype:()=>RtAliasType = Reflect.getMetadata('rt:t', talias);
-            expect(ftype).not.undefined;
-            let type = ftype();
-            expect(type.TΦ).to.equal(T_ALIAS);
-            expect(type.name).to.equal(alias.name);
-            expect(type.a.identity).to.equal(talias.identity);
-            // resolve alias type
-            expect(resolveType(type.t)).to.eql(alias.type);
-        })
-
-        const interf = exports.IΦI;
-        const ta = Reflect.getMetadata('rt:t', interf.prototype,"a");
-        expect(ta()).not.undefined;
-        const tb = Reflect.getMetadata('rt:t', interf.prototype,"b");
-        expect(tb()).not.undefined;
-        const tc = Reflect.getMetadata('rt:t', interf.prototype,"c");
-        expect(tc()).not.undefined;
-        const tk = Reflect.getMetadata('rt:t', interf.prototype,"k");
-        expect(tk()).not.undefined;
-
-    });
     it('is not emitted when @rtti:skip is present on docblock', async () => {
         let exports = await runSimple({
             code: `

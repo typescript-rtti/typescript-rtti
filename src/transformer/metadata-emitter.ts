@@ -320,7 +320,7 @@ export class MetadataEmitter extends RttiVisitor {
         decl = this.visitEachChild(decl);
 
         const customId = encoder.getTypeHash(decl);
-        const forwardedType = encoder.referToTypeNode(decl.type, false);
+        const forwardedType = encoder.referToTypeNode(decl.type);
 
         return [
             decl,

@@ -2,8 +2,14 @@ import * as format from '../common/format';
 import {getParameterNames} from './get-parameter-names';
 import {Sealed} from './sealed';
 import {RtType, RtObjectType, RtObjectMember, RtAliasType, RtVariableType} from '../common';
-import {InterfaceTypeBuilder, ObjectTypeBuilder} from "./builder";
-import {F_FLAGS, resolveType, RtTypeRef} from "../common/format";
+import {
+    InterfaceTypeBuilder,
+    IntersectionTypeBuilder,
+    ObjectTypeBuilder,
+    TupleTypeBuilder,
+    UnionTypeBuilder
+} from "./builder";
+import {F_FLAGS, resolveType, RtTupleElement} from "../common/format";
 
 const NotProvided = Symbol();
 
@@ -416,7 +422,8 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
         // handle from alias conversion & cast
         if (this.isAliased() && this instanceof ReflectedAliasRef) {
             const ref = ReflectedTypeRef.createFromRtRef(this.ref);
-            ref._aliased = this._aliased;
+            if (ref._aliased == null) // alias of alias
+                ref._aliased = this._aliased;
             return ref.as(subclass as any);
         }
         if (typeof subclass === 'function' && !(this instanceof subclass))
@@ -519,7 +526,18 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
 
     /* return a new type with all parameter replaced, if any */
     createType(...types: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for kind: ${this.kind}`);
         return this;
+    }
+
+    /**
+     * Resolve the type chain of aliases / generic / mapped type to get the resulting actual type.
+     */
+    resolveType(): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`resolveType for kind: ${this.kind}`);
+        return this.createType();
     }
 
     /**
@@ -654,6 +672,10 @@ export class ReflectedObjectRef extends ReflectedTypeRef<RtObjectType> {
         if (typeof value !== 'object')
             return false;
 
+        if (value == null) {
+            return false;
+        }
+
         let matches = true;
         for (let member of this.members) {
             let hasValue = member.name in value;
@@ -679,10 +701,11 @@ export class ReflectedObjectRef extends ReflectedTypeRef<RtObjectType> {
     }
 
     override createType(...types: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
-        const cls = ReflectedClass.for(this.ref);
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedObjectRef`);
         const t = new ObjectTypeBuilder();
         // match all members
-        cls.properties.forEach(prop => {
+        this.members.forEach(prop => {
             t.addProperty(prop.name, prop.type.createType(...types), prop.flags.toString());
         });
         return t.getType();
@@ -712,6 +735,8 @@ export class ReflectedInterfaceRef extends ReflectedTypeRef<format.InterfaceToke
     }
 
     override createType(...types: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedInterfaceRef: ${this.token.name}`);
         const tp = positionalToMapped(types, this.reflectedInterface.arguments);
         const cls = ReflectedClass.for(this.ref);
         const t = new InterfaceTypeBuilder();
@@ -719,12 +744,7 @@ export class ReflectedInterfaceRef extends ReflectedTypeRef<format.InterfaceToke
         // match all members
         cls.properties.forEach(prop => {
             const pt = prop.type;
-            let ct = pt;
-            if (!pt.equals(this)) {
-                // not self reference
-                ct = pt.createType(tp)
-            }
-            t.addProperty(prop.name, ct, prop.flags.toString());
+            t.addProperty(prop.name, pt.createType(tp), prop.flags.toString());
         });
         return t.getType();
     }
@@ -759,6 +779,8 @@ export class ReflectedVariableRef extends ReflectedTypeRef<RtVariableType> {
 
     /* return a new type with all parameter replaced */
     override createType(...type: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedVariableRef: ${this.name}`);
         return getTypeArgument(type, this.name);
     }
 
@@ -804,11 +826,10 @@ export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
 
     /* return a new type with all parameter replaced */
     override createType(...types: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedAliasRef: ${this.name}`);
         /* check recursion */
         const t = this.reflectedType;
-        if (t.equals(this)) {
-            return this;
-        }
         return t.createType(positionalToMapped(types, this.arguments));
     }
 
@@ -818,11 +839,6 @@ export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
 
     override matchesValue(value: any, errors: Error[] = [], context?: string) {
         const t = this.reflectedType;
-        if (t.equals(this)) {
-            // infinite recursion?
-            return false;
-        }
-
         return t.matchesValue(value, errors, context);
     }
 }
@@ -871,6 +887,14 @@ export class ReflectedUnionRef extends ReflectedTypeRef<format.RtUnionType> {
         return this._types = (this.ref.t || []).map(t => ReflectedTypeRef.createFromRtRef(t));
     }
 
+    override createType(...types: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedUnionRef`);
+        const u = new UnionTypeBuilder();
+        this.types.forEach(t => u.push(t.createType(...types)));
+        return u.getType();
+    }
+
     protected override matches(ref: this) {
         if (this.types.length !== ref.types.length)
             return false;
@@ -901,6 +925,14 @@ export class ReflectedIntersectionRef extends ReflectedTypeRef<format.RtIntersec
         if (this._types)
             return this._types;
         return this._types = (this.ref.t || []).map(t => ReflectedTypeRef.createFromRtRef(t));
+    }
+
+    override createType(...types: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedIntersectionRef`);
+        const u = new IntersectionTypeBuilder();
+        this.types.forEach(t => u.push(t.createType(...types)));
+        return u.getType();
     }
 
     protected override matches(ref: this) {
@@ -1076,6 +1108,19 @@ export class ReflectedTupleRef extends ReflectedTypeRef<format.RtTupleType> {
         return this._elements = (this.ref.e || []).map(e => new ReflectedTupleElement(e));
     }
 
+    /* return a new type with all parameter replaced */
+    override createType(...types: ReflectedTypeArgumentsInput[]): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedTupleRef`);
+        if (types.length === 0) {
+            return this;
+        }
+        // create new tuple with replaced elements
+        const t = new TupleTypeBuilder();
+        this.elements.map(e => t.addType(e.type.createType(...types), e.name));
+        return t.getType();
+    }
+
     protected override matches(ref: this) {
         if (this.elements.length !== ref.elements.length)
             return false;
@@ -1107,9 +1152,6 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
 
     toString() {
         const b = this.baseType;
-        if (b.equals(this)) {
-            return `recursive<${this.typeParameters.join(', ')}>`;
-        }
         return `${this.baseType}<${this.typeParameters.join(', ')}>`;
     }
 
@@ -1134,16 +1176,10 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
 
     /* return a new type with all parameter replaced */
     createType(...types: ReflectedTypeArgumentsInput[] | undefined | null): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedGenericRef`);
         /* check for recursion */
         const b = this.baseType;
-        if (b.equals(this)) {
-            if (types.length == 0)
-                return this;
-            // replace all type parameters with the given types
-            const clone = new ReflectedGenericRef(this.ref);
-            clone._typeParameters = this.typeParameters.map((t) => t.createType(...types));
-            return clone;
-        }
         return b.createType(this.typeParameters.map(tp => tp.createType(...types)));
     }
 
@@ -1156,11 +1192,6 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
     /* @TODO probably need a stack of recursion to fix the problem of recursive types, use context */
     override matchesValue(value: any, errors?: Error[], context?: string): boolean {
         const t = this.createType();
-        if (t.equals(this)) {
-            // infinite recursion?
-            // try using the parent type
-            return false;
-        }
         /* match the result type */
         return t.matchesValue(value, errors, context);
     }
@@ -1295,25 +1326,15 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
 
     override matchesValue(value: any, errors?: Error[], context?: string): boolean {
         const t = this.createType();
-        if (t.equals(this)) {
-            // infinite recursion?
-            return false;
-        }
         return t.matchesValue(value, errors, context);
     }
 
     /* return a new type with all parameter replaced */
     override createType(...types: ReflectedTypeArgumentsInput[] | undefined | null): ReflectedTypeRef {
+        if (globalThis.RTTI_TRACE === true)
+            console.log(`createType for ReflectedMappedRef`);
         /* check for recursion */
         const b = this.baseType;
-        if (b.equals(this)) {
-            if (types.length == 0)
-                return this;
-            // replace all type parameters with the given types
-            const clone = new ReflectedMappedRef(this.ref);
-            clone._typeParameters = this.typeParameters.map((t) => t.createType(...types));
-            return clone;
-        }
         return b.createType(this.typeParameters.map(tp => tp.createType(...types)));
     }
 }
@@ -2334,7 +2355,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
      * @returns
      */
     matchesValue(object, errors: Error[] = []) {
-        if (object === null || object === void 0) {
+        if (object === null || object === void 0 || object === undefined) {
             errors.push(new Error(`Value is undefined`));
             return false;
         }

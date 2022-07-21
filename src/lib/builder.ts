@@ -1,12 +1,12 @@
 import {
     AliasToken, F_CLASS,
     F_FLAGS, F_INTERFACE, F_PROPERTY, InterfaceToken,
-    RtAliasType,
-    RtGenericType,
+    RtAliasType, RtArrayType,
+    RtGenericType, RtIntersectionType,
     RtObjectMember,
-    RtObjectType,
-    RtType, RtVariableType,
-    T_ALIAS, T_VARIABLE
+    RtObjectType, RtTupleElement, RtTupleType,
+    RtType, RtUnionType, RtVariableType,
+    T_ALIAS, T_GENERIC, T_VARIABLE
 } from "../common";
 import {
     ReflectedClass,
@@ -220,8 +220,26 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
     }
 }
 
-// @TODO: implement
 export class GenericTypeBuilder extends TypeBuilder<RtGenericType> {
+    typeRef: RtGenericType = {
+        TΦ: T_GENERIC,
+        t: () => {
+            return {TΦ: format.T_UNKNOWN}
+        },
+        p: []
+    };
+
+
+    setBaseType(type: BuilderType): this {
+        this.typeRef.t = () => asRtType(type);
+        return this;
+    }
+
+    /* parameters for generics */
+    addParameters(...types: BuilderType[]): this {
+        this.typeRef.p.push(...types.map(asRtType));
+        return this;
+    }
 }
 
 /* just an alias */
@@ -254,6 +272,94 @@ export class VariableTypeBuilder extends TypeBuilder<RtVariableType> {
     setTypeDeclaration(type: BuilderType): this {
         this.typeRef.t = () => asRtType(type);
         return this;
+    }
+}
+
+export class TupleLikeTypeBuilder extends TypeBuilder<RtTupleType> {
+    typeRef: RtTupleType = {TΦ: format.T_TUPLE, e: []};
+
+    push(...type: BuilderType[]): this {
+        this.typeRef.e.push(...type.map(t => {
+            return {t: asRtType(t), n: ""}
+        }));
+        return this;
+    }
+
+    addType(type: BuilderType, name?: string): this {
+        this.typeRef.e.push({t: asRtType(type), n: name || ""});
+        return this;
+    }
+
+    // @ts-ignore
+    get type(): RtTupleElement[] {
+        return this.typeRef.e;
+    }
+
+    set type(type: BuilderType[] | RtTupleElement[]) {
+        this.typeRef.e = [];
+        type.forEach(t => {
+            if ("t" in t && "n" in t) {
+                this.typeRef.e.push(t);
+                return;
+            }
+            this.push(t);
+        })
+    }
+}
+
+/* just an alias */
+export class TupleTypeBuilder extends TupleLikeTypeBuilder {
+
+}
+
+export class ArrayTypeBuilder extends TypeBuilder<RtArrayType> {
+    typeRef: RtArrayType = {TΦ: format.T_ARRAY, e: {TΦ: format.T_UNKNOWN}};
+
+    setType(type: BuilderType): this {
+        this.typeRef.e = asRtType(type);
+        return this;
+    }
+
+    get type(): RtType {
+        return this.typeRef.e;
+    }
+
+    set type(type: BuilderType) {
+        this.typeRef.e = asRtType(type);
+    }
+}
+
+export class UnionTypeBuilder extends TypeBuilder<RtUnionType> {
+    typeRef: RtUnionType = {TΦ: format.T_UNION, t: []};
+
+    push(...type: BuilderType[]): this {
+        this.typeRef.t.push(...type.map(asRtType));
+        return this;
+    }
+
+    get types(): RtType[] {
+        return this.typeRef.t;
+    }
+
+    set types(types: BuilderType[]) {
+        this.push(...types);
+    }
+}
+
+export class IntersectionTypeBuilder extends TypeBuilder<RtIntersectionType> {
+    typeRef: RtIntersectionType = {TΦ: format.T_INTERSECTION, t: []};
+
+    push(...type: BuilderType[]): this {
+        this.typeRef.t.push(...type.map(asRtType));
+        return this;
+    }
+
+    get types(): RtType[] {
+        return this.typeRef.t;
+    }
+
+    set types(types: BuilderType[]) {
+        this.push(...types);
     }
 }
 

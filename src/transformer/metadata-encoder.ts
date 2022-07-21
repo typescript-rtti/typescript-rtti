@@ -248,6 +248,7 @@ export class MetadataEncoder {
             decs.push(...this.typeNode(node.type, 'returntype', allowStandardMetadata));
         } else {
             let signature = this.checker.getSignatureFromDeclaration(node);
+            // @TODO can we get the type alias here?
             if (signature) {
                 this.ctx.locationHint = `[Return type of] ${methodHint}`;
                 decs.push(...this.type(signature.getReturnType(), undefined, 'returntype', allowStandardMetadata));

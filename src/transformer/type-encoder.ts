@@ -48,9 +48,9 @@ export class TypeEncoder {
             return node as unknown as ts.TypeAliasDeclaration;
         }
 
-         if (node.parent?.kind === ts.SyntaxKind.TypeAliasDeclaration) {
-             return node.parent as ts.TypeAliasDeclaration;
-         }
+        // if (node.parent?.kind === ts.SyntaxKind.TypeAliasDeclaration) {
+        //     return node.parent as ts.TypeAliasDeclaration;
+        // }
 
         if (node.kind !== ts.SyntaxKind.TypeReference) {
             return undefined;
@@ -109,7 +109,7 @@ export class TypeEncoder {
     }
 
     referToTypeNode(typeNode: ts.TypeNode, asAlias = true): ts.Expression {
-        if (typeNode == null){
+        if (typeNode == null) {
             throw new Error("referToTypeNode typeNode is null");
         }
 
@@ -117,15 +117,17 @@ export class TypeEncoder {
     }
 
     referToNode(node: ts.Node, asAlias = true): ts.Expression {
-        if (node == null){
+        if (node == null) {
             throw new Error("referToNode node is null");
         }
 
-        if (ts.isTypeNode(node)){
+        if (ts.isTypeNode(node)) {
             return this.referToTypeNode(node as ts.TypeNode, asAlias);
         }
-        if (ts.isTypeAliasDeclaration(node)){
-            return this.referToTypeNode(node.type, asAlias);
+        if (ts.isTypeAliasDeclaration(node)) {
+            if (asAlias == false)
+                return this.referToNode(node.type);
+            return this.accessDeclaredType(this.getTypeHash(node));
         }
 
         // expression, computed/implicit types ect
@@ -173,51 +175,65 @@ export class TypeEncoder {
     /* get type id number or the alias identifier */
     getTypeId(type: ts.Type, typeNode?: ts.TypeNode, asAlias = true): number | string | ts.Expression {
         let typeRef = type['id'];
-        if (asAlias) {
-            let typeAlias: ts.TypeAliasDeclaration = this.retrieveTypeAliasDeclaration(type, typeNode);
+        let typeAlias: ts.TypeAliasDeclaration = this.extractTypeAliasDeclarationFromTypeNode(typeNode) || this.extractTypeAliasDeclarationFromType(type);
 
-            if (typeAlias) {
-                if (this.isTypeReferenceWithTypeArguments(typeNode)) {
-                    const ref = typeNode as ts.TypeReferenceNode;
-                    // get node id
-                    const Tid = this.getTypeHash(ref);
-                    if (this.declaredTypeExists(Tid)) {
-                        return Tid;
-                    }
+        if (typeAlias) {
+            /* create new type */
+            if (this.isTypeReferenceWithTypeArguments(typeNode)) {
 
-                    // create new type
-                    this.declareType(null, Tid);
+                /* ignore declaration */
+                // if (typeNode && typeAlias.type === typeNode) {
+                //     return this.referToNode(typeAlias.type, false);
+                // }
 
-                    /* emit as generic */
-                    // @TODO handle builtin types aliases like Partial<T>
-
-                    // const tp = this.referToType(this.checker.getTypeAtLocation(typeAlias), typeAlias.type, false);
-                    //
-                    // const aliasOrType = ts.factory.createBinaryExpression(
-                    //     this.referToType(this.checker.getTypeAtLocation(typeAlias), typeAlias.type),
-                    //     ts.factory.createToken(ts.SyntaxKind.BarBarToken),
-                    //     tp
-                    // )
-
-                    const tp = this.referToNode(typeAlias,false);
-
-                    const aliasOrType = ts.factory.createBinaryExpression(
-                        this.referToNode(typeAlias),
-                        ts.factory.createToken(ts.SyntaxKind.BarBarToken),
-                        tp
-                    )
-
-                    this.declareType({
-                        TΦ: T_GENERIC,
-                        t: forwardRef(aliasOrType), // reference to the original type alias
-                        p: ref.typeArguments.map(x => this.referToNode(x)),
-                    }, Tid);
-
+                const ref = typeNode as ts.TypeReferenceNode;
+                // get node id
+                const Tid = this.getTypeHash(ref);
+                if (this.declaredTypeExists(Tid)) {
                     return Tid;
-
-                }else{
-                    return this.getTypeHash(typeAlias);
                 }
+
+                // create new type
+                this.declareType(null, Tid);
+
+                /* emit as generic */
+                // @TODO handle builtin types aliases like Partial<T>
+
+                const aliasOrType = ts.factory.createBinaryExpression(
+                    this.referToNode(typeAlias),
+                    ts.factory.createToken(ts.SyntaxKind.BarBarToken),
+                    this.referToNode(typeAlias, false)
+                )
+
+                this.declareType({
+                    TΦ: T_GENERIC,
+                    t: forwardRef(aliasOrType), // reference to the original type alias
+                    p: ref.typeArguments.map(x => this.referToNode(x)),
+                }, Tid);
+
+                return Tid;
+
+                /* normal alias reference */
+            } else if (typeNode && ts.isTypeReferenceNode(typeNode)) { // handle normal reference of type alias
+
+                if (!asAlias) {
+                    return typeRef;
+                }
+
+                return this.getTypeHash(typeAlias);
+
+            } else {
+                if (typeNode && typeNode.kind === ts.SyntaxKind.TypeReference) {
+                    return typeRef;
+                }
+
+                /* ignore declaration */
+                if (asAlias && typeNode && typeAlias.type === typeNode) {
+                    return this.referToNode(typeAlias.type, false);
+                }
+
+                if (asAlias)
+                    return this.getTypeHash(typeAlias);
             }
         }
         return typeRef;

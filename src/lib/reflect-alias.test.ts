@@ -1,6 +1,6 @@
 import {expect} from "chai";
 import {describe} from "razmin";
-import {ReflectedClassRef, ReflectedGenericRef, ReflectedInterfaceRef, ReflectedTypeRef} from ".";
+import {ReflectedClassRef, ReflectedGenericRef, ReflectedInterfaceRef, ReflectedLiteralRef, ReflectedTypeRef} from ".";
 import {runSimple} from "../runner.test";
 import {reify, reflect} from "./reflect";
 
@@ -14,9 +14,7 @@ describe('reflect<T>() alias', it => {
                 import { reflect } from 'typescript-rtti';
                 export type Something = number;
                 export const reflectedTypeRef = reflect<Something>();
-                console.log("reifies and reflects")
-            `,
-            trace: true
+            `
         });
         expect(exports.reflectedTypeRef.isAliased()).to.equal(true);
         expect((exports.reflectedTypeRef as ReflectedTypeRef).as('alias').token)
@@ -32,9 +30,7 @@ describe('reflect<T>() alias', it => {
                 export type Something<T> = T;
                 export const reflectedTypeRef = reflect<Something<number>>();
                 export const reflectedTypeRef2 = reflect<Something<number>>();
-                console.log("reflects A<T> = T")
-            `,
-            trace: true
+            `
         });
         expect(exports.reflectedTypeRef.isGeneric()).to.equal(true);
         expect((exports.reflectedTypeRef as ReflectedTypeRef).as('generic').baseType.as('alias').token)
@@ -54,9 +50,7 @@ describe('reflect<T>() alias', it => {
                 export type Something<T,K> = T | K;
                 export const reflectedTypeRef = reflect<Something<number,number>>();
                 export const reflectedTypeRef2 = reflect<Something<number,number>>();
-                console.log("reflects A<T,K> = T | K")
-            `,
-            trace: true
+            `
         });
         expect(exports.reflectedTypeRef.isGeneric()).to.equal(true);
         expect((exports.reflectedTypeRef as ReflectedTypeRef).as('generic').baseType.as('alias').token)
@@ -134,17 +128,42 @@ describe('reflect<T>() alias', it => {
         expect(alias.as('interface').as("alias").token)
             .to.equal(exports.AΦA);
 
+        // C2 -> D<A -> .. C> -> D
         alias = exports.reflectedTypeRef2 as ReflectedTypeRef;
         expect(alias.isAliased()).to.equal(true);
         expect(alias.kind)
             .to.equal("generic");
         expect(alias.as(ReflectedGenericRef).kind)
             .to.equal("generic");
-        expect(alias.as(ReflectedGenericRef).typeParameters[0].kind).to.equal("interface");
-        expect(alias.as(ReflectedGenericRef).baseType.kind).to.equal("interface");
+        expect(alias.as(ReflectedGenericRef).typeParameters[0].kind).to.equal("interface"); // A -> .. C
+        expect(alias.as(ReflectedGenericRef).typeParameters[0].as("interface").reflectedInterface.class.name).to.equal("C");
+        expect(alias.as(ReflectedGenericRef).baseType.kind).to.equal("interface"); // D
+        expect(alias.as(ReflectedGenericRef).baseType.as("interface").reflectedInterface.class.name).to.equal("D");
         expect(alias.as('generic').as("alias").token)
             .to.equal(exports.AΦC2);
     });
+
+    it('alias transparency nested', async () => {
+        let exports = await runSimple({
+            modules: {
+                "typescript-rtti": {reify, reflect},
+            },
+            code: `
+                import { reflect } from 'typescript-rtti';
+                export type C = 1;
+                export type B = C;
+                export type A = B;
+                export const a = reflect<A>();
+            `,
+        });
+        let alias = exports.a as ReflectedTypeRef;
+        expect(alias.isAliased()).to.equal(true);
+        expect(alias.kind)
+            .to.equal("literal");
+        expect(alias.as('literal').value)
+            .to.equal(1);
+    });
+
     it(`reflects properly for alias object`, async () => {
         let exports = await runSimple({
             modules: {

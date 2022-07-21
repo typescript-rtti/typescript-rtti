@@ -134,10 +134,11 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         if (type.symbol || type.aliasSymbol) {
             /* handle type variable */
             const dec = encoder.extractDeclarationFromSymbol(ts.SyntaxKind.TypeParameter,type.symbol, type.aliasSymbol);
+            let node = dec.parent || dec;
             return serializeExpression({
                 TΦ: T_VARIABLE,
                 name: type.symbol?.name ?? type.aliasSymbol?.name,
-                t: literalNode(encoder.referToNode(dec))
+                t: encoder.referToNode(node)
             });
         }
 
@@ -322,6 +323,19 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
             let members: RtObjectMember[] = [];
             if (type.symbol && type.symbol.members) {
                 type.symbol.members.forEach((value, key) => {
+                    // handle { } object literal alias
+                    if (value.valueDeclaration){
+                        if (ts.isPropertySignature(value.valueDeclaration)){
+                            members.push({
+                                n: <string>key,
+                                f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
+                                t: <any>literalNode(encoder.referToNode(value.valueDeclaration.type))
+                            });
+                            return;
+                        }
+                    }
+
+
                     // TODO: currentTopStatement may be far up the AST- would be nice if we had
                     // a currentStatement that was not constrained to be at the top of the SourceFile
                     let memberType = encoder.ctx.checker.getTypeOfSymbolAtLocation(

@@ -1,10 +1,10 @@
 import {expect} from "chai";
 import {describe} from "razmin";
 import {
-    AliasTypeBuilder,
-    InterfaceTypeBuilder,
-    ObjectLikeTypeBuilder,
-    TypeBuilder,
+    AliasTypeBuilder, ArrayTypeBuilder, GenericTypeBuilder,
+    InterfaceTypeBuilder, IntersectionTypeBuilder,
+    ObjectLikeTypeBuilder, TupleTypeBuilder,
+    TypeBuilder, UnionTypeBuilder,
     VariableTypeBuilder
 } from "./builder";
 import {F_OPTIONAL} from "../common";
@@ -149,7 +149,6 @@ describe('Type builders', it => {
 
         const typeA = builderA.getType();
         expect(typeA.kind).to.equal("interface");
-        console.dir(typeA.as(ReflectedInterfaceRef).reflectedInterface);
         const mem = typeA.as(ReflectedInterfaceRef).reflectedInterface.properties;
 
         expect(mem.length).to.equal(2);
@@ -195,5 +194,59 @@ describe('Type builders', it => {
         expect(sub.properties[1].type.as("class").isClass(String)).to.equal(true);
         expect(sub.properties[1].isOptional).to.equal(true);
 
+    });
+
+    it('TupleTypeBuilder', async () => {
+        const builder = new TupleTypeBuilder();
+        builder.push(Number,String);
+
+        const v = builder.getType();
+        expect(v.kind).to.equal("tuple");
+        expect(v.as("tuple").elements.length).to.equal(2);
+        expect(v.as("tuple").elements[0].type.as("class").class).to.equal(Number);
+        expect(v.as("tuple").elements[1].type.as("class").class).to.equal(String);
+    });
+
+    it('ArrayTypeBuilder', async () => {
+        const builder = new ArrayTypeBuilder();
+        builder.type = Number;
+
+        const v = builder.getType();
+        expect(v.kind).to.equal("array");
+        expect(v.as("array").elementType.as("class").class).to.equal(Number);
+    });
+
+    it('UnionTypeBuilder', async () => {
+        const builder = new UnionTypeBuilder();
+        builder.push(Number,String);
+
+        const v = builder.getType();
+        expect(v.kind).to.equal("union");
+        expect(v.as("union").types[0].isClass(Number)).to.equal(true);
+        expect(v.as("union").types[1].isClass(String)).to.equal(true);
+    });
+
+    it('IntersectionTypeBuilder', async () => {
+        const builder = new IntersectionTypeBuilder();
+        builder.push(Number,String);
+
+        const v = builder.getType();
+        expect(v.kind).to.equal("intersection");
+        expect(v.as("intersection").types[0].isClass(Number)).to.equal(true);
+        expect(v.as("intersection").types[1].isClass(String)).to.equal(true);
+    });
+
+    it('GenericTypeBuilder', async () => {
+        const builder = new GenericTypeBuilder();
+        builder.setBaseType(Array);
+        builder.addParameters(Number,String,Boolean);
+
+        const v = builder.getType();
+        expect(v.kind).to.equal("generic");
+        expect(v.as("generic").baseType.as("class").class).to.equal(Array);
+        expect(v.as("generic").typeParameters.length).to.equal(3);
+        expect(v.as("generic").typeParameters[0].as("class").class).to.equal(Number);
+        expect(v.as("generic").typeParameters[1].as("class").class).to.equal(String);
+        expect(v.as("generic").typeParameters[2].as("class").class).to.equal(Boolean);
     });
 });
