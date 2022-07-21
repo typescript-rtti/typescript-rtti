@@ -3,8 +3,10 @@ import {getParameterNames} from './get-parameter-names';
 import {Sealed} from './sealed';
 import {RtType, RtObjectType, RtObjectMember, RtAliasType, RtVariableType} from '../common';
 import {
+    asReflectedTypeRef,
+    BuilderType,
     InterfaceTypeBuilder,
-    IntersectionTypeBuilder,
+    IntersectionTypeBuilder, isBuilderType,
     ObjectTypeBuilder,
     TupleTypeBuilder,
     UnionTypeBuilder
@@ -90,8 +92,8 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_FUNCTION]: 'function'
 };
 
-export type ReflectedTypeArgumentsInput = ReflectedTypeRef[] | {
-    [name: string]: ReflectedTypeRef;
+export type ReflectedTypeArgumentsInput = BuilderType | BuilderType[] | {
+    [name: string]: BuilderType;
 };
 
 function getTypeArgument(args: ReflectedTypeArgumentsInput[], match: string) {
@@ -104,29 +106,32 @@ function positionalToMapped(args: ReflectedTypeArgumentsInput[], match: string[]
 } {
     // merge array ReflectedTypeArgumentsInput[] to ReflectedTypeArgumentsInput
     let result: { [name: string]: ReflectedTypeRef } = {};
-    for (let i = 0; i < args.length; i++) {
-        let arg = args[i];
-        if (arg instanceof Array) {
-            result = {...result, ..._positionalToMapped(arg, match)};
-        } else {
-            result = {...result, ...arg};
-        }
-    }
-    return result;
-}
 
-function _positionalToMapped(args: ReflectedTypeArgumentsInput, match: string[]): {
-    [name: string]: ReflectedTypeRef;
-} {
-    if (args instanceof Array) {
-        let result: { [name: string]: ReflectedTypeRef } = {};
-        for (let i = 0; i < args.length; i++) {
-            result[match[i]] = args[i];
+    const extract = (v, i) => {
+        if (Array.isArray(v)) {
+            v.forEach(extract);
+            return;
         }
-        return result;
-    } else {
-        return args;
-    }
+        if (isBuilderType(v)) {
+            result[match[i]] = asReflectedTypeRef(v as BuilderType);
+            return
+        }
+        if (typeof v === 'object') {
+            // iterate all keys of v and assign value to asReflectedTypeRef
+            const convertedV = {};
+            Object.keys(v).forEach((k, i) => {
+                    convertedV[k] = asReflectedTypeRef(v[k]);
+                }
+            );
+            result = {...result, ...convertedV};
+            return
+        }
+        throw new Error(`createType invalid type for argument ${i}: ${typeof v}`);
+    };
+
+    args.forEach(extract);
+
+    return result;
 }
 
 export class ReflectedTypeRef<T extends RtType = RtType> {
@@ -1175,7 +1180,7 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
     }
 
     /* return a new type with all parameter replaced */
-    createType(...types: ReflectedTypeArgumentsInput[] | undefined | null): ReflectedTypeRef {
+    override createType(...types: ReflectedTypeArgumentsInput[] | undefined | null): ReflectedTypeRef {
         if (globalThis.RTTI_TRACE === true)
             console.log(`createType for ReflectedGenericRef`);
         /* check for recursion */

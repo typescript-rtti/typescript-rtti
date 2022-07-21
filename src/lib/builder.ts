@@ -1,6 +1,6 @@
 import {
     AliasToken, F_CLASS,
-    F_FLAGS, F_INTERFACE, F_PROPERTY, InterfaceToken,
+    F_FLAGS, F_INTERFACE, F_PROPERTY, InterfaceToken, isConstructorFunction,
     RtAliasType, RtArrayType,
     RtGenericType, RtIntersectionType,
     RtObjectMember,
@@ -24,6 +24,25 @@ export function asRtType(t: any): RtType {
     if (t instanceof TypeBuilder) return t.typeRef;
     if (t.TΦ != null) return t;
     return ReflectedTypeRef.createFromRtRef(t).ref as RtType;
+}
+
+/* cast a value to ReflectedTypeRef */
+export function asReflectedTypeRef(t: BuilderType): ReflectedTypeRef {
+    if (t instanceof ReflectedTypeRef) return t;
+    if (t instanceof TypeBuilder) return t.getType();
+    return ReflectedTypeRef.createFromRtRef(t);
+}
+
+export function isBuilderType(t: any): boolean {
+    // check RtType
+    if (t.TΦ != null) return true;
+    // check ReflectedTypeRef
+    if (t instanceof ReflectedTypeRef) return true;
+    // check TypeBuilder
+    if (t instanceof TypeBuilder) return true;
+    // check for classes
+    if (isConstructorFunction(t)) return true;
+    return false;
 }
 
 export type BuilderType = RtType | ReflectedTypeRef | TypeBuilder<RtType>;
