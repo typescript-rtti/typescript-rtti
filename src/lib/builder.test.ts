@@ -146,6 +146,7 @@ describe('Type builders', it => {
             },
             sub: builderA.getType(),
         });
+        builderB.addParameters("T", "K")
 
         const typeA = builderA.getType();
         expect(typeA.kind).to.equal("interface");
@@ -163,6 +164,7 @@ describe('Type builders', it => {
 
         const typeB = builderB.getType();
         expect(typeB.kind).to.equal("interface");
+        expect(typeB.as(ReflectedInterfaceRef).reflectedInterface.arguments).to.eql(["T","K"]);
         const memB = typeB.as(ReflectedInterfaceRef).reflectedInterface.properties;
         expect(memB.length).to.equal(7);
         expect(memB[0].name).to.equal("a");

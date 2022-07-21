@@ -155,6 +155,7 @@ export class InterfaceTypeBuilder extends ObjectLikeTypeBuilder {
         /* define default metadata */
         this.defineMetadata("rt:P", []);
         this.defineMetadata('rt:m', []);
+        this.defineMetadata('rt:tp', []);
         this.addFlag(F_INTERFACE);
     }
 
@@ -191,6 +192,12 @@ export class InterfaceTypeBuilder extends ObjectLikeTypeBuilder {
         this.addFlag(F_PROPERTY, name);
         this.addFlag(flags, name);
 
+        return this;
+    }
+
+    /* parameters for generics */
+    addParameters(...name: string[]): this {
+        this.getMetadata('rt:tp').push(...name);
         return this;
     }
 }
