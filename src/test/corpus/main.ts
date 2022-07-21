@@ -25,6 +25,12 @@ interface Package {
  * the typescript-rtti transformer. Failure to build is a failure for the corpus test.
  */
 const PACKAGES: Record<string, Package> = {
+    "typeorm/typeorm": {
+        enabled: true,
+        url: 'https://github.com/typeorm/typeorm.git',
+        ref: '0.2.45',
+        commands: ['ttsc']
+    },
     "rezonant/razmin": {
         enabled: true,
         url: 'https://github.com/rezonant/razmin.git',
@@ -75,12 +81,6 @@ const PACKAGES: Record<string, Package> = {
         ref: 'rtti-wip',
         target: 'esm',
         commands: ['npm run -- test --runInBand --no-cache --ci ']
-    },
-    "typeorm/typeorm": {
-        enabled: true,
-        url: 'https://github.com/typeorm/typeorm.git',
-        ref: '0.2.45',
-        commands: ['ttsc']
     }
 };
 
@@ -89,8 +89,7 @@ const PACKAGES: Record<string, Package> = {
  */
 const TYPESCRIPTS = [
     '4.5',
-    '4.6',
-    '4.7'
+    '4.6'
     //'4', 'latest', 'next', 'beta', 'rc', 'insiders'
 ];
 
