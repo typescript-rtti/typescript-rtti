@@ -1,4 +1,8 @@
-# vNext
+# vNext (v0.9)
+- Typescript 4.7 is required. If you need Typescript 4.5 or 4.6, you'll need to use the 0.8.x series. If there are any
+  major bugfixes, we'll backport them there. You can find the 0.8.x codebase on the branch `0.8.x`.
+
+# v0.8.1
 - Adds support for array/object binding expressions in function/method parameters (ie destructuring assignment)
 - Fixes an issue where `type.isPromise()` returns false for `Promise<T>` (previously returned true only for bare
   `Promise`).
@@ -6,9 +10,11 @@
   ([Pull Request](https://github.com/typescript-rtti/typescript-rtti/pull/77))
 - Fixes an issue where metadata decorators were added twice for interfaces
   ([#79](https://github.com/typescript-rtti/typescript-rtti/issues/79))
-- Fixes issues where outboard decorators (ie outside of `__decorate`) were used when inline (normal) decorators would
-  suffice. This makes it easier to access reflection metadata within decorators
+- ~~Fixes issues where outboard decorators (ie outside of `__decorate`) were used when inline (normal) decorators would
+  suffice. This makes it easier to access reflection metadata within decorators~~
   ([#76](https://github.com/typescript-rtti/typescript-rtti/issues/76))
+    * This work is blocked by https://github.com/microsoft/TypeScript/issues/49794. Until then we cannot correct the
+      decorator load order.
 
 # v0.8.0
 - Adds support for reflecting "rest" parameters
