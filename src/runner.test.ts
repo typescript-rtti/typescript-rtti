@@ -8,6 +8,7 @@ export interface RunInvocation {
     code: string;
     transformerEnabled?: boolean;
     moduleType?: 'commonjs' | 'esm';
+    target?: ts.ScriptTarget;
     compilerOptions?: Partial<ts.CompilerOptions>;
     outputTransformer?: (filename: string, code: string) => string;
     modules?: Record<string, any>;
@@ -58,6 +59,10 @@ export function compile(invocation: RunInvocation): Record<string, string> {
     if (invocation.moduleType) {
         if (invocation.moduleType === 'esm')
             options.module = ts.ModuleKind.ES2020;
+    }
+
+    if (invocation.target) {
+        options.target = invocation.target;
     }
 
     const program = ts.createProgram(Object.keys(inputs), options, {
