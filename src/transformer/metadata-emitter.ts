@@ -12,6 +12,7 @@ import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModif
 import { serialize } from './serialize';
 import { literalNode } from './literal-node';
 import { T_ENUM } from '../common';
+import { WORKAROUND_TYPESCRIPT_49794 } from './workarounds';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -34,8 +35,12 @@ export class MetadataEmitter extends RttiVisitor {
         let originalOutboardCollector = this.outboardCollector;
 
         let collector = new ExternalMetadataCollector();
-        //this.collector = collector; // to remove
-        this.outboardCollector = collector;
+
+        if (WORKAROUND_TYPESCRIPT_49794) {
+            this.collector = this.outboardCollector = collector;
+        } else {
+            this.outboardCollector = collector;
+        }
 
         try {
             return {

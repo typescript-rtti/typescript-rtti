@@ -14,6 +14,7 @@ import {
     RtParameter, RtArrayType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
+import { WORKAROUND_TYPESCRIPT_49794 } from '../workarounds';
 
 describe('rt:h', it => {
     it('is emitted directly on a method', async () => {
@@ -2188,42 +2189,45 @@ describe('rt:i', it => {
         expect(count).to.equal(7);
     })
 });
-describe('decorator order', it => {
-    it('should be preserved for classes, methods and properties', async () => {
-        await runSimple({
-            code: `
-                function dec() {
-                    return (target, pk?) => {
-                        if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
-                            throw new Error('Metadata was not available to decorator!');
-                    }
-                };
 
-                @dec()
-                class Foo {
-                    @dec() public async bar(baz: number): Promise<void> {}
-                    @dec() public baz: boolean;
-                }
-            `
+if (!WORKAROUND_TYPESCRIPT_49794) {
+    describe('decorator order', it => {
+        it('should be preserved for classes, methods and properties', async () => {
+            await runSimple({
+                code: `
+                    function dec() {
+                        return (target, pk?) => {
+                            if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
+                                throw new Error('Metadata was not available to decorator!');
+                        }
+                    };
+
+                    @dec()
+                    class Foo {
+                        @dec() public async bar(baz: number): Promise<void> {}
+                        @dec() public baz: boolean;
+                    }
+                `
+            });
+        });
+        it.skip('should be preserved for parameters', async () => {
+            // Test fails, and not sure there's a way to make it pass :-\
+            // https://github.com/typescript-rtti/typescript-rtti/issues/76#issuecomment-1169451079
+            await runSimple({
+                trace: true,
+                code: `
+                    function dec() {
+                        return (target, pk?, index?) => {
+                            if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
+                                throw new Error('Metadata was not available to decorator!');
+                        }
+                    };
+
+                    class Foo {
+                        public async bar(@dec() baz: number): Promise<void> {}
+                    }
+                `
+            });
         });
     });
-    it.skip('should be preserved for parameters', async () => {
-        // Test fails, and not sure there's a way to make it pass :-\
-        // https://github.com/typescript-rtti/typescript-rtti/issues/76#issuecomment-1169451079
-        await runSimple({
-            trace: true,
-            code: `
-                function dec() {
-                    return (target, pk?, index?) => {
-                        if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
-                            throw new Error('Metadata was not available to decorator!');
-                    }
-                };
-
-                class Foo {
-                    public async bar(@dec() baz: number): Promise<void> {}
-                }
-            `
-        });
-    });
-});
+}
