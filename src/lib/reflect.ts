@@ -2626,28 +2626,25 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._methodNames)
             return this._methodNames;
 
-        if (this.super) {
-            return this._methodNames = this.super.methodNames.concat(this.ownMethodNames);
-        } else {
-            return this._methodNames = this.ownMethodNames;
-        }
+        return this._methodNames = superMergeNames(
+            this.ownMethodNames,
+            this.super?.methodNames ?? []
+        );
     }
-
 
     private _staticPropertyNames: string[];
 
     /**
      * Get the static property names defined for this reflected class. Always empty for interfaces.
      */
-    get staticPropertyNames() {
+    get staticPropertyNames(): string[] {
         if (this._staticPropertyNames)
             return this._staticPropertyNames;
 
-        if (this.super) {
-            return this._staticPropertyNames = this.super.staticPropertyNames.concat(this.ownStaticPropertyNames);
-        } else {
-            return this._staticPropertyNames = this.ownStaticPropertyNames;
-        }
+        return this._staticPropertyNames = superMergeNames(
+            this.ownStaticPropertyNames,
+            this.super?.staticPropertyNames ?? []
+        );
     }
 
     private _staticMethodNames: string[];
@@ -2660,11 +2657,10 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._staticMethodNames)
             return this._staticMethodNames;
 
-        if (this.super) {
-            return this._staticMethodNames = this.super.staticMethodNames.concat(this.ownStaticMethodNames);
-        } else {
-            return this._staticMethodNames = this.ownStaticMethodNames;
-        }
+        return this._staticMethodNames = superMergeNames(
+            this.ownStaticMethodNames,
+            this.super?.staticMethodNames ?? []
+        );
     }
 
     private _propertyNames: string[];
@@ -2676,11 +2672,10 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._propertyNames)
             return this._propertyNames;
 
-        if (this.super) {
-            return this._propertyNames = this.super.propertyNames.concat(this.ownPropertyNames);
-        } else {
-            return this._propertyNames = this.ownPropertyNames;
-        }
+        return this._propertyNames = superMergeNames(
+            this.ownPropertyNames,
+            this.super?.propertyNames ?? []
+        );
     }
 
     /**
@@ -2726,10 +2721,10 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._methods)
             return this._methods;
 
-        if (this.super)
-            return this._methods = this.super.methods.concat(this.ownMethods);
-        else
-            return this._methods = this.ownMethods;
+        return this._methods = superMergeElements(
+            this.ownMethods,
+            this.super?.methods ?? []
+        );
     }
 
     private _staticProperties: ReflectedProperty[];
@@ -2742,10 +2737,10 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._staticProperties)
             return this._staticProperties;
 
-        if (this.super)
-            return this._staticProperties = this.super.staticProperties.concat(this.ownStaticProperties);
-        else
-            return this._staticProperties = this.ownStaticProperties;
+        return this._staticProperties = superMergeElements(
+            this.ownStaticProperties,
+            this.super?.staticProperties ?? []
+        );
     }
 
     private _staticMethods: ReflectedMethod[];
@@ -2758,10 +2753,10 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._staticMethods)
             return this._staticMethods;
 
-        if (this.super)
-            return this._staticMethods = this.super.staticMethods.concat(this.ownStaticMethods);
-        else
-            return this._staticMethods = this.ownStaticMethods;
+        return this._staticMethods = superMergeElements(
+            this.ownStaticMethods,
+            this.super?.staticMethods ?? []
+        );
     }
 
     /**
@@ -2781,10 +2776,10 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
         if (this._properties)
             return this._properties;
 
-        if (this.super)
-            return this._properties = this.super.properties.concat(this.ownProperties);
-        else
-            return this._properties = this.ownProperties;
+        return this._properties = superMergeElements(
+            this.ownProperties,
+            this.super?.properties ?? []
+        );
     }
 
     private get rawParameterMetadata(): format.RtParameter[] {
@@ -3086,4 +3081,13 @@ export class ReflectedCallSite {
     //         this._return = ReflectedTypeRef.createFromRtRef(this.callSite.r);
     //     return this._return;
     // }
+}
+
+function superMergeElements<T extends { name: string }>(ownSet: T[], superSet: T[]): T[] {
+    return superSet.map(superItem => ownSet.find(ownItem => ownItem.name === superItem.name) ?? superItem)
+        .concat(ownSet.filter(ownItem => !superSet.some(superItem => ownItem.name === superItem.name)));
+}
+
+function superMergeNames(ownSet: string[], superSet: string[]): string[] {
+    return superSet.concat(ownSet.filter(x => !superSet.includes(x)));
 }

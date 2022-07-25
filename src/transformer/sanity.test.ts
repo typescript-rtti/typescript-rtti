@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { describe } from "razmin";
+import ts from 'typescript';
 import { runSimple } from "../runner.test";
 
 describe('Sanity', it => {
@@ -311,6 +312,20 @@ describe('Sanity', it => {
                 }
 
                 IoC.resolve(['text'])
+            `
+        });
+    });
+    it('prevails, does not crash for static property with initializer in ES5/CommonJS', async () => {
+        // Filed as https://github.com/microsoft/TypeScript/issues/49794
+        // Prevents us from using the builtin decorators array on nodes until fixed.
+        // Targetted for fix in Typescript 4.8.
+        await runSimple({
+            moduleType: 'commonjs',
+            target: ts.ScriptTarget.ES5,
+            code: `
+                class A {
+                    static stuff = "things";
+                }
             `
         });
     });
