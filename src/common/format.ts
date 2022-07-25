@@ -26,7 +26,10 @@ export type F_FLAG = typeof F_READONLY | typeof F_ABSTRACT | typeof F_PUBLIC
     | typeof F_ARROW_FUNCTION | typeof F_OPTIONAL | typeof F_REST | typeof F_ASYNC
     | typeof F_EXPORTED | typeof F_INFERRED | typeof F_OMITTED | "";
 
-export type F_FLAGS = `${F_FLAG| ''}`;
+// TODO add flags validation when typescript regex type is implemented
+// https://github.com/microsoft/TypeScript/issues/41160
+export type F_FLAGS = `${F_FLAG| ''}${F_FLAG| ''}${F_FLAG| ''}${string}`; // this type validate only the first 3 flags
+
 /**
  * Flag attached to parameters which indicates that the parameter
  * is actually an array binding expression (aka destructured assignment).
@@ -301,3 +304,4 @@ export function resolveType(value:RtTypeRef): RtType {
         return value()
     return value;
 }
+

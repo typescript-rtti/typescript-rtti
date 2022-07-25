@@ -1,68 +1,71 @@
 {
-  "name": "typescript-rtti",
-  "version": "0.8.2",
-  "description": "Emits Typescript metadata for use at runtime",
-  "main": "dist/index.js",
-  "module": "dist.esm/index.js",
-  "types": "dist/index.d.ts",
-  "homepage": "https://github.com/rezonant/typescript-rtti",
-  "publishConfig": {
-    "access": "public"
-  },
-  "engines": {
-    "node": ">=10"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/rezonant/typescript-rtti.git"
-  },
-  "bugs": {
-    "url": "https://github.com/rezonant/typescript-rtti/issues"
-  },
-  "keywords": [
-    "rtti",
-    "metadata",
-    "decorators",
-    "typescript",
-    "runtime",
-    "reflection",
-    "reflect"
-  ],
-  "scripts": {
-    "clean": "rimraf dist dist.esm",
-    "build": "npm run clean && npm run build:cjs && npm run build:esm",
-    "build:cjs": "tsc -b",
-    "build:esm": "tsc -b ./tsconfig.esm.json && cpy package.esm.json dist.esm --rename package.json",
-    "test": "npm run build && nyc node --experimental-loader ./test-module-resolver.mjs dist/test",
-    "test:nocov": "npm run build && node --experimental-loader ./test-module-resolver.mjs dist/test",
-    "test:corpus": "npm run build && node ./dist.esm/test/corpus/main",
-    "test:corpus:trace": "npm run -- test:corpus -- --trace",
-    "prepublishOnly": "npm test && npm run test:corpus",
-    "docs": "typedoc ."
-  },
-  "author": "William Lahti",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/chai": "^4.2.15",
-    "@types/node": "^14.18.12",
-    "@types/rimraf": "^3.0.2",
-    "@types/shelljs": "^0.8.11",
-    "@types/strip-json-comments": "^3.0.0",
-    "chai": "^4.3.0",
-    "cpy-cli": "4.1",
-    "nyc": "^15.1.0",
-    "razmin": "^1.0.4",
-    "reflect-metadata": "^0.1.13",
-    "rimraf": "^3.0.2",
-    "shelljs": "^0.8.5",
-    "source-map-support": "^0.5.19",
-    "strip-json-comments": "^3.1.1",
-    "ttypescript": "^1.5.13",
-    "typescript": "4.7",
-    "zone.js": "^0.11.4"
-  },
-  "peerDependencies": {
-    "reflect-metadata": "^0.1.13",
-    "typescript": "^4.5 || ^4.6 || ^4.7"
-  }
+    "name": "typescript-rtti",
+    "version": "0.8.2",
+    "description": "Emits Typescript metadata for use at runtime",
+    "main": "dist/index.js",
+    "module": "dist.esm/index.js",
+    "types": "dist/index.d.ts",
+    "homepage": "https://github.com/rezonant/typescript-rtti",
+    "publishConfig": {
+        "access": "public"
+    },
+    "engines": {
+        "node": ">=10"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/rezonant/typescript-rtti.git"
+    },
+    "bugs": {
+        "url": "https://github.com/rezonant/typescript-rtti/issues"
+    },
+    "keywords": [
+        "rtti",
+        "metadata",
+        "decorators",
+        "typescript",
+        "runtime",
+        "reflection",
+        "reflect"
+    ],
+    "scripts": {
+        "clean": "rimraf dist dist.esm",
+        "build": "npm run clean && npm run build:cjs && npm run build:esm",
+        "build:cjs": "tsc -b",
+        "build:esm": "tsc -b ./tsconfig.esm.json && cpy package.esm.json dist.esm --rename package.json",
+        "test": "npm run build && nyc node --experimental-loader ./test-module-resolver.mjs dist/test",
+        "test:nocov": "npm run build && node --experimental-loader ./test-module-resolver.mjs dist/test",
+        "test:corpus": "npm run build && node ./dist.esm/test/corpus/main",
+        "test:corpus:trace": "npm run -- test:corpus -- --trace",
+        "prepublishOnly": "npm test && npm run test:corpus",
+        "docs": "typedoc ."
+    },
+    "author": "William Lahti",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/chai": "^4.2.15",
+        "@types/node": "^14.18.12",
+        "@types/rimraf": "^3.0.2",
+        "@types/shelljs": "^0.8.11",
+        "@types/strip-json-comments": "^3.0.0",
+        "chai": "^4.3.0",
+        "cpy-cli": "4.1",
+        "nyc": "^15.1.0",
+        "razmin": "^1.0.4",
+        "reflect-metadata": "^0.1.13",
+        "rimraf": "^3.0.2",
+        "shelljs": "^0.8.5",
+        "source-map-support": "^0.5.19",
+        "strip-json-comments": "^3.1.1",
+        "ttypescript": "^1.5.13",
+        "typescript": "4.7",
+        "zone.js": "^0.11.4"
+    },
+    "peerDependencies": {
+        "reflect-metadata": "^0.1.13",
+        "typescript": "^4.5 || ^4.6 || ^4.7"
+    },
+    "dependencies": {
+        "ts-clone-node": "^1.0.0"
+    }
 }

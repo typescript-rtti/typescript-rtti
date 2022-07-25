@@ -19,7 +19,6 @@ import {Serialize, serializeExpression} from './serialize';
 import { literalNode } from './literal-node';
 import {T_ALIAS, T_ENUM} from '../common';
 import {forwardRef} from "./forward-ref";
-import { T_ENUM } from '../common';
 import { WORKAROUND_TYPESCRIPT_49794 } from './workarounds';
 
 export class MetadataEmitter extends RttiVisitor {
