@@ -1,6 +1,5 @@
-# vNext (v0.9)
-- Typescript 4.7 is required. If you need Typescript 4.5 or 4.6, you'll need to use the 0.8.x series. If there are any
-  major bugfixes, we'll backport them there. You can find the 0.8.x codebase on the branch `0.8.x`.
+# vNext
+- Typescript 4.7 support
 
 # v0.8.2
 - Fix duplicate items in `properties`, `methods`, `staticProperties` and `staticMethods` (and the corresponding `*Names`

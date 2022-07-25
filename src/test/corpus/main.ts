@@ -90,7 +90,7 @@ const PACKAGES: Record<string, Package> = {
 const TYPESCRIPTS = [
     '4.5',
     '4.6',
-    //'4', 'latest', 'next', 'beta', 'rc', 'insiders'
+    '4.7'
 ];
 
 function run(str: string, cwd?: string, context?: string) {
