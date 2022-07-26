@@ -48,7 +48,7 @@ import {
     RtParameter,
     RtUnionType,
     RtAliasType,
-    RtMappedType, AliasToken, T_VARIABLE, resolveType, RtType
+    RtMappedType, AliasToken, T_VARIABLE, RtType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 import { WORKAROUND_TYPESCRIPT_49794 } from '../workarounds';
@@ -1774,7 +1774,7 @@ describe('rt:t', it => {
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         let type:RtMappedType = typeResolver();
-        let reference = resolveType(type.t)  as RtAliasType;
+        let reference = (type.t)  as RtAliasType;
 
         expect(type.TΦ).to.equal(T_GENERIC);
         expect(reference.TΦ).to.equal(T_ALIAS);
@@ -1793,7 +1793,7 @@ describe('rt:t', it => {
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         let type:RtMappedType = typeResolver();
-        let reference = resolveType(type.t)  as RtAliasType;
+        let reference = (type.t)  as RtAliasType;
 
         expect(type.TΦ).to.equal(T_GENERIC);
         expect(reference.TΦ).to.equal(T_OBJECT);
@@ -1854,7 +1854,7 @@ describe('rt:t', it => {
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         let aliastype: RtAliasType = typeResolver();
-        let type:RtObjectType = resolveType(aliastype.t) as RtObjectType;
+        let type:RtObjectType = (aliastype.t) as RtObjectType;
         expect(type.TΦ).to.equal(T_OBJECT);
         expect(type.m.length).to.equal(2);
         let fooT = type.m.find(x => x.n === 'foo');
@@ -1881,7 +1881,7 @@ describe('rt:t', it => {
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
         let aliastype: RtAliasType = typeResolver();
         expect(aliastype.TΦ).to.equal(T_ALIAS);
-        let type:RtObjectType = resolveType(aliastype.t) as RtObjectType;
+        let type:RtObjectType = (aliastype.t) as RtObjectType;
         expect(type.TΦ).to.equal(T_OBJECT);
         expect(type.m.length).to.equal(2);
         let fooT: RtObjectMember = type.m.find(x => x.n === 'foo');
@@ -2037,7 +2037,7 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
-        expect(resolveType(type.t)).to.equal(Promise);
+        expect((type.t)).to.equal(Promise);
         expect(type.p).to.eql([String]);
     });
     it('emits for bare inferred Promise return type', async () => {
@@ -2057,7 +2057,7 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
-        expect(resolveType(type.t)).to.equal(Promise);
+        expect((type.t)).to.equal(Promise);
         expect(type.p).to.eql([Number]);
     });
     it('emits for union as type parameter', async () => {
@@ -2076,7 +2076,7 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
-        expect(resolveType(type.t)).to.equal(exports.A);
+        expect((type.t)).to.equal(exports.A);
         expect(type.p[0].TΦ).to.equal(T_UNION);
         expect(type.p[0].t.length).to.equal(2);
         expect(type.p[0].t).to.include.all.members([String, Number]);
@@ -2100,7 +2100,7 @@ describe('rt:t', it => {
 
         expect(aliastype.TΦ).to.equal(T_ALIAS);
         // extract type from alias
-        let type = aliastype.t();
+        let type = aliastype.t;
 
         expect(type.TΦ).to.equal(T_UNION);
 
@@ -2109,7 +2109,7 @@ describe('rt:t', it => {
 
         expect(generic).to.exist;
         expect(generic.p[0]).to.equal(aliastype);
-        expect(generic.p[0].t()).to.equal(type);
+        expect(generic.p[0].t).to.equal(type);
     });
 });
 describe('rt:i', it => {

@@ -2,7 +2,6 @@ import {runSimple} from "../../runner.test";
 import {expect} from "chai";
 import {
     InterfaceToken,
-    resolveType,
     RtAliasType,
     RtGenericType,
     RtType,
@@ -70,11 +69,11 @@ describe('generics compiler', it => {
         const AA = Reflect.getMetadata('rt:t', cls)() as RtAliasType;
         expect(AA.TΦ).to.eql(T_ALIAS);
         expect(AA.name).to.eql("A");
-        const IB = resolveType(AA.t) as RtGenericType;
+        const IB = (AA.t) as RtGenericType;
         expect(IB.TΦ).to.eql(T_GENERIC);
         expect(IB.p[0]).to.eql(Reflect.getMetadata('rt:t', exports.AΦB)());
 
-        const AB = resolveType(IB.t) as InterfaceToken;
+        const AB = (IB.t) as InterfaceToken;
         expect(AB.name).to.eql("I");
 
     });
@@ -102,14 +101,14 @@ describe('generics compiler', it => {
         const AC = Reflect.getMetadata('rt:t', cls)() as RtAliasType;
         expect(AC.TΦ).to.eql(T_ALIAS);
         expect(AC.name).to.eql("C");
-        const AC2 = resolveType(AC.t) as RtAliasType;
+        const AC2 = (AC.t) as RtAliasType;
         expect(AC2.TΦ).to.eql(T_ALIAS);
         expect(AC2.name).to.eql("C2");
-        const DA = resolveType(AC2.t) as RtGenericType;
+        const DA = (AC2.t) as RtGenericType;
         expect(DA.TΦ).to.eql(T_GENERIC);
         expect(DA.p[0]).to.eql(Reflect.getMetadata('rt:t', exports.AΦA)());
 
-        const D = resolveType(DA.t) as InterfaceToken;
+        const D = (DA.t) as InterfaceToken;
         expect(D.name).to.eql("D");
 
     });
@@ -132,29 +131,29 @@ describe('generics compiler', it => {
         const T = Reflect.getMetadata('rt:t', cls)() as RtAliasType;
         expect(T.TΦ).to.eql(T_ALIAS);
 
-        const AG = resolveType(T.t) as RtGenericType;
+        const AG = (T.t) as RtGenericType;
         expect(AG.TΦ).to.eql(T_GENERIC);
         expect(AG.p.length).to.eql(1);
-        const A = resolveType(AG.t) as RtAliasType;
+        const A = (AG.t) as RtAliasType;
         expect(A.TΦ).to.eql(T_ALIAS);
         expect(A.name).to.eql("A");
-        const BG = resolveType(A.t) as RtGenericType;
+        const BG = (A.t) as RtGenericType;
         expect(BG.TΦ).to.eql(T_GENERIC);
         expect(BG.p.length).to.eql(1);
-        const B = resolveType(BG.t) as RtAliasType;
+        const B = (BG.t) as RtAliasType;
         expect(B.TΦ).to.eql(T_ALIAS);
         expect(B.name).to.eql("B");
-        const CG = resolveType(B.t) as RtGenericType;
+        const CG = (B.t) as RtGenericType;
         expect(CG.TΦ).to.eql(T_GENERIC);
         expect(CG.p.length).to.eql(1);
-        const C = resolveType(CG.t) as RtAliasType;
+        const C = (CG.t) as RtAliasType;
         expect(C.TΦ).to.eql(T_ALIAS);
         expect(C.name).to.eql("C");
-        const I = resolveType(C.t) as RtGenericType;
+        const I = (C.t) as RtGenericType;
         expect(I.TΦ).to.eql(T_GENERIC);
         expect(I.p.length).to.eql(2);
 
-        const Ia = resolveType(I.t) as InterfaceToken;
+        const Ia = (I.t) as InterfaceToken;
         expect(Ia.name).to.eql("I");
 
     });

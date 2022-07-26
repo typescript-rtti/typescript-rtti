@@ -335,7 +335,7 @@ export class MetadataEmitter extends RttiVisitor {
             TΦ: T_ALIAS,
             name: emitName,
             a: forwardRef(ts.factory.createIdentifier(identifierName)),
-            t: forwardRef(forwardedType),
+            t: forwardedType,
             p: decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []
         }
 

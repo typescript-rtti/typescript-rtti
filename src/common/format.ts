@@ -97,8 +97,6 @@ export type RtBrandedType = {
     | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN | typeof T_ALIAS;
 };
 
-export type RtTypeRef = RtType | (()=>RtType);
-
 export type RtIntrinsicIndicator = typeof T_VOID | typeof T_ANY | typeof T_UNKNOWN | typeof T_UNDEFINED | typeof T_TRUE | typeof T_FALSE | typeof T_THIS | typeof T_NULL;
 export type RtIntrinsicType<T extends RtIntrinsicIndicator = RtIntrinsicIndicator> = { TΦ: T; };
 export type RtVoidType = RtIntrinsicType<typeof T_VOID>;
@@ -134,7 +132,7 @@ export interface RtAliasType {
     TΦ: typeof T_ALIAS;
     name: string;
     a: ()=>AliasToken;
-    t: RtTypeRef;
+    t: RtType;
     p: Array<string> | undefined;
 }
 
@@ -297,11 +295,5 @@ export const isConstructorFunction = x => {
     } catch (e) {
         return false
     }
-}
-
-export function resolveType(value:RtTypeRef): RtType {
-    if (typeof value === 'function' && !isConstructorFunction(value))
-        return value()
-    return value;
 }
 

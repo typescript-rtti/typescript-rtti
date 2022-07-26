@@ -212,9 +212,8 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
                 identity: Symbol("Alias")
             }
         },
-        t: () => {
-            return {TΦ: format.T_UNKNOWN}
-        },
+        t: {TΦ: format.T_UNKNOWN}
+        ,
         p: []
     };
 
@@ -237,7 +236,7 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
     }
 
     setAliasedType(type: BuilderType): this {
-        this.typeRef.t = () => asRtType(type);
+        this.typeRef.t = asRtType(type);
         return this;
     }
 

@@ -11,7 +11,7 @@ import {
     TupleTypeBuilder,
     UnionTypeBuilder
 } from "./builder";
-import {F_FLAGS, resolveType, RtTupleElement} from "../common/format";
+import {F_FLAGS} from "../common/format";
 
 const NotProvided = Symbol();
 
@@ -203,7 +203,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     /** @internal */
     protected resolveAlias(ref) {
         if (typeof ref === 'object' && 'TΦ' in ref && ref.TΦ === format.T_ALIAS)
-            return this.resolveAlias(resolveType(ref.t));
+            return this.resolveAlias(ref.t);
         return ref;
     }
 
@@ -482,7 +482,7 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
     isGeneric<T = Function>(klass?: Constructor<T>): this is ReflectedGenericRef {
         if (this.kind === 'generic') {
             let rtGeneric: format.RtGenericType = <any>this.ref;
-            const t = resolveType(rtGeneric.t);
+            const t = rtGeneric.t;
             if (!t['TΦ']) { // this is a class
                 return !klass || t === klass;
             }

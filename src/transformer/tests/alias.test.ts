@@ -2,7 +2,6 @@ import {runSimple} from "../../runner.test";
 import {expect} from "chai";
 import {
     F_OPTIONAL,
-    resolveType,
     RtAliasType, RtGenericType, RtObjectMember,
     RtObjectType,
     RtType,
@@ -47,14 +46,14 @@ describe('alias compiler', it => {
             } else {
                 type = identity;
                 expect(type.TΦ).to.equal(T_ALIAS);
-                return resolveType(type.t);
+                return type.t;
             }
 
             expect(type.TΦ).to.equal(T_ALIAS);
             expect(type.name).to.equal(name);
             expect(type.a().identity).to.equal(talias.identity);
             // resolve alias type
-            return resolveType(type.t)
+            return type.t
         }
 
         expect(getAType('A')).to.eql(Number);
@@ -105,14 +104,14 @@ describe('alias compiler', it => {
             } else {
                 type = identity;
                 expect(type.TΦ).to.equal(T_ALIAS);
-                return resolveType(type.t);
+                return (type.t);
             }
 
             expect(type.TΦ).to.equal(T_ALIAS);
             expect(type.name).to.equal(name);
             expect(type.a().identity).to.equal(talias.identity);
             // resolve alias type
-            return resolveType(type.t)
+            return (type.t)
         }
 
         expect(getAType('C')['name']).to.eql("B");
@@ -145,11 +144,11 @@ describe('alias compiler', it => {
         let b:RtGenericType = ft.m.find(v => v.n === 'b').t as RtGenericType;
         expect(a.TΦ).to.equal(T_ALIAS);
         expect(a.name).to.equal("A");
-        expect(resolveType(a.t)).to.equal(Number);
+        expect((a.t)).to.equal(Number);
 
         expect(b.TΦ).to.equal(T_GENERIC);
-        expect((resolveType(b.t) as RtAliasType).TΦ).to.equal(T_ALIAS);
-        expect((resolveType(b.t) as RtAliasType).name).to.equal("B");
+        expect(((b.t) as RtAliasType).TΦ).to.equal(T_ALIAS);
+        expect(((b.t) as RtAliasType).name).to.equal("B");
 
         // @TODO object literal declare on type alias
 
@@ -202,11 +201,11 @@ describe('alias compiler', it => {
             if (type.TΦ === T_ALIAS) {
                 expect(type.name).to.equal(identity.toUpperCase());
                 // resolve alias type
-                return resolveType(type.t)
+                return (type.t)
             }
             if (type.TΦ === T_GENERIC) {
-                expect(resolveType(type.t)["TΦ"]).to.equal(T_ALIAS);
-                expect(resolveType(type.t)["name"]).to.equal(identity.toUpperCase());
+                expect((type.t)["TΦ"]).to.equal(T_ALIAS);
+                expect((type.t)["name"]).to.equal(identity.toUpperCase());
                 return type;
             }
             expect(type.TΦ).to.equal(T_ALIAS);
@@ -217,7 +216,7 @@ describe('alias compiler', it => {
         expect(getAType('c')).to.eql(String);
 
         expect(getAType('g')['TΦ']).to.eql(T_ALIAS);
-        expect(resolveType(getAType('g')['t'])).to.eql(String);
+        expect((getAType('g')['t'])).to.eql(String);
 
         expect(getAType('d')['TΦ']).to.eql(T_GENERIC);
         expect(getAType('e')['TΦ']).to.eql(T_GENERIC);
@@ -279,11 +278,11 @@ describe('alias compiler', it => {
             if (type.TΦ === T_ALIAS) {
                 expect(type.name).to.equal(identity.toUpperCase());
                 // resolve alias type
-                return resolveType(type.t)
+                return (type.t)
             }
             if (type.TΦ === T_GENERIC) {
-                expect(resolveType(type.t)["TΦ"]).to.equal(T_ALIAS);
-                expect(resolveType(type.t)["name"]).to.equal(identity.toUpperCase());
+                expect((type.t)["TΦ"]).to.equal(T_ALIAS);
+                expect((type.t)["name"]).to.equal(identity.toUpperCase());
                 return type;
             }
             expect(type.TΦ).to.equal(T_ALIAS);
@@ -294,7 +293,7 @@ describe('alias compiler', it => {
         expect(getAType('c')).to.eql(String);
 
         expect(getAType('g')['TΦ']).to.eql(T_ALIAS);
-        expect(resolveType(getAType('g')['t'])).to.eql(String);
+        expect((getAType('g')['t'])).to.eql(String);
 
         expect(getAType('d')['TΦ']).to.eql(T_GENERIC);
         expect(getAType('e')['TΦ']).to.eql(T_GENERIC);
@@ -357,12 +356,12 @@ describe('alias compiler', it => {
 
         let aliastype: RtAliasType = CAfA();
         expect(aliastype.TΦ).to.equal(T_ALIAS);
-        let type = resolveType(aliastype.t) as Number;
+        let type = (aliastype.t) as Number;
         expect(type).to.equal(Number);
 
          aliastype = fA();
         expect(aliastype.TΦ).to.equal(T_ALIAS);
-        type = resolveType(aliastype.t) as Number;
+        type = (aliastype.t) as Number;
         expect(type).to.equal(Number);
 
         // @TODO to be implemented
