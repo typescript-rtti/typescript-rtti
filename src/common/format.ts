@@ -133,7 +133,7 @@ export interface RtCallSite {
 export interface RtAliasType {
     TΦ: typeof T_ALIAS;
     name: string;
-    a: AliasToken;
+    a: ()=>AliasToken;
     t: RtTypeRef;
     p: Array<string> | undefined;
 }
@@ -194,7 +194,7 @@ export interface RtMappedType {
 
 export interface RtGenericType {
     TΦ: typeof T_GENERIC;
-    t: RtTypeRef; // base type that can be another generic, alias ect
+    t: RtType; // base type that can be another generic, alias ect
     p: RtType[];
 }
 

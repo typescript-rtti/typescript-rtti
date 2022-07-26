@@ -1,10 +1,10 @@
-import { RttiVisitor } from "./rtti-visitor-base";
+import {RttiVisitor} from "./rtti-visitor-base";
 import * as ts from 'typescript';
-import { RttiContext } from "./rtti-context";
-import { Visit } from "./common/visitor-base";
-import { ClassAnalyzer } from "./common/class-analyzer";
-import { ClassDetails } from "./common/class-details";
-import { InterfaceAnalyzer } from "./common/interface-analyzer";
+import {RttiContext} from "./rtti-context";
+import {Visit} from "./common/visitor-base";
+import {ClassAnalyzer} from "./common/class-analyzer";
+import {ClassDetails} from "./common/class-details";
+import {InterfaceAnalyzer} from "./common/interface-analyzer";
 import {
     decorateClassExpression,
     decorateFunctionExpression,
@@ -12,14 +12,19 @@ import {
     hostMetadataDecorator,
     metadataDecorator
 } from "./metadata-decorator";
-import { MetadataEncoder } from "./metadata-encoder";
-import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
-import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
+import {MetadataEncoder} from "./metadata-encoder";
+import {
+    ExternalDecorator,
+    ExternalMetadataCollector,
+    InlineMetadataCollector,
+    MetadataCollector
+} from "./metadata-collector";
+import {expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement} from "./utils";
 import {Serialize, serializeExpression} from './serialize';
-import { literalNode } from './literal-node';
-import {T_ALIAS, T_ENUM} from '../common';
+import {literalNode} from './literal-node';
+import {RtAliasType, T_ALIAS, T_ENUM} from '../common';
 import {forwardRef} from "./forward-ref";
-import { WORKAROUND_TYPESCRIPT_49794 } from './workarounds';
+import {WORKAROUND_TYPESCRIPT_49794} from './workarounds';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -291,7 +296,7 @@ export class MetadataEmitter extends RttiVisitor {
                                 type['id']
                             ),
                             ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-                            serializeExpression({ TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t')) })
+                            serializeExpression({TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t'))})
                         )
                     ),
                     [],
@@ -321,11 +326,20 @@ export class MetadataEmitter extends RttiVisitor {
         };`;
 
 
-
         decl = this.visitEachChild(decl);
 
         const customId = encoder.getTypeHash(decl);
         const forwardedType = encoder.referToTypeNode(decl.type);
+
+        const alias = {
+            TΦ: T_ALIAS,
+            name: emitName,
+            a: forwardRef(ts.factory.createIdentifier(identifierName)),
+            t: forwardRef(forwardedType),
+            p: decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []
+        }
+
+        encoder.declareType(serializeExpression(alias), customId);
 
         return [
             decl,
@@ -335,13 +349,6 @@ export class MetadataEmitter extends RttiVisitor {
                     ? [this.exportToken(identifierName)]
                     : []
             ),
-            Serialize`(t => __RΦ.t["${customId}"] =
-            {TΦ: "${T_ALIAS}",
-            name: "${emitName}",
-            a: t,
-            t: () => ${forwardedType},
-            p: ${decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []}
-            })(${identifierName});`,
             [metadataDecorator('rt:t', literalNode(forwardRef(encoder.accessDeclaredType(customId))))]
                 .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
                     ts.factory.createIdentifier(identifierName)

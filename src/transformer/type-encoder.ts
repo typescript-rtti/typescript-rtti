@@ -227,7 +227,7 @@ export class TypeEncoder {
 
                 this.declareType({
                     TΦ: T_GENERIC,
-                    t: forwardRef(aliasOrType), // reference to the original type alias
+                    t: aliasOrType, // reference to the original type alias
                     p: ref.typeArguments.map(x => this.referToNode(x)),
                 }, Tid);
 

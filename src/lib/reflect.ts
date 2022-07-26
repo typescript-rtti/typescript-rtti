@@ -801,7 +801,7 @@ export class ReflectedVariableRef extends ReflectedTypeRef<RtVariableType> {
 @ReflectedTypeRef.Kind('alias')
 export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
     get token(): format.AliasToken {
-        return this._aliased.a;
+        return this._aliased.a();
     }
 
     get reflectedType() {
@@ -1164,7 +1164,7 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
     get baseType(): ReflectedTypeRef {
         if (this._baseType)
             return this._baseType;
-        return this._baseType = ReflectedTypeRef.createFromRtRef(resolveType(this.ref.t));
+        return this._baseType = ReflectedTypeRef.createFromRtRef(this.ref.t);
     }
 
     get isInfiniteRecursion(): boolean {
@@ -1313,7 +1313,7 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
     get baseType(): ReflectedTypeRef {
         if (this._baseType)
             return this._baseType;
-        return this._baseType = ReflectedTypeRef.createFromRtRef(resolveType(this.ref.t));
+        return this._baseType = ReflectedTypeRef.createFromRtRef(this.ref.t);
     }
 
     private _typeParameters: ReflectedTypeRef[];

@@ -206,7 +206,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     }
                     return serializeExpression({
                         TΦ: T_GENERIC,
-                        t: forwardRef(encoder.referToType(typeRef.target)),
+                        t: (encoder.referToType(typeRef.target)),
                         p: args,
                     });
                 } catch (e) {

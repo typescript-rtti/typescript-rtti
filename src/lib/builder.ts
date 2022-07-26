@@ -206,9 +206,11 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
     typeRef: RtAliasType = {
         TΦ: T_ALIAS,
         name: "",
-        a: {
-            name: "",
-            identity: Symbol("Alias"),
+        a: () => {
+            return {
+                name: "",
+                identity: Symbol("Alias")
+            }
         },
         t: () => {
             return {TΦ: format.T_UNKNOWN}
@@ -231,7 +233,7 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
 
     set name(name: string) {
         this.typeRef.name = name;
-        this.typeRef.a.name = name;
+        this.typeRef.a().name = name;
     }
 
     setAliasedType(type: BuilderType): this {
@@ -249,15 +251,13 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
 export class GenericTypeBuilder extends TypeBuilder<RtGenericType> {
     typeRef: RtGenericType = {
         TΦ: T_GENERIC,
-        t: () => {
-            return {TΦ: format.T_UNKNOWN}
-        },
+        t: {TΦ: format.T_UNKNOWN},
         p: []
     };
 
 
     setBaseType(type: BuilderType): this {
-        this.typeRef.t = () => asRtType(type);
+        this.typeRef.t = asRtType(type);
         return this;
     }
 

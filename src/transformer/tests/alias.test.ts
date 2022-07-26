@@ -52,7 +52,7 @@ describe('alias compiler', it => {
 
             expect(type.TΦ).to.equal(T_ALIAS);
             expect(type.name).to.equal(name);
-            expect(type.a.identity).to.equal(talias.identity);
+            expect(type.a().identity).to.equal(talias.identity);
             // resolve alias type
             return resolveType(type.t)
         }
@@ -79,7 +79,7 @@ describe('alias compiler', it => {
         expect(getAType('Recursive')['name']).to.eql("Recursive");
 
         expect(getAType('Recursive2')['TΦ']).to.eql(T_GENERIC);
-        expect(getAType('Recursive2')['t']()['TΦ']).to.eql(T_ALIAS);
+        expect(getAType('Recursive2')['t']['TΦ']).to.eql(T_ALIAS);
 
     });
 
@@ -110,7 +110,7 @@ describe('alias compiler', it => {
 
             expect(type.TΦ).to.equal(T_ALIAS);
             expect(type.name).to.equal(name);
-            expect(type.a.identity).to.equal(talias.identity);
+            expect(type.a().identity).to.equal(talias.identity);
             // resolve alias type
             return resolveType(type.t)
         }
