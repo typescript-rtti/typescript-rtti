@@ -28,8 +28,8 @@ export type F_FLAG = typeof F_READONLY | typeof F_ABSTRACT | typeof F_PUBLIC
 
 // TODO add flags validation when typescript regex type is implemented
 // https://github.com/microsoft/TypeScript/issues/41160
-export type F_FLAGS = `${F_FLAG}${F_FLAG}${F_FLAG}${string}` | '' | F_FLAG | `${F_FLAG}${F_FLAG}` | `${F_FLAG}${F_FLAG}${F_FLAG}`; // this type validate only the first 3 flags
-
+type F_FLAGS2 = `${F_FLAG}${F_FLAG}`;
+export type F_FLAGS =  '' | F_FLAG | F_FLAGS2 | `${F_FLAGS2}${string}`; // this type validate only the first 2 flags
 /**
  * Flag attached to parameters which indicates that the parameter
  * is actually an array binding expression (aka destructured assignment).
