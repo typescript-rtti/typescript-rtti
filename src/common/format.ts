@@ -141,7 +141,7 @@ export interface RtAliasType {
 export interface RtVariableType {
     TΦ: typeof T_VARIABLE;
     name: string;
-    t: RtTypeRef; // type reference
+    t: RtType; // type reference
 }
 
 export interface RtUnionType {

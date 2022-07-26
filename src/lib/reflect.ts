@@ -779,7 +779,7 @@ export class ReflectedVariableRef extends ReflectedTypeRef<RtVariableType> {
 
     // return the type that declared this variable
     get typeDecl() {
-        return ReflectedTypeRef.createFromRtRef(resolveType(this.ref.t));
+        return ReflectedTypeRef.createFromRtRef(this.ref.t);
     }
 
     /* return a new type with all parameter replaced */

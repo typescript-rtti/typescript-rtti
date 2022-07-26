@@ -277,9 +277,7 @@ export class VariableTypeBuilder extends TypeBuilder<RtVariableType> {
     typeRef: RtVariableType = {
         TΦ: T_VARIABLE,
         name: "",
-        t: () => {
-            return {TΦ: format.T_UNKNOWN}
-        }
+        t: {TΦ: format.T_UNKNOWN}
     };
 
     setName(name: string): this {
@@ -296,7 +294,7 @@ export class VariableTypeBuilder extends TypeBuilder<RtVariableType> {
     }
 
     setTypeDeclaration(type: BuilderType): this {
-        this.typeRef.t = () => asRtType(type);
+        this.typeRef.t = asRtType(type);
         return this;
     }
 }
