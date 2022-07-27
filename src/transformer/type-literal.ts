@@ -134,12 +134,15 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         if (type.symbol || type.aliasSymbol) {
             /* handle type variable */
             const dec = encoder.extractDeclarationFromSymbol(ts.SyntaxKind.TypeParameter,type.symbol, type.aliasSymbol);
-            let node = dec.parent || dec;
-            return serializeExpression({
-                TΦ: T_VARIABLE,
-                name: type.symbol?.name ?? type.aliasSymbol?.name,
-                t: encoder.referToNode(node)
-            });
+            if (dec) {
+                let node = dec.parent || dec;
+                return serializeExpression({
+                    TΦ: T_VARIABLE,
+                    name: type.symbol?.name ?? type.aliasSymbol?.name,
+                    t: encoder.referToNode(node)
+                });
+            }
+            // ? what is this?
         }
 
         // TODO
