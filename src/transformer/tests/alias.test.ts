@@ -5,13 +5,35 @@ import {
     RtAliasType, RtGenericType, RtObjectMember,
     RtObjectType,
     RtType,
-    T_ALIAS,
-    T_GENERIC,
-    T_OBJECT,
+    T_ALIAS, T_ANY, T_ARRAY,
+    T_GENERIC, T_INTERSECTION,
+    T_OBJECT, T_TUPLE,
     T_UNION,
     T_VARIABLE
 } from "../../common";
 import {describe} from "razmin";
+
+function getAType(exports,identity: string | RtType) {
+    let name = identity;
+    let type = null;
+    let talias = null;
+    if (typeof identity !== 'object') {
+        talias = exports["AΦ" + name];
+        let ftype: () => RtAliasType = Reflect.getMetadata('rt:t', talias);
+        expect(ftype).not.undefined;
+        type = ftype();
+    } else {
+        type = identity;
+        expect(type.TΦ).to.equal(T_ALIAS);
+        return type.t;
+    }
+
+    expect(type.TΦ).to.equal(T_ALIAS);
+    expect(type.name).to.equal(name);
+    expect(type.a().identity).to.equal(talias.identity);
+    // resolve alias type
+    return type.t
+}
 
 describe('alias compiler', it => {
     it('rt:t is emitted on alias', async () => {
@@ -376,6 +398,60 @@ describe('alias compiler', it => {
         // type = resolveType(aliastype.t) as Number;
         // expect(type).to.equal(Number);
 
+    });
+    /**
+     * as typescript 4.7 this type is invalid and is resolved naturally to any
+     */
+    it('rt:t is emitted on alias union', async () => {
+        let exports = await runSimple({
+            code: `
+                export type A = A | number;
+            `
+        });
+
+        expect(getAType(exports,'A')['TΦ']).to.eql(T_ANY);
+    });
+    /**
+     * as typescript 4.7 this type is invalid and is resolved naturally to any
+     */
+    it('rt:t is emitted on alias intersection', async () => {
+        let exports = await runSimple({
+            code: `
+                export type A = A & number;
+            `
+        });
+
+        expect(getAType(exports,'A')['TΦ']).to.eql(T_ANY);
+    });
+
+    it('rt:t is emitted on alias self', async () => {
+        let exports = await runSimple({
+            code: `
+                export type A = A;
+            `
+        });
+
+        expect(getAType(exports,'A')['TΦ']).to.eql(T_ALIAS);
+    });
+
+    it('rt:t is emitted on alias tuple self', async () => {
+        let exports = await runSimple({
+            code: `
+                export type A = [A];
+            `
+        });
+
+        expect(getAType(exports,'A')['TΦ']).to.eql(T_TUPLE);
+    });
+
+    it('rt:t is emitted on alias array self', async () => {
+        let exports = await runSimple({
+            code: `
+                export type A = A[];
+            `
+        });
+
+        expect(getAType(exports,'A')['TΦ']).to.eql(T_ARRAY);
     });
 });
 

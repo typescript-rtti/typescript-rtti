@@ -1,7 +1,8 @@
-import { expect } from 'chai';
-import { describe } from 'razmin';
+import {expect} from 'chai';
+import {describe} from 'razmin';
 import * as format from '../common/format';
-import { ReflectedTypeRef } from './reflect';
+import {RtAliasType, RtVariableType, T_ALIAS, T_VARIABLE} from '../common/format';
+import {ReflectedAliasRef, ReflectedTypeRef} from './reflect';
 
 describe('ReflectedTypeRef#equals()', it => {
     it('matches by reference', () => {
@@ -193,5 +194,109 @@ describe('ReflectedTypeRef#equals()', it => {
         expect(ref1.equals(ref1)).to.be.true;
         expect(ref1.equals(ref2)).to.be.true;
         expect(ref1.equals(ref3)).to.be.false;
+    });
+    it('matches alias correctly', () => {
+        let AΦA:RtAliasType = {
+            TΦ: T_ALIAS,
+            name: "A",
+            a: ()=> {
+                return {
+                    name: "A",
+                    identity: Symbol("A"),
+                }
+            },
+            t: { TΦ: format.T_NULL },
+            p: [],
+        };
+        let AΦB:RtAliasType = {
+            TΦ: T_ALIAS,
+            name: "B",
+            a: ()=> {
+                return {
+                    name: "B",
+                    identity: Symbol("B"),
+                }
+            },
+            t: { TΦ: format.T_NULL },
+            p: [],
+        };
+
+        let ref1:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(AΦA);
+        let ref2:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(AΦB);
+
+        // alias are transparent, so they are equal to their underlying type
+        expect(ref1.equals(ref1)).to.be.true;
+        expect(ref1.equals(ref2)).to.be.true;
+        expect(ref2.equals(ref1)).to.be.true;
+        expect(ref1.equals(ReflectedTypeRef.createFromRtRef({ TΦ: format.T_NULL }))).to.be.true;
+        expect(ref2.equals(ReflectedTypeRef.createFromRtRef({ TΦ: format.T_NULL }))).to.be.true;
+
+        // strict match
+        ref1 = ref1.as("alias")
+        ref2 = ref1.as("alias")
+        expect(ref1.equals(ReflectedTypeRef.createFromRtRef({ TΦ: format.T_NULL }))).to.be.false;
+        expect(ref2.equals(ReflectedTypeRef.createFromRtRef({ TΦ: format.T_NULL }))).to.be.false;
+        expect(ref1.equals(ref1)).to.be.true;
+        expect(ref1.equals(ref2)).to.be.false;
+        expect(ref2.equals(ref1)).to.be.false;
+        expect(ref2.equals(ref2)).to.be.true;
+
+        // back to non strict mode
+        ref1.strictCheck = false;
+        ref2.strictCheck = false;
+        expect(ref1.equals(ref1)).to.be.true;
+        expect(ref1.equals(ref2)).to.be.true;
+        expect(ref2.equals(ref1)).to.be.true;
+        expect(ref1.equals(ReflectedTypeRef.createFromRtRef({ TΦ: format.T_NULL }))).to.be.true;
+        expect(ref2.equals(ReflectedTypeRef.createFromRtRef({ TΦ: format.T_NULL }))).to.be.true;
+    });
+    it('matches variable', () => {
+        const IA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
+
+        let V1:RtVariableType = {
+            TΦ: T_VARIABLE,
+            name: "T",
+            t : IA,
+        };
+        let V2:RtVariableType = {
+            TΦ: T_VARIABLE,
+            name: "K",
+            t : { name: 'B', prototype: {}, identity: Symbol('B (interface)') },
+        };
+        let V3:RtVariableType = {
+            TΦ: T_VARIABLE,
+            name: "T",
+            t : { name: 'C', prototype: {}, identity: Symbol('C (interface)') },
+        };
+        let V4:RtVariableType = {
+            TΦ: T_VARIABLE,
+            name: "T",
+            t : IA,
+        };
+        let V5:RtVariableType = {
+            TΦ: T_VARIABLE,
+            name: "K",
+            t : IA,
+        };
+
+        let v1:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(V1);
+        let v2:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(V2);
+        let v3:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(V3);
+        let v4:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(V4);
+        let v5:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(V5);
+
+        /* the underline type reference must match */
+
+        expect(v1.equals(v1)).to.be.true;
+        expect(v1.equals(v4)).to.be.true;
+
+        expect(v2.equals(v1)).to.be.false;
+        expect(v1.equals(v2)).to.be.false;
+        expect(v2.equals(v3)).to.be.false;
+
+        expect(v3.equals(v1)).to.be.false;
+        expect(v1.equals(v3)).to.be.false;
+
+        expect(v5.equals(v1)).to.be.false;
     });
 });
