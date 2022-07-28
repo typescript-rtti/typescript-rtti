@@ -22,7 +22,7 @@ import {
 import {expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement} from "./utils";
 import {Serialize, serializeExpression} from './serialize';
 import {literalNode} from './literal-node';
-import {RtAliasType, T_ALIAS, T_ENUM} from '../common';
+import {F_EXPORTED, RtAliasType, T_ALIAS, T_ENUM} from '../common';
 import {forwardRef} from "./forward-ref";
 import {WORKAROUND_TYPESCRIPT_49794} from './workarounds';
 
@@ -336,7 +336,8 @@ export class MetadataEmitter extends RttiVisitor {
             name: emitName,
             a: forwardRef(ts.factory.createIdentifier(identifierName)),
             t: forwardedType,
-            p: decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : []
+            p: decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : [],
+            f: hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword) ? F_EXPORTED : '',
         }
 
         encoder.declareType(serializeExpression(alias), customId);

@@ -214,7 +214,8 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
         },
         t: {TΦ: format.T_UNKNOWN}
         ,
-        p: []
+        p: [],
+        f:""
     };
 
     getToken() {
@@ -243,6 +244,12 @@ export class AliasTypeBuilder extends TypeBuilder<RtAliasType> {
     /* parameters for generics */
     addParameters(...name: string[]): this {
         this.typeRef.p.push(...name);
+        return this;
+    }
+
+    addFlag(flag: F_FLAGS): this {
+        if (flag == null) return this;
+        this.typeRef.f += flag;
         return this;
     }
 }

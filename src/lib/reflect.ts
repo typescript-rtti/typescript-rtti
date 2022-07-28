@@ -965,6 +965,17 @@ export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
         return this.arguments.length > 0;
     }
 
+    /**
+     * Retrieve the set of flags for this alias
+     */
+    _flags:ReflectedFlags;
+    get flags(): Readonly<ReflectedFlags> {
+        if (this._flags)
+            return this._flags;
+
+        return this._flags = new ReflectedFlags(this._aliased.f);
+    }
+
     /* return a new type with all parameter replaced */
     override createTypeCtx(types: ReflectedTypeArgumentsInput[], ctx = defaultTypeCtx()): ReflectedTypeRef {
         if (globalThis.RTTI_TRACE === true)

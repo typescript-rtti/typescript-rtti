@@ -134,6 +134,7 @@ export interface RtAliasType {
     a: ()=>AliasToken;
     t: RtType;
     p: Array<string> | undefined;
+    f: F_FLAGS;
 }
 
 export interface RtVariableType {

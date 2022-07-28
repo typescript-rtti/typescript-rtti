@@ -207,6 +207,7 @@ describe('ReflectedTypeRef#equals()', it => {
             },
             t: { TΦ: format.T_NULL },
             p: [],
+            f: "",
         };
         let AΦB:RtAliasType = {
             TΦ: T_ALIAS,
@@ -219,6 +220,7 @@ describe('ReflectedTypeRef#equals()', it => {
             },
             t: { TΦ: format.T_NULL },
             p: [],
+            f: "",
         };
 
         let ref1:ReflectedAliasRef = ReflectedTypeRef.createFromRtRef(AΦA);

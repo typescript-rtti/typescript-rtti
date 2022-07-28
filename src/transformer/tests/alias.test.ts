@@ -1,6 +1,7 @@
 import {runSimple} from "../../runner.test";
 import {expect} from "chai";
 import {
+    F_EXPORTED,
     F_OPTIONAL,
     RtAliasType, RtGenericType, RtObjectMember,
     RtObjectType,
@@ -72,6 +73,7 @@ describe('alias compiler', it => {
             }
 
             expect(type.TΦ).to.equal(T_ALIAS);
+            expect(type.f).to.equal(F_EXPORTED);
             expect(type.name).to.equal(name);
             expect(type.a().identity).to.equal(talias.identity);
             // resolve alias type
