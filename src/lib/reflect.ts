@@ -931,8 +931,8 @@ export class ReflectedVariableRef extends ReflectedTypeRef<RtVariableType> {
 @ReflectedTypeRef.Kind('alias')
 export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
     /**
-     * Used for matches
-     * Enabled only when casting to alias with .as("alias")
+     * Used for matches/kind
+     * Enabled automatically when casting to alias with .as("alias")
      */
     strictCheck: boolean = false;
 
@@ -963,6 +963,13 @@ export class ReflectedAliasRef extends ReflectedTypeRef<format.AliasToken> {
 
     get hasArguments() {
         return this.arguments.length > 0;
+    }
+
+    get kind(): ReflectedTypeRefKind {
+        if (this.strictCheck){
+            return 'alias';
+        }
+        return super.kind;
     }
 
     /**

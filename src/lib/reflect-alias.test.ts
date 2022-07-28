@@ -82,6 +82,8 @@ describe('reflect<T>() alias', it => {
             .to.equal(Number);
         expect((exports.reflectedTypeRef as ReflectedTypeRef).as('class').as("alias").token)
             .to.equal(exports.AΦSomething);
+        expect((exports.reflectedTypeRef as ReflectedTypeRef).as('class').as("alias").kind)
+            .to.equal("alias");
     });
     it('alias transparency', async () => {
         let exports = await runSimple({
