@@ -11,7 +11,7 @@ import { LegacyTypeEncoder } from './legacy-type-encoder';
 import { literalNode } from './literal-node';
 import { legacyMetadataDecorator, metadataDecorator } from './metadata-decorator';
 import { RttiContext } from './rtti-context';
-import { serialize } from './serialize';
+import {serialize, serializeExpression} from './serialize';
 import { TypeEncoder } from './type-encoder';
 import { expressionForPropertyName, hasFlag, hasModifier, propertyNameToString, referenceSymbol } from './utils';
 
@@ -83,6 +83,8 @@ export class MetadataEncoder {
         if (ts.isClassDeclaration(klass) || ts.isClassExpression(klass))
             decs.push(metadataDecorator('rt:Sm', this.prepareElementNames(details.staticMethodNames)));
         decs.push(metadataDecorator('rt:m', this.prepareElementNames(details.methodNames)));
+
+        decs.push(metadataDecorator('rt:tp', details.typeParameters));
 
         if (ts.isClassDeclaration(klass) || ts.isClassExpression(klass)) {
             let constructor = klass.members.find(x => ts.isConstructorDeclaration(x)) as ts.ConstructorDeclaration;
@@ -246,6 +248,7 @@ export class MetadataEncoder {
             decs.push(...this.typeNode(node.type, 'returntype', allowStandardMetadata));
         } else {
             let signature = this.checker.getSignatureFromDeclaration(node);
+            // @TODO can we get the type alias here?
             if (signature) {
                 this.ctx.locationHint = `[Return type of] ${methodHint}`;
                 decs.push(...this.type(signature.getReturnType(), undefined, 'returntype', allowStandardMetadata));
@@ -272,7 +275,7 @@ export class MetadataEncoder {
             let expr = this.legacyTypeEncoder.referToTypeNode(param.type);
             standardParamTypes.push(expr);
 
-            serializedParamMeta.push(literalNode(serialize(encodeParameter(this.typeEncoder, param))));
+            serializedParamMeta.push(literalNode(serializeExpression(encodeParameter(this.typeEncoder, param))));
         }
 
         decs.push(metadataDecorator('rt:p', serializedParamMeta));

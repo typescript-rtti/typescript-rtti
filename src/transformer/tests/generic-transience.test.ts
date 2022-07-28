@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { describe } from "razmin";
 import { runSimple } from "../../runner.test";
 import { reflect } from '../../lib';
+import {T_VARIABLE} from "../../common";
 
 describe('Transformer: Generic transience', it => {
     it('stuffs undefined on call args when needed', async () => {
@@ -408,13 +409,12 @@ describe('Transformer: Generic transience', it => {
             }
         });
 
-        expect(exports.c()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [Number],
-            r: undefined,
-            tp: [Object],
-        });
+        expect(exports.c().TΦ).to.eql("c");
+        expect(exports.c().t).to.eql(undefined);
+        expect(exports.c().p).to.eql([Number]);
+        expect(exports.c().r).to.eql(undefined);
+        expect(exports.c().tp.length).to.eql(1);
+        expect(exports.c().tp[0].TΦ).to.eql(T_VARIABLE);
 
     });
 });

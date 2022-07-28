@@ -1,23 +1,64 @@
 import * as ts from 'typescript';
-import { F_OPTIONAL, RtFunctionType, RtObjectMember, RtParameter, RtSerialized, RtType, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
-    T_OBJECT, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
-import { findRelativePathToFile } from './find-relative-path';
-import { getPreferredExportForImport } from './get-exports-for-symbol';
-import { literalNode } from './literal-node';
-import { serialize } from './serialize';
-import { MappedType } from './ts-internal-types';
-import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
-    serializeEntityNameAsExpression, typeHasValue } from './utils';
+import {
+    F_OPTIONAL,
+    RtFunctionType,
+    RtObjectMember,
+    RtParameter,
+    RtSerialized,
+    RtType,
+    T_ANY,
+    T_ARRAY,
+    T_ENUM,
+    T_FALSE,
+    T_FUNCTION,
+    T_GENERIC,
+    T_INTERSECTION,
+    T_MAPPED,
+    T_NULL,
+    T_OBJECT,
+    T_THIS,
+    T_TRUE,
+    T_TUPLE,
+    T_UNDEFINED,
+    T_UNION,
+    T_UNKNOWN,
+    T_VARIABLE,
+    T_VOID
+} from '../common';
+import {findRelativePathToFile} from './find-relative-path';
+import {getPreferredExportForImport} from './get-exports-for-symbol';
+import {literalNode} from './literal-node';
+import {serialize, serializeExpression} from './serialize';
+import {MappedType} from './ts-internal-types';
+import {
+    fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
+    serializeEntityNameAsExpression, typeHasValue
+} from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
-import { RttiContext } from './rtti-context';
-import { forwardRef } from './forward-ref';
-import { encodeParameter } from './encode-parameter';
+import {RttiContext} from './rtti-context';
+import {forwardRef} from './forward-ref';
+import {encodeParameter} from './encode-parameter';
 
 export interface TypeEncoderImpl {
     ctx: RttiContext;
-    referToType(type: ts.Type, typeNode?: ts.TypeNode): ts.Expression;
-    referToTypeNode(typeNode: ts.TypeNode): ts.Expression;
+
+    referToType(type: ts.Type, typeNode?: ts.TypeNode, asAlias?: boolean): ts.Expression;
+
+    referToTypeNode(typeNode: ts.TypeNode, asAlias?: boolean): ts.Expression;
+    referToNode(node: ts.Node, asAlias?: boolean): ts.Expression;
+
+    extractTypeAliasDeclarationFromTypeNode?(node: ts.TypeNode): ts.TypeAliasDeclaration | undefined;
+
+    extractTypeAliasDeclarationFromType?(type: ts.Type): ts.TypeAliasDeclaration | undefined
+
+    extractTypeAliasDeclarationFromSymbol?(symbol: ts.Symbol): ts.TypeAliasDeclaration | undefined
+
+    isTypeReferenceWithTypeArguments?(typeNode?: ts.TypeNode): boolean;
+
+    retrieveTypeAliasDeclaration?(type: ts.Type, typeNode?: ts.TypeNode): ts.TypeAliasDeclaration | undefined;
+
+    extractDeclarationFromSymbol?(syntaxKind:ts.SyntaxKind,...symbol: ts.Symbol[]): ts.Node | undefined;
 }
 
 export interface TypeLiteralOptions {
@@ -42,7 +83,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
     } else if ((type.flags & ts.TypeFlags.Boolean) !== 0) {
         return ts.factory.createIdentifier('Boolean');
     } else if ((type.flags & ts.TypeFlags.Void) !== 0) {
-        return serialize({ TΦ: T_VOID });
+        return serializeExpression({TΦ: T_VOID});
     } else if ((type.flags & ts.TypeFlags.BigInt) !== 0) {
         return ts.factory.createIdentifier('BigInt');
     } else if (hasFlag(type.flags, ts.TypeFlags.EnumLiteral)) {
@@ -50,45 +91,59 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         if (type.symbol && hasFlag(type.symbol.flags, ts.SymbolFlags.ConstEnum)) {
             // This is a constant enum, so we won't refer to the runtime identity (there won't be one)
             let unionType = type as ts.UnionType;
-            return serialize({
+            return serializeExpression({
                 TΦ: T_ENUM,
                 n: type.symbol.name ?? type.aliasSymbol.name,
                 v: unionType.types.reduce((s, t: ts.LiteralType) => (s[t.symbol.name] = t.value, s), {})
             });
         }
 
-        return serialize({
+        return serializeExpression({
             TΦ: T_ENUM,
             n: type.symbol?.name ?? type.aliasSymbol?.name,
             e: literalNode(referToTypeWithIdentifier(ctx, type, typeNode, options))
         });
     } else if (type.isUnion()) {
-        return serialize({
+        return serializeExpression({
             TΦ: T_UNION,
             t: type.types.map(x => literalNode(encoder.referToType(x)))
         });
     } else if (type.isIntersection()) {
-        return serialize({
+        return serializeExpression({
             TΦ: T_INTERSECTION,
             t: type.types.map(x => literalNode(encoder.referToType(x)))
         });
     } else if (hasFlag(type.flags, ts.TypeFlags.Null)) {
-        return serialize({ TΦ: T_NULL });
+        return serializeExpression({TΦ: T_NULL});
     } else if (hasFlag(type.flags, ts.TypeFlags.Undefined)) {
-        return serialize({ TΦ: T_UNDEFINED });
+        return serializeExpression({TΦ: T_UNDEFINED});
     } else if (hasFlag(type.flags, ts.TypeFlags.Unknown)) {
-        return serialize({ TΦ: T_UNKNOWN });
+        return serializeExpression({TΦ: T_UNKNOWN});
     } else if (hasFlag(type.flags, ts.TypeFlags.Any)) {
-        return serialize({ TΦ: T_ANY });
+        return serializeExpression({TΦ: T_ANY});
     } else if (isFlagType<ts.LiteralType>(type, ts.TypeFlags.Literal)) {
         if (type['intrinsicName'] === 'true')
-            return serialize({ TΦ: T_TRUE });
+            return serializeExpression({TΦ: T_TRUE});
         else if (type['intrinsicName'] === 'false')
-            return serialize({ TΦ: T_FALSE });
-        return serialize(type.value);
+            return serializeExpression({TΦ: T_FALSE});
+        return serializeExpression(type.value);
     } else if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
         if (type['isThisType'])
-            return serialize({ TΦ: T_THIS });
+            return serializeExpression({TΦ: T_THIS});
+
+        if (type.symbol || type.aliasSymbol) {
+            /* handle type variable */
+            const dec = encoder.extractDeclarationFromSymbol(ts.SyntaxKind.TypeParameter,type.symbol, type.aliasSymbol);
+            if (dec) {
+                let node = dec.parent || dec;
+                return serializeExpression({
+                    TΦ: T_VARIABLE,
+                    name: type.symbol?.name ?? type.aliasSymbol?.name,
+                    t: encoder.referToNode(node)
+                });
+            }
+            // ? what is this?
+        }
 
         // TODO
         return ts.factory.createIdentifier('Object');
@@ -100,7 +155,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         if (isMapped) {
             if (isInstantiated) {
                 let typeRef = <MappedType>type;
-                return serialize({
+                return serializeExpression({
                     TΦ: T_MAPPED,
                     t: literalNode(encoder.referToType(typeRef.typeParameter)),
                     p: typeRef.aliasTypeArguments?.map(t => literalNode(encoder.referToType(t))) ?? []
@@ -114,7 +169,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     let tupleTypeRef = <ts.TupleTypeReference>typeRef;
                     let tupleType = tupleTypeRef.target;
 
-                    return serialize({
+                    return serializeExpression({
                         TΦ: T_TUPLE,
                         e: typeRef.typeArguments.map((e, i) => {
                             if (tupleType.labeledElementDeclarations) {
@@ -138,17 +193,24 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     debugger;
 
                 if (typeRef.target.symbol.name === 'Array' && typeRef.typeArguments.length === 1) {
-                    return serialize({
+                    return serializeExpression({
                         TΦ: T_ARRAY,
                         e: literalNode(encoder.referToType(typeRef.typeArguments[0]))
                     });
                 }
 
                 try {
-                    return serialize({
+                    /* resolve aliases */
+                    let args=[];
+                    if (typeNode && ts.isTypeReferenceNode(typeNode) && typeNode.typeArguments) {
+                        args = typeNode.typeArguments.map(t => encoder.referToTypeNode(t));
+                    }else{
+                        args = (typeRef.typeArguments ?? []).map(t => encoder.referToType(t));
+                    }
+                    return serializeExpression({
                         TΦ: T_GENERIC,
-                        t: literalNode(encoder.referToType(typeRef.target)),
-                        p: (typeRef.typeArguments ?? []).map(x => literalNode(encoder.referToType(x)))
+                        t: (encoder.referToType(typeRef.target)),
+                        p: args,
                     });
                 } catch (e) {
                     console.error(`RTTI: Error while serializing type '${typeRef.symbol.name}': ${e.message}`);
@@ -163,10 +225,10 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         // the array type and work around the lack of the Array symbol.
 
         if (!type.symbol && typeNode && ts.isArrayTypeNode(typeNode)) {
-            let typeRef = checker.getTypeAtLocation(typeNode.elementType);
-            return serialize({
+            //let typeRef = checker.getTypeAtLocation(typeNode.elementType);
+            return serializeExpression({
                 TΦ: T_ARRAY,
-                e: literalNode(encoder.referToType(typeRef))
+                e: literalNode(encoder.referToNode(typeNode.elementType))
             });
         }
 
@@ -224,7 +286,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 let flags = ''; // No flags supported yet
                 let missingParamDecls = false;
 
-                return serialize(<RtSerialized<RtFunctionType>>{
+                return serializeExpression(<RtSerialized<RtFunctionType>>{
                     TΦ: T_FUNCTION,
                     r: literalNode(encoder.referToType(returnType)),
                     p: parameters.map(p => {
@@ -271,6 +333,19 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
             let members: RtObjectMember[] = [];
             if (type.symbol && type.symbol.members) {
                 type.symbol.members.forEach((value, key) => {
+                    // handle { } object literal alias
+                    if (value.valueDeclaration){
+                        if (ts.isPropertySignature(value.valueDeclaration) && value.valueDeclaration.type){
+                            members.push({
+                                n: <string>key,
+                                f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
+                                t: <any>literalNode(encoder.referToNode(value.valueDeclaration.type))
+                            });
+                            return;
+                        }
+                    }
+
+
                     // TODO: currentTopStatement may be far up the AST- would be nice if we had
                     // a currentStatement that was not constrained to be at the top of the SourceFile
                     let memberType = encoder.ctx.checker.getTypeOfSymbolAtLocation(
@@ -286,7 +361,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 });
             }
 
-            return serialize({
+            return serializeExpression({
                 TΦ: T_OBJECT,
                 m: members
             });
@@ -390,6 +465,7 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                 // import another way that doesn't depend on the type node anyway.
 
                 //throw new Error(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
+                console.warn(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
             }
         }
 
@@ -473,6 +549,7 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
 
                     if (isNodeJS()) {
                         let requireN = require;
+
                         function requireX(path) {
                             return requireN(path);
                         }
@@ -560,8 +637,8 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                     ts.factory.createCallExpression(
                         ts.factory.createIdentifier('require'),
                         [], [
-                        ts.factory.createStringLiteral(modulePath)
-                    ]
+                            ts.factory.createStringLiteral(modulePath)
+                        ]
                     ), exportedName);
             } else {
 

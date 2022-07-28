@@ -11,6 +11,9 @@ export class ClassAnalyzer extends VisitorBase {
         try {
             let analyzer = new ClassAnalyzer(context);
             analyzer.visitEachChild(decl);
+            decl.typeParameters?.forEach(t =>{
+                analyzer.addItem(analyzer.details.typeParameters, t.name.text); // @TODO handle things like A extends B, typeof A and other expression ect
+            })
             return analyzer.details;
         } catch (e) {
             console.error(`RTTI: During analyzer for class ${decl.name.getText()}: ${e.message}`);
@@ -22,7 +25,8 @@ export class ClassAnalyzer extends VisitorBase {
         methodNames: [],
         propertyNames: [],
         staticMethodNames: [],
-        staticPropertyNames: []
+        staticPropertyNames: [],
+        typeParameters: [],
     };
 
     private addItem<T>(list: T[], prop: T) {

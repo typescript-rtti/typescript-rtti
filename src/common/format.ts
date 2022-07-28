@@ -19,6 +19,17 @@ export const F_EXPORTED: 'e' = 'e';
 export const F_INFERRED: '.' = '.';
 export const F_OMITTED: ',' = ',';
 
+/* all allowed flags */
+export type F_FLAG = typeof F_READONLY | typeof F_ABSTRACT | typeof F_PUBLIC
+    | typeof F_PRIVATE | typeof F_PROTECTED | typeof F_PROPERTY | typeof F_METHOD
+    | typeof F_STATIC | typeof F_CLASS | typeof F_INTERFACE | typeof F_FUNCTION
+    | typeof F_ARROW_FUNCTION | typeof F_OPTIONAL | typeof F_REST | typeof F_ASYNC
+    | typeof F_EXPORTED | typeof F_INFERRED | typeof F_OMITTED;
+
+// TODO add flags validation when typescript regex type is implemented
+// https://github.com/microsoft/TypeScript/issues/41160
+type F_FLAGS2 = `${F_FLAG}${F_FLAG}`;
+export type F_FLAGS =  '' | F_FLAG | F_FLAGS2 | `${F_FLAGS2}${string}`; // this type validate only the first 2 flags
 /**
  * Flag attached to parameters which indicates that the parameter
  * is actually an array binding expression (aka destructured assignment).
@@ -50,6 +61,8 @@ export const T_STAND_IN: '5' = '5';
 export const T_OBJECT: 'O' = 'O';
 export const T_ENUM: 'e' = 'e';
 export const T_FUNCTION: 'F' = 'F';
+export const T_ALIAS: 'd' = 'd';
+export const T_VARIABLE: 'v' = 'v';
 export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
 
 export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };
@@ -67,16 +80,21 @@ export interface InterfaceToken<T = any> {
     prototype: any;
     identity: symbol;
 }
+export interface AliasToken<T = any> {
+    name: string;
+    identity: symbol;
+}
+
 
 export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
     | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN } | RtFunctionType
-    | Function | Literal | InterfaceToken;
+    | Function | Literal | InterfaceToken | AliasToken | RtVariableType | RtAliasType;
 
 export type RtBrandedType = {
     TΦ:
     typeof T_UNION | typeof T_INTERSECTION | typeof T_ANY | typeof T_UNKNOWN | typeof T_VOID | typeof T_UNDEFINED
     | typeof T_NULL | typeof T_TUPLE | typeof T_ARRAY | typeof T_THIS | typeof T_GENERIC | typeof T_MAPPED
-    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN;
+    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN | typeof T_ALIAS;
 };
 
 export type RtIntrinsicIndicator = typeof T_VOID | typeof T_ANY | typeof T_UNKNOWN | typeof T_UNDEFINED | typeof T_TRUE | typeof T_FALSE | typeof T_THIS | typeof T_NULL;
@@ -110,6 +128,21 @@ export interface RtCallSite {
     r: RtType;
 }
 
+export interface RtAliasType {
+    TΦ: typeof T_ALIAS;
+    name: string;
+    a: ()=>AliasToken;
+    t: RtType;
+    p: Array<string> | undefined;
+    f: F_FLAGS;
+}
+
+export interface RtVariableType {
+    TΦ: typeof T_VARIABLE;
+    name: string;
+    t: RtType; // type reference
+}
+
 export interface RtUnionType {
     TΦ: typeof T_UNION;
     t: RtType[];
@@ -124,11 +157,11 @@ export interface RtFunctionType {
     TΦ: typeof T_FUNCTION;
     r: RtType;
     p: RtParameter[];
-    f: string;
+    f: F_FLAGS;
 }
 export interface RtObjectMember {
     n: string;
-    f: string;
+    f: F_FLAGS;
     t: RtType;
 }
 
@@ -160,7 +193,7 @@ export interface RtMappedType {
 
 export interface RtGenericType {
     TΦ: typeof T_GENERIC;
-    t: RtType;
+    t: RtType; // base type that can be another generic, alias ect
     p: RtType[];
 }
 
@@ -221,7 +254,7 @@ export interface RtParameter {
     /**
      * The flags for this parameter.
      */
-    f?: string;
+    f?: F_FLAGS;
 }
 
 export interface LiteralSerializedNode {
@@ -229,10 +262,39 @@ export interface LiteralSerializedNode {
     node: ts.Expression;
 }
 
+export interface CodeSerializedNode {
+    $__isTSNode: true;
+    code: string;
+}
+
 export type RtSerialized<T> = T | {
-    [K in keyof T]: T[K] | RtSerialized<T[K]> | (T[K] extends Array<any> ? LiteralSerializedNode[] : LiteralSerializedNode);
+    [K in keyof T]: T[K] | RtSerialized<T[K]> | (T[K] extends Array<any> ? LiteralSerializedNode[] : LiteralSerializedNode) | typeof Object | Function;
 };
 
 export function isLiteralNode<T>(node: T | LiteralSerializedNode): node is LiteralSerializedNode {
     return !!node['$__isTSNode'];
 }
+export function isCodeNode<T>(node: T | CodeSerializedNode): node is CodeSerializedNode {
+    return !!node['$__isTSNode'] && node['code'] !== undefined;
+}
+export function isStatementNode<T>(node: ts.Node): boolean {
+    return node.hasOwnProperty('_statementBrand');
+}
+
+const handler = {
+    construct() {
+        return handler
+    }
+}
+
+export const isConstructorFunction = x => {
+    if (typeof x !== 'function') {
+        return false;
+    }
+    try {
+        return !!(new (new Proxy(x, handler))())
+    } catch (e) {
+        return false
+    }
+}
+

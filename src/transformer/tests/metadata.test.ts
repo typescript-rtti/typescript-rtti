@@ -3,15 +3,52 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import {
-    F_REST, F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
-    F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
-    F_ARRAY_BINDING, F_OBJECT_BINDING,
+    F_REST,
+    F_OPTIONAL,
+    F_PRIVATE,
+    F_PROTECTED,
+    F_PUBLIC,
+    F_READONLY,
+    F_INFERRED,
+    F_ABSTRACT,
+    F_ARROW_FUNCTION,
+    F_ASYNC,
+    F_CLASS,
+    F_EXPORTED,
+    F_FUNCTION,
+    F_INTERFACE,
+    F_METHOD,
+    F_STATIC,
+    T_ANY,
+    T_ARRAY,
+    T_FALSE,
+    F_ARRAY_BINDING,
+    F_OBJECT_BINDING,
 
-    T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN,
-    T_OBJECT, T_VOID, T_ENUM, T_FUNCTION,
-
-    InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
-    RtParameter, RtArrayType
+    T_GENERIC,
+    T_INTERSECTION,
+    T_MAPPED,
+    T_NULL,
+    T_THIS,
+    T_TRUE,
+    T_TUPLE,
+    T_UNDEFINED,
+    T_UNION,
+    T_UNKNOWN,
+    T_OBJECT,
+    T_VOID,
+    T_ENUM,
+    T_FUNCTION,
+    T_ALIAS,
+    InterfaceToken,
+    RtObjectMember,
+    RtObjectType,
+    RtFunctionType,
+    RtArrayType,
+    RtParameter,
+    RtUnionType,
+    RtAliasType,
+    RtMappedType, AliasToken, T_VARIABLE, RtType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 import { WORKAROUND_TYPESCRIPT_49794 } from '../workarounds';
@@ -1718,26 +1755,30 @@ describe('rt:t', it => {
         });
 
         let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-        expect(type()).to.equal(Object);
+        const resolveT = type();
+        expect(resolveT.TΦ).to.equal(T_VARIABLE);
+        expect(resolveT.name).to.equal("T");
     });
     it('emits for mapped types', async () => {
         let exports = await runSimple({
             code: `
                 export class A {}
                 type Px<T> = {
-                    [P in keyof T]?: T[P];
+                    [P in keyof T]?: T[P]; // this is a mapped type but it's not supported atm
                 };
                 export class C {
                     method<T>(): Px<A> { return null; }
                 }
-            `
+            `,
         });
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-        let type = typeResolver();
+        let type:RtMappedType = typeResolver();
+        let reference = (type.t)  as RtAliasType;
 
-        expect(type.TΦ).to.equal(T_MAPPED);
-        expect(type.t).to.equal(Object);
+        expect(type.TΦ).to.equal(T_GENERIC);
+        expect(reference.TΦ).to.equal(T_ALIAS);
+        expect(reference.name).to.equal("Px");
         expect(type.p).to.eql([exports.A]);
     });
     it('emits for mapped types from TS lib', async () => {
@@ -1751,11 +1792,12 @@ describe('rt:t', it => {
         });
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-        let type = typeResolver();
+        let type:RtMappedType = typeResolver();
+        let reference = (type.t)  as RtAliasType;
 
-        expect(type.TΦ).to.equal(T_MAPPED);
+        expect(type.TΦ).to.equal(T_GENERIC);
+        expect(reference.TΦ).to.equal(T_OBJECT);
         expect(type.p).to.eql([exports.A]);
-        expect(type.t).to.equal(Object);
     });
     it('emits for inferred class return type', async () => {
         let exports = await runSimple({
@@ -1810,7 +1852,9 @@ describe('rt:t', it => {
             `
         });
 
-        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method'); let type = typeResolver();
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        let aliastype: RtAliasType = typeResolver();
+        let type:RtObjectType = (aliastype.t) as RtObjectType;
         expect(type.TΦ).to.equal(T_OBJECT);
         expect(type.m.length).to.equal(2);
         let fooT = type.m.find(x => x.n === 'foo');
@@ -1835,7 +1879,9 @@ describe('rt:t', it => {
         });
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
-        let type: RtObjectType = typeResolver();
+        let aliastype: RtAliasType = typeResolver();
+        expect(aliastype.TΦ).to.equal(T_ALIAS);
+        let type:RtObjectType = (aliastype.t) as RtObjectType;
         expect(type.TΦ).to.equal(T_OBJECT);
         expect(type.m.length).to.equal(2);
         let fooT: RtObjectMember = type.m.find(x => x.n === 'foo');
@@ -1991,7 +2037,7 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
-        expect(type.t).to.equal(Promise);
+        expect((type.t)).to.equal(Promise);
         expect(type.p).to.eql([String]);
     });
     it('emits for bare inferred Promise return type', async () => {
@@ -2011,7 +2057,7 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
-        expect(type.t).to.equal(Promise);
+        expect((type.t)).to.equal(Promise);
         expect(type.p).to.eql([Number]);
     });
     it('emits for union as type parameter', async () => {
@@ -2030,7 +2076,7 @@ describe('rt:t', it => {
         let type = typeResolver();
 
         expect(type.TΦ).to.equal(T_GENERIC);
-        expect(type.t).to.equal(exports.A);
+        expect((type.t)).to.equal(exports.A);
         expect(type.p[0].TΦ).to.equal(T_UNION);
         expect(type.p[0].t.length).to.equal(2);
         expect(type.p[0].t).to.include.all.members([String, Number]);
@@ -2050,7 +2096,11 @@ describe('rt:t', it => {
         });
 
         let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');
-        let type = typeResolver();
+        let aliastype = typeResolver();
+
+        expect(aliastype.TΦ).to.equal(T_ALIAS);
+        // extract type from alias
+        let type = aliastype.t;
 
         expect(type.TΦ).to.equal(T_UNION);
 
@@ -2058,7 +2108,8 @@ describe('rt:t', it => {
         let generic = type.t.find(x => x.TΦ === T_GENERIC);
 
         expect(generic).to.exist;
-        expect(generic.p[0]).to.equal(type);
+        expect(generic.p[0]).to.equal(aliastype);
+        expect(generic.p[0].t).to.equal(type);
     });
 });
 describe('rt:i', it => {
@@ -2222,6 +2273,25 @@ if (!WORKAROUND_TYPESCRIPT_49794) {
                                 throw new Error('Metadata was not available to decorator!');
                         }
                     };
+                @dec()
+                class Foo {
+                    @dec() public async bar(baz: number): Promise<void> {}
+                    @dec() public baz: boolean;
+                }
+            `
+        });
+    });
+    it.skip('should be preserved for parameters', async () => {
+        // Test fails, and not sure there's a way to make it pass :-\
+        // https://github.com/typescript-rtti/typescript-rtti/issues/76#issuecomment-1169451079
+        await runSimple({
+            code: `
+                function dec() {
+                    return (target, pk?, index?) => {
+                        if ((Reflect as any).getMetadata('rt:f', target, pk) === undefined)
+                            throw new Error('Metadata was not available to decorator!');
+                    }
+                };
 
                     class Foo {
                         public async bar(@dec() baz: number): Promise<void> {}

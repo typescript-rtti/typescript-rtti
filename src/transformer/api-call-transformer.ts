@@ -3,7 +3,7 @@ import * as ts from 'typescript';
 import { getRttiDocTagFromSignature, hasFlag, isStatement } from "./utils";
 import { RttiVisitor } from "./rtti-visitor-base";
 import { RttiContext } from "./rtti-context";
-import { serialize } from "./serialize";
+import {serialize, serializeExpression} from "./serialize";
 import { TypeEncoder } from "./type-encoder";
 import { literalNode } from "./literal-node";
 import * as format from "../common/format";
@@ -130,12 +130,12 @@ export class ApiCallTransformer extends RttiVisitor {
                 args.push(ts.factory.createVoidZero());
             }
 
-            args.push(serialize(<format.RtSerialized<format.RtCallSite>>{
+            args.push(serializeExpression(<format.RtSerialized<format.RtCallSite>>{
                 TΦ: 'c',
                 t: undefined, // TODO: this type
-                p: expr.arguments.map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x)))),
+                p: expr.arguments.map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x)))), // TODO can we extract the TypeNode?
                 r: undefined, // TODO return type
-                tp: (expr.typeArguments ?? []).map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x))))
+                tp: (expr.typeArguments ?? []).map(x => literalNode(this.referToType(this.checker.getTypeAtLocation(x),x)))
             }));
 
             return ts.factory.updateCallExpression(this.visitEachChild(expr), expr.expression, expr.typeArguments, args);
@@ -144,7 +144,7 @@ export class ApiCallTransformer extends RttiVisitor {
         }
     }
 
-    private referToType(type: ts.Type) {
+    private referToType(type: ts.Type, node?: ts.TypeNode) {
         if (hasFlag(type.flags, ts.TypeFlags.TypeVariable)) {
             let symbol = type.symbol;
             let decl = symbol.declarations[0];
@@ -173,6 +173,6 @@ export class ApiCallTransformer extends RttiVisitor {
             }
         }
 
-        return this.typeEncoder.referToType(type);
+        return this.typeEncoder.referToType(type, node);
     }
 }

@@ -5,13 +5,17 @@ import * as ts from 'typescript';
 export class InterfaceAnalyzer extends VisitorBase {
     details: InterfaceDetails = {
         methodNames: [],
-        propertyNames: []
+        propertyNames: [],
+        typeParameters: [],
     };
 
     static analyze(decl: ts.InterfaceDeclaration, context: ts.TransformationContext) {
         try {
             let analyzer = new InterfaceAnalyzer(context);
             analyzer.visitEachChild(decl);
+            decl.typeParameters?.forEach(t =>{
+                analyzer.addItem(analyzer.details.typeParameters, t.name.text); // @TODO handle things like A extends B, typeof A and other expression ect
+            })
             return analyzer.details;
         } catch (e) {
             console.error(`RTTI: During analyzer for interface ${decl.name.getText()}: ${e.message}`);

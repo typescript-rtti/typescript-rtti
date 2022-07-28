@@ -1,18 +1,30 @@
-import { RttiVisitor } from "./rtti-visitor-base";
+import {RttiVisitor} from "./rtti-visitor-base";
 import * as ts from 'typescript';
-import { RttiContext } from "./rtti-context";
-import { Visit } from "./common/visitor-base";
-import { ClassAnalyzer } from "./common/class-analyzer";
-import { ClassDetails } from "./common/class-details";
-import { InterfaceAnalyzer } from "./common/interface-analyzer";
-import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
-import { MetadataEncoder } from "./metadata-encoder";
-import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
-import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
-import { serialize } from './serialize';
-import { literalNode } from './literal-node';
-import { T_ENUM } from '../common';
-import { WORKAROUND_TYPESCRIPT_49794 } from './workarounds';
+import {RttiContext} from "./rtti-context";
+import {Visit} from "./common/visitor-base";
+import {ClassAnalyzer} from "./common/class-analyzer";
+import {ClassDetails} from "./common/class-details";
+import {InterfaceAnalyzer} from "./common/interface-analyzer";
+import {
+    decorateClassExpression,
+    decorateFunctionExpression,
+    directMetadataDecorator,
+    hostMetadataDecorator,
+    metadataDecorator
+} from "./metadata-decorator";
+import {MetadataEncoder} from "./metadata-encoder";
+import {
+    ExternalDecorator,
+    ExternalMetadataCollector,
+    InlineMetadataCollector,
+    MetadataCollector
+} from "./metadata-collector";
+import {expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement} from "./utils";
+import {Serialize, serializeExpression} from './serialize';
+import {literalNode} from './literal-node';
+import {F_EXPORTED, RtAliasType, T_ALIAS, T_ENUM} from '../common';
+import {forwardRef} from "./forward-ref";
+import {WORKAROUND_TYPESCRIPT_49794} from './workarounds';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
@@ -218,6 +230,24 @@ export class MetadataEmitter extends RttiVisitor {
         }
     }
 
+    private exportToken(name: string, propertyName?: string, from?: string) {
+        return ts.factory.createExportDeclaration(
+            undefined,
+            undefined,
+            false,
+            ts.factory.createNamedExports(
+                [
+                    ts.factory.createExportSpecifier(
+                        false,
+                        propertyName ? ts.factory.createIdentifier(propertyName) : undefined,
+                        ts.factory.createIdentifier(name)
+                    )
+                ]
+            ),
+            from ? ts.factory.createStringLiteral(from) : undefined
+        );
+    }
+
     private exportInterfaceToken(name: string, propertyName?: string, from?: string) {
         return ts.factory.createExportDeclaration(
             undefined,
@@ -266,7 +296,7 @@ export class MetadataEmitter extends RttiVisitor {
                                 type['id']
                             ),
                             ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-                            serialize({ TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t')) })
+                            serializeExpression({TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t'))})
                         )
                     ),
                     [],
@@ -275,6 +305,55 @@ export class MetadataEmitter extends RttiVisitor {
                     ]
                 )
             )
+        ];
+    }
+
+    @Visit(ts.SyntaxKind.TypeAliasDeclaration)
+    alias(decl: ts.TypeAliasDeclaration) {
+        let emitName = decl.name.text;
+        if (hasModifiers(decl.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
+            emitName = 'default';
+
+        const encoder = this.metadataEncoder.typeEncoder;
+
+        const identifierName = `AΦ${emitName}`;
+
+        let tokenDecl = Serialize`var ${identifierName} = ${
+            {
+                name: decl.name.text,
+                identity: Symbol(decl.name.text + " (alias)")
+            }
+        };`;
+
+
+        decl = this.visitEachChild(decl);
+
+        const customId = encoder.getTypeHash(decl);
+        const forwardedType = encoder.referToTypeNode(decl.type);
+
+        const alias = {
+            TΦ: T_ALIAS,
+            name: emitName,
+            a: forwardRef(ts.factory.createIdentifier(identifierName)),
+            t: forwardedType,
+            p: decl.typeParameters ? decl.typeParameters.map(p => p.name.text) : [],
+            f: hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword) ? F_EXPORTED : '',
+        }
+
+        encoder.declareType(serializeExpression(alias), customId);
+
+        return [
+            decl,
+            tokenDecl,
+            ...(
+                hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword)
+                    ? [this.exportToken(identifierName)]
+                    : []
+            ),
+            [metadataDecorator('rt:t', literalNode(forwardRef(encoder.accessDeclaredType(customId))))]
+                .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
+                    ts.factory.createIdentifier(identifierName)
+                ])))
         ];
     }
 
@@ -291,7 +370,7 @@ export class MetadataEmitter extends RttiVisitor {
                     ts.factory.createIdentifier(`IΦ${emitName}`),
                     undefined,
                     undefined,
-                    serialize({
+                    serializeExpression({
                         name: decl.name.text,
                         prototype: {},
                         identity: literalNode(ts.factory.createCallExpression(
