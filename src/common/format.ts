@@ -154,8 +154,21 @@ export interface RtTupleType {
 
 export interface RtMappedType {
     TΦ: typeof T_MAPPED;
+
+    /**
+     * The underlying mapped type
+     */
     t: RtType;
+
+    /**
+     * Generic parameters of this type
+     */
     p: RtType[];
+
+    /**
+     * The resulting object members after applying the mapped type
+     */
+    m?: RtObjectMember[];
 }
 
 export interface RtGenericType {
