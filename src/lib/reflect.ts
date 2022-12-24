@@ -534,7 +534,7 @@ export class ReflectedLiteralRef<Class extends format.Literal = format.Literal> 
         return this.value === ref.value;
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return this.ref === value;
     }
 }
@@ -561,7 +561,7 @@ export class ReflectedUnionRef extends ReflectedTypeRef<format.RtUnionType> {
         return true;
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string) {
+    override matchesValue(value: any, errors: Error[] = [], context?: string) {
         return this.types.some(t => t.matchesValue(value, errors, context));
     }
 }
@@ -639,7 +639,7 @@ export class ReflectedNullRef extends ReflectedTypeRef<format.RtNullType> {
     get kind() { return 'null' as const; }
     toString() { return `null`; }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return value === null;
     }
 }
@@ -649,7 +649,7 @@ export class ReflectedUndefinedRef extends ReflectedTypeRef<format.RtUndefinedTy
     get kind() { return 'undefined' as const; }
     toString() { return `undefined`; }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return value === undefined;
     }
 }
@@ -659,7 +659,7 @@ export class ReflectedFalseRef extends ReflectedTypeRef<format.RtFalseType> {
     get kind() { return 'false' as const; }
     toString() { return `false`; }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return value === false;
     }
 }
@@ -669,7 +669,7 @@ export class ReflectedTrueRef extends ReflectedTypeRef<format.RtTrueType> {
     get kind() { return 'true' as const; }
     toString() { return `true`; }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return value === true;
     }
 }
@@ -679,7 +679,7 @@ export class ReflectedUnknownRef extends ReflectedTypeRef<format.RtUnknownType> 
     get kind() { return 'unknown' as const; }
     toString() { return `unknown`; }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return true;
     }
 }
@@ -689,7 +689,7 @@ export class ReflectedAnyRef extends ReflectedTypeRef<format.RtAnyType> {
     get kind() { return 'any' as const; }
     toString() { return `any`; }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return true;
     }
 }
@@ -754,7 +754,7 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
         return this.typeParameters.every((x, i) => x.equals(ref.typeParameters[i]));
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return this.baseType.matchesValue(value, errors, context);
     }
 }
@@ -797,7 +797,7 @@ export class ReflectedEnumRef extends ReflectedTypeRef<format.RtEnumType> {
         return this.enum === ref.enum;
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return value in this.enum;
     }
 }
@@ -836,7 +836,7 @@ export class ReflectedFunctionRef extends ReflectedTypeRef<format.RtFunctionType
         ;
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
         return this.matches(ReflectedFunction.for(value));
     }
 }
