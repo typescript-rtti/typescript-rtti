@@ -1,5 +1,5 @@
-# vNext
-- Typescript 4.7 support
+# v0.8.3
+- Updated peer dependencies to acknowledge Typescript 4.7 support
 - Support inspecting properties of mapped types, and uses this metadata in matchesValue()
   > Closes https://github.com/typescript-rtti/typescript-rtti/issues/89
 
