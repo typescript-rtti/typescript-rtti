@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe } from "razmin";
 import { reflect } from "./reflect";
-import { F_OPTIONAL, RtObjectType, T_OBJECT } from '../common';
+import { F_OPTIONAL, RtMappedType, RtObjectType, T_MAPPED, T_OBJECT } from '../common';
 import { ReflectedTypeRef } from './reflect';
 
 describe('ReflectedClass#matchesValue()', it => {
@@ -35,6 +35,25 @@ describe('ReflectedClass#matchesValue()', it => {
         Reflect.defineMetadata('rt:t', () => 'hello', IΦA.prototype, 'foo');
         expect(reflect(IΦA).matchesValue({ foo: 'hello' })).to.be.true;
         expect(reflect(IΦA).matchesValue({ foo: 'hello world' })).to.be.false;
+    });
+    it('supports mapped types', async () => {
+        let ref = ReflectedTypeRef.createFromRtRef(<RtMappedType>{
+            TΦ: T_MAPPED,
+            p: [ Number ],
+            t: class A {},
+            m: [
+                {
+                    n: 'foo',
+                    f: '',
+                    t: Number
+                }
+            ]
+        })
+
+        expect(ref.matchesValue({ foo: 123 })).to.be.true;
+        expect(ref.matchesValue({ foo: 123, bar: true })).to.be.true;
+        expect(ref.matchesValue({ foo: 'blah' })).to.be.false;
+        expect(ref.matchesValue({ })).to.be.false;
     });
     it('supports object literals', async () => {
         let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{

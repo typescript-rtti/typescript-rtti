@@ -865,14 +865,50 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
         return this._typeParameters = this.ref.p.map(p => ReflectedTypeRef.createFromRtRef(p));
     }
 
+    private _members: ReflectedObjectMember[];
+
+    get members(): Readonly<ReflectedObjectMember[]> {
+        if (!this._members)
+            this._members = this.ref.m.map(m => new ReflectedObjectMember(m));
+
+        return this._members;
+    }
+
     protected override matches(ref : this) {
         if (this.typeParameters.length !== ref.typeParameters.length)
             return false;
         return this.typeParameters.every((x, i) => x.equals(ref.typeParameters[i]));
     }
 
-    override matchesValue(value: any, errors?: Error[], context?: string): boolean {
-        return this.baseType.matchesValue(value, errors, context);
+    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+        if (!this.ref.m)
+            return this.baseType.matchesValue(value, errors, context);
+
+        if (typeof value !== 'object')
+            return false;
+
+        let matches = true;
+        for (let member of this.members) {
+            let hasValue = member.name in value;
+
+            if (!hasValue) {
+                if (!member.isOptional) {
+                    errors.push(new TypeError(`Missing value for member ${member.toString()}`));
+                    matches = false;
+                }
+                continue;
+            }
+
+            let memberValue = value[member.name];
+            let memberErrors = [];
+            if (!member.type.matchesValue(memberValue, memberErrors, context)) {
+                errors.push(new TypeError(`Value for member ${member.toString()} is invalid`));
+                errors.push(...memberErrors);
+                matches = false;
+            }
+        }
+
+        return matches;
     }
 }
 

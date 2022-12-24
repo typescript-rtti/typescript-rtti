@@ -11,7 +11,7 @@ import {
     T_OBJECT, T_VOID, T_ENUM, T_FUNCTION,
 
     InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType,
-    RtParameter, RtArrayType
+    RtParameter, RtArrayType, RtMappedType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 import { WORKAROUND_TYPESCRIPT_49794 } from '../workarounds';
@@ -1739,6 +1739,33 @@ describe('rt:t', it => {
         expect(type.TΦ).to.equal(T_MAPPED);
         expect(type.t).to.equal(Object);
         expect(type.p).to.eql([exports.A]);
+    });
+    it('emits for mapped types and realizes the resulting type', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {
+                    foo: number;
+                }
+                type Px<T> = {
+                    [P in keyof T]?: T[P];
+                };
+                export class C {
+                    method<T>(): Px<A> { return null; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        let type: RtMappedType = typeResolver();
+
+        expect(type.TΦ).to.equal(T_MAPPED);
+        expect(type.t).to.equal(Object);
+        expect(type.p).to.eql([exports.A]);
+        expect(type.m).to.exist;
+        expect(type.m.length).equal(1);
+        expect(type.m[0].n).to.equal('foo');
+        expect(type.m[0].t).to.equal(Number);
+        expect(type.m[0].f).to.include(F_OPTIONAL);
     });
     it('emits for mapped types from TS lib', async () => {
         let exports = await runSimple({
