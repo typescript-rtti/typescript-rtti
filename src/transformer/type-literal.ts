@@ -268,27 +268,9 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         }
 
         if (hasFlag(type.flags, ts.TypeFlags.StructuredType)) {
-            let members: RtObjectMember[] = [];
-            if (type.symbol && type.symbol.members) {
-                type.symbol.members.forEach((value, key) => {
-                    // TODO: currentTopStatement may be far up the AST- would be nice if we had
-                    // a currentStatement that was not constrained to be at the top of the SourceFile
-                    let memberType = encoder.ctx.checker.getTypeOfSymbolAtLocation(
-                        value,
-                        typeNode ?? encoder.ctx.currentTopStatement
-                    );
-
-                    members.push({
-                        n: <string>key,
-                        f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
-                        t: <any>literalNode(encoder.referToType(memberType))
-                    })
-                });
-            }
-
             return serialize({
                 TΦ: T_OBJECT,
-                m: members
+                m: serializeObjectMembers(type, typeNode, encoder)
             });
         }
 
