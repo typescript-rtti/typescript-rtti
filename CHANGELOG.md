@@ -1,5 +1,7 @@
 # vNext
 - Typescript 4.7 support
+- Support inspecting properties of mapped types, and uses this metadata in matchesValue()
+  > Closes https://github.com/typescript-rtti/typescript-rtti/issues/89
 
 # v0.8.2
 - Fix duplicate items in `properties`, `methods`, `staticProperties` and `staticMethods` (and the corresponding `*Names`

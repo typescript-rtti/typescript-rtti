@@ -86,9 +86,18 @@ export interface AliasToken<T = any> {
 }
 
 
-export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
-    | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN } | RtFunctionType
-    | Function | Literal | InterfaceToken | AliasToken | RtVariableType | RtAliasType;
+/**
+ * Represents a type within the serialized emit RTTI format.
+ */
+export type RtType = RtDeferrableStructuralType | RtDeferrableValueType | RtDeferredType | AliasToken | RtVariableType | RtAliasType;
+export type RtDeferrableStructuralType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType
+    | RtTupleType | RtArrayType | RtGenericType | RtMappedType | RtEnumType | RtCallSite
+    | { TΦ: typeof T_STAND_IN } | RtFunctionType | Literal
+;
+export type RtDeferrableValueType = Function | InterfaceToken ;
+export type RtDeferredType = RtDeferrableStructuralType | RtDeferredValueType;
+export interface RtDeferredStructuralType { RΦ: () => RtDeferrableStructuralType; }
+export interface RtDeferredValueType { LΦ: () => RtDeferrableValueType; }
 
 export type RtBrandedType = {
     TΦ:
@@ -187,8 +196,21 @@ export interface RtTupleType {
 
 export interface RtMappedType {
     TΦ: typeof T_MAPPED;
+
+    /**
+     * The underlying mapped type
+     */
     t: RtType;
+
+    /**
+     * Generic parameters of this type
+     */
     p: RtType[];
+
+    /**
+     * The resulting object members after applying the mapped type
+     */
+    m?: RtObjectMember[];
 }
 
 export interface RtGenericType {

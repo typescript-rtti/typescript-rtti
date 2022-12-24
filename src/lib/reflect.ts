@@ -1076,7 +1076,7 @@ export class ReflectedLiteralRef<Class extends format.Literal = format.Literal> 
         return this.value === ref.value;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return this.ref === value;
     }
 }
@@ -1119,7 +1119,7 @@ export class ReflectedUnionRef extends ReflectedTypeRef<format.RtUnionType> {
         return true;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()) {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()) {
         return this.types.some(t => t.matchesValue(value, errors, context));
     }
 }
@@ -1224,12 +1224,12 @@ export class ReflectedNullRef extends ReflectedTypeRef<format.RtNullType> {
     get kind() {
         return 'null' as const;
     }
-
+    
     toString() {
         return `null`;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return value === null;
     }
 }
@@ -1244,7 +1244,7 @@ export class ReflectedUndefinedRef extends ReflectedTypeRef<format.RtUndefinedTy
         return `undefined`;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return value === undefined;
     }
 }
@@ -1259,7 +1259,7 @@ export class ReflectedFalseRef extends ReflectedTypeRef<format.RtFalseType> {
         return `false`;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return value === false;
     }
 }
@@ -1274,7 +1274,7 @@ export class ReflectedTrueRef extends ReflectedTypeRef<format.RtTrueType> {
         return `true`;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return value === true;
     }
 }
@@ -1289,7 +1289,7 @@ export class ReflectedUnknownRef extends ReflectedTypeRef<format.RtUnknownType> 
         return `unknown`;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return true;
     }
 }
@@ -1304,7 +1304,7 @@ export class ReflectedAnyRef extends ReflectedTypeRef<format.RtAnyType> {
         return `any`;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return true;
     }
 }
@@ -1417,7 +1417,7 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
         return this.typeParameters.every((x, i) => x.equals(ref.typeParameters[i], context));
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         let t = this.createTypeCtx([], defaultTypeCtx());
 
         // loop check
@@ -1473,7 +1473,7 @@ export class ReflectedEnumRef extends ReflectedTypeRef<format.RtEnumType> {
         return this.enum === ref.enum;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return value in this.enum;
     }
 }
@@ -1517,7 +1517,7 @@ export class ReflectedFunctionRef extends ReflectedTypeRef<format.RtFunctionType
             ;
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         return this.matches(ReflectedFunction.for(value));
     }
 }
@@ -1550,6 +1550,15 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
             return this._typeParameters;
         return this._typeParameters = this.ref.p.map(p => ReflectedTypeRef.createFromRtRef(p));
     }
+    
+    private _members: ReflectedObjectMember[];
+
+    get members(): Readonly<ReflectedObjectMember[]> {
+        if (!this._members)
+            this._members = this.ref.m.map(m => new ReflectedObjectMember(m));
+
+        return this._members;
+    }
 
     protected override matches(ref: this, context = defaultTypeCtx()) {
         if (this.typeParameters.length !== ref.typeParameters.length)
@@ -1561,7 +1570,7 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
         return this.typeParameters.every((x, i) => x.equals(ref.typeParameters[i], context));
     }
 
-    override matchesValue(value: any, errors?: Error[], context = defaultTypeCtx()): boolean {
+    override matchesValue(value: any, errors: Error[] = [], context = defaultTypeCtx()): boolean {
         let t = this.createTypeCtx([], defaultTypeCtx());
 
         // loop check

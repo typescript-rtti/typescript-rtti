@@ -1,39 +1,13 @@
 import * as ts from 'typescript';
-import {
-    F_OPTIONAL,
-    RtFunctionType,
-    RtObjectMember,
-    RtParameter,
-    RtSerialized,
-    RtType,
-    T_ANY,
-    T_ARRAY,
-    T_ENUM,
-    T_FALSE,
-    T_FUNCTION,
-    T_GENERIC,
-    T_INTERSECTION,
-    T_MAPPED,
-    T_NULL,
-    T_OBJECT,
-    T_THIS,
-    T_TRUE,
-    T_TUPLE,
-    T_UNDEFINED,
-    T_UNION,
-    T_UNKNOWN,
-    T_VARIABLE,
-    T_VOID
-} from '../common';
-import {findRelativePathToFile} from './find-relative-path';
-import {getPreferredExportForImport} from './get-exports-for-symbol';
-import {literalNode} from './literal-node';
-import {serialize, serializeExpression} from './serialize';
-import {MappedType} from './ts-internal-types';
-import {
-    fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
-    serializeEntityNameAsExpression, typeHasValue
-} from './utils';
+import { F_OPTIONAL, RtFunctionType, RtObjectMember, RtParameter, RtSerialized, RtType, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
+    T_OBJECT, T_STAND_IN, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VARIABLE, T_VOID } from '../common';
+import { findRelativePathToFile } from './find-relative-path';
+import { getPreferredExportForImport } from './get-exports-for-symbol';
+import { literalNode } from './literal-node';
+import { serialize, serializeExpression } from './serialize';
+import { MappedType } from './ts-internal-types';
+import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
+    serializeEntityNameAsExpression, typeHasValue } from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
 import {RttiContext} from './rtti-context';
@@ -158,7 +132,8 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                 return serializeExpression({
                     TΦ: T_MAPPED,
                     t: literalNode(encoder.referToType(typeRef.typeParameter)),
-                    p: typeRef.aliasTypeArguments?.map(t => literalNode(encoder.referToType(t))) ?? []
+                    p: typeRef.aliasTypeArguments?.map(t => literalNode(encoder.referToType(t))) ?? [],
+                    m: serializeObjectMembers(typeRef, typeNode, encoder)
                 });
             }
         } else if ((objectType.objectFlags & ts.ObjectFlags.Reference) !== 0) {
@@ -330,40 +305,9 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         }
 
         if (hasFlag(type.flags, ts.TypeFlags.StructuredType)) {
-            let members: RtObjectMember[] = [];
-            if (type.symbol && type.symbol.members) {
-                type.symbol.members.forEach((value, key) => {
-                    // handle { } object literal alias
-                    if (value.valueDeclaration){
-                        if (ts.isPropertySignature(value.valueDeclaration) && value.valueDeclaration.type){
-                            members.push({
-                                n: <string>key,
-                                f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
-                                t: <any>literalNode(encoder.referToNode(value.valueDeclaration.type))
-                            });
-                            return;
-                        }
-                    }
-
-
-                    // TODO: currentTopStatement may be far up the AST- would be nice if we had
-                    // a currentStatement that was not constrained to be at the top of the SourceFile
-                    let memberType = encoder.ctx.checker.getTypeOfSymbolAtLocation(
-                        value,
-                        typeNode ?? encoder.ctx.currentTopStatement
-                    );
-
-                    members.push({
-                        n: <string>key,
-                        f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
-                        t: <any>literalNode(encoder.referToType(memberType))
-                    })
-                });
-            }
-
-            return serializeExpression({
+            return serialize({
                 TΦ: T_OBJECT,
-                m: members
+                m: serializeObjectMembers(type, typeNode, encoder)
             });
         }
 
@@ -372,6 +316,36 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
 
     // No idea
     return ts.factory.createIdentifier('Object');
+}
+
+function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: TypeEncoderImpl) {
+    let members: RtObjectMember[] = [];
+
+    let props = type.getProperties();
+    for (let prop of props) {
+        let encodedType: ts.Expression;
+        
+        if (prop.valueDeclaration && ts.isPropertySignature(prop.valueDeclaration)) {
+            // handle { } object literal alias
+            encodedType = encoder.referToNode(prop.valueDeclaration.type);
+        } else {
+            // TODO: currentTopStatement may be far up the AST- would be nice if we had
+            // a currentStatement that was not constrained to be at the top of the SourceFile
+            let memberType = encoder.ctx.checker.getTypeOfSymbolAtLocation(
+                prop,
+                typeNode ?? encoder.ctx.currentTopStatement
+            );
+            encodedType = encoder.referToType(memberType)
+        }
+
+        members.push({
+            n: prop.name,
+            f: `${hasFlag(prop.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
+            t: <any>literalNode(encodedType)
+        });
+    }
+
+    return members;
 }
 
 /**
@@ -413,6 +387,17 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
 
         if (typeHasValue(type)) {
             let entityName = checker.symbolToEntityName(type.symbol, ts.SymbolFlags.Class, undefined, undefined);
+            if (!entityName) {
+                /**
+                 * For instance, anonymous class expressions. When the class expression is defined at runtime its
+                 * type table slot will be replaced with the constructor reference, so we emit a T_STAND_IN.
+                 */
+                return serialize({
+                    TΦ: T_STAND_IN,
+                    name: undefined,
+                    note: `(anonymous class)`
+                });
+            }
             expr = serializeEntityNameAsExpression(entityName, containingSourceFile);
         } else {
             let symbolName = `IΦ${type.symbol.name}`;

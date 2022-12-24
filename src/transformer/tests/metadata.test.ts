@@ -3,52 +3,12 @@ import { expect } from 'chai';
 import { describe } from 'razmin';
 import ts from 'typescript';
 import {
-    F_REST,
-    F_OPTIONAL,
-    F_PRIVATE,
-    F_PROTECTED,
-    F_PUBLIC,
-    F_READONLY,
-    F_INFERRED,
-    F_ABSTRACT,
-    F_ARROW_FUNCTION,
-    F_ASYNC,
-    F_CLASS,
-    F_EXPORTED,
-    F_FUNCTION,
-    F_INTERFACE,
-    F_METHOD,
-    F_STATIC,
-    T_ANY,
-    T_ARRAY,
-    T_FALSE,
-    F_ARRAY_BINDING,
-    F_OBJECT_BINDING,
-
-    T_GENERIC,
-    T_INTERSECTION,
-    T_MAPPED,
-    T_NULL,
-    T_THIS,
-    T_TRUE,
-    T_TUPLE,
-    T_UNDEFINED,
-    T_UNION,
-    T_UNKNOWN,
-    T_OBJECT,
-    T_VOID,
-    T_ENUM,
-    T_FUNCTION,
-    T_ALIAS,
-    InterfaceToken,
-    RtObjectMember,
-    RtObjectType,
-    RtFunctionType,
-    RtArrayType,
-    RtParameter,
-    RtUnionType,
-    RtAliasType,
-    RtMappedType, AliasToken, T_VARIABLE, RtType
+    F_REST, F_OPTIONAL, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY, F_INFERRED, F_ABSTRACT, F_ARROW_FUNCTION,
+    F_ASYNC, F_CLASS, F_EXPORTED, F_FUNCTION, F_INTERFACE, F_METHOD, F_STATIC, T_ANY, T_ARRAY, T_FALSE,
+    F_ARRAY_BINDING, F_OBJECT_BINDING, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL, T_THIS, T_TRUE, T_TUPLE, 
+    T_UNDEFINED, T_UNION, T_UNKNOWN, T_OBJECT, T_VOID, T_ENUM, T_FUNCTION, T_ALIAS,
+    InterfaceToken, RtObjectMember, RtObjectType, RtFunctionType, RtArrayType,
+    RtParameter, RtUnionType, RtAliasType, RtMappedType, AliasToken, T_VARIABLE, RtType
 } from '../../common/format';
 import { runSimple } from '../../runner.test';
 import { WORKAROUND_TYPESCRIPT_49794 } from '../workarounds';
@@ -1780,6 +1740,33 @@ describe('rt:t', it => {
         expect(reference.TΦ).to.equal(T_ALIAS);
         expect(reference.name).to.equal("Px");
         expect(type.p).to.eql([exports.A]);
+    });
+    it('emits for mapped types and realizes the resulting type', async () => {
+        let exports = await runSimple({
+            code: `
+                export class A {
+                    foo: number;
+                }
+                type Px<T> = {
+                    [P in keyof T]?: T[P];
+                };
+                export class C {
+                    method<T>(): Px<A> { return null; }
+                }
+            `
+        });
+
+        let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+        let type: RtMappedType = typeResolver();
+
+        expect(type.TΦ).to.equal(T_MAPPED);
+        expect(type.t).to.equal(Object);
+        expect(type.p).to.eql([exports.A]);
+        expect(type.m).to.exist;
+        expect(type.m.length).equal(1);
+        expect(type.m[0].n).to.equal('foo');
+        expect(type.m[0].t).to.equal(Number);
+        expect(type.m[0].f).to.include(F_OPTIONAL);
     });
     it('emits for mapped types from TS lib', async () => {
         let exports = await runSimple({
