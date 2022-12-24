@@ -68,9 +68,18 @@ export interface InterfaceToken<T = any> {
     identity: symbol;
 }
 
-export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType | RtTupleType | RtArrayType
-    | RtGenericType | RtMappedType | RtEnumType | RtCallSite | { TΦ: typeof T_STAND_IN } | RtFunctionType
-    | Function | Literal | InterfaceToken;
+/**
+ * Represents a type within the serialized emit RTTI format.
+ */
+export type RtType = RtDeferrableStructuralType | RtDeferrableValueType | RtDeferredType;
+export type RtDeferrableStructuralType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType
+    | RtTupleType | RtArrayType | RtGenericType | RtMappedType | RtEnumType | RtCallSite
+    | { TΦ: typeof T_STAND_IN } | RtFunctionType | Literal
+;
+export type RtDeferrableValueType = Function | InterfaceToken ;
+export type RtDeferredType = RtDeferrableStructuralType | RtDeferredValueType;
+export interface RtDeferredStructuralType { RΦ: () => RtDeferrableStructuralType; }
+export interface RtDeferredValueType { LΦ: () => RtDeferrableValueType; }
 
 export type RtBrandedType = {
     TΦ:
