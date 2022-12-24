@@ -392,7 +392,7 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                  * For instance, anonymous class expressions. When the class expression is defined at runtime its
                  * type table slot will be replaced with the constructor reference, so we emit a T_STAND_IN.
                  */
-                return serialize({
+                return serializeExpression({
                     TΦ: T_STAND_IN,
                     name: undefined,
                     note: `(anonymous class)`
