@@ -299,6 +299,29 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
     return ts.factory.createIdentifier('Object');
 }
 
+function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: TypeEncoderImpl) {
+    let members: RtObjectMember[] = [];
+
+    if (type.symbol && type.symbol.members) {
+        type.symbol.members.forEach((value, key) => {
+            // TODO: currentTopStatement may be far up the AST- would be nice if we had
+            // a currentStatement that was not constrained to be at the top of the SourceFile
+            let memberType = encoder.ctx.checker.getTypeOfSymbolAtLocation(
+                value,
+                typeNode ?? encoder.ctx.currentTopStatement
+            );
+
+            members.push({
+                n: <string>key,
+                f: `${hasFlag(value.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
+                t: <any>literalNode(encoder.referToType(memberType))
+            })
+        });
+    }
+
+    return members;
+}
+
 /**
  * Responsible for outputting an expression for types which are referred to by identifier and may be defined locally,
  * imported, or defined globally.
