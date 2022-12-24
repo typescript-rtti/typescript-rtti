@@ -305,7 +305,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         }
 
         if (hasFlag(type.flags, ts.TypeFlags.StructuredType)) {
-            return serialize({
+            return serializeExpression({
                 TΦ: T_OBJECT,
                 m: serializeObjectMembers(type, typeNode, encoder)
             });
