@@ -1,8 +1,22 @@
 import { expect } from "chai";
 import { describe } from "razmin";
-import { reflect } from "./reflect";
+import { MatchesValueOptions, reflect } from "./reflect";
 import { F_OPTIONAL, RtMappedType, RtObjectType, T_MAPPED, T_OBJECT } from '../common';
 import { ReflectedTypeRef } from './reflect';
+
+function expectValueToMatch(type: ReflectedTypeRef, value: any, options?: MatchesValueOptions) {
+    let errors: Error[] = [];
+    let matches = type.matchesValue(value, { ...options, errors })
+    expect(matches, `Expected value to match, but there were errors: ${JSON.stringify(errors.map(e => e.message))}`)
+        .to.be.true;
+}
+
+function expectValueNotToMatch(type: ReflectedTypeRef, value: any, options?: MatchesValueOptions) {
+    let errors: Error[] = [];
+    let matches = type.matchesValue(value, { ...options, errors })
+    expect(matches, `Expected value not to match, recorded errors: ${JSON.stringify(errors.map(e => e.message))}`)
+        .to.be.false;
+}
 
 describe('ReflectedClass#matchesValue()', it => {
     it('works with simple interfaces', async () => {
@@ -55,6 +69,38 @@ describe('ReflectedClass#matchesValue()', it => {
         expect(ref.matchesValue({ foo: 'blah' })).to.be.false;
         expect(ref.matchesValue({ })).to.be.false;
     });
+    it('does not allow extra properties by default', () => {
+        class A { }
+        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
+        Reflect.defineMetadata('rt:P', ['foo', 'bar'], A);
+        let ref = ReflectedTypeRef.createFromRtRef(A);
+        expectValueToMatch(ref, { foo: 123, bar: 'world' });
+        expectValueNotToMatch(ref, { foo: 123, bar: 'world', extra: 123 });
+    });
+    it('does not see methods as extra properties', () => {
+        class A {
+            foo() { }
+            bar() { }
+        }
+        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
+        Reflect.defineMetadata('rt:m', ['foo', 'bar'], A);
+        Reflect.defineMetadata('rt:P', [], A);
+        let ref = ReflectedTypeRef.createFromRtRef(A);
+        expectValueToMatch(ref, new A());
+    });
+    it('does allow extra properties when opted in', () => {
+        class A { }
+        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
+        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
+        Reflect.defineMetadata('rt:P', ['foo', 'bar'], A);
+        let ref = ReflectedTypeRef.createFromRtRef(A);
+        expectValueNotToMatch(ref, { foo: 123, bar: 'world', extra: 123 });
+        expectValueToMatch(ref, { foo: 123, bar: 'world', extra: 123 }, { allowExtraProperties: true });
+    });
+});
+describe('ReflectedObjectRef#matchesValue()', it => {
     it('supports object literals', async () => {
         let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
             TΦ: T_OBJECT,
@@ -83,5 +129,30 @@ describe('ReflectedClass#matchesValue()', it => {
         expect(ref2.matchesValue({ foo: 123, bar: 'world' })).to.be.true;
         expect(ref2.matchesValue({ foo: 123, bar: 'world', baz: 'hey' })).to.be.true;
         expect(ref2.matchesValue({ foo: 123, bar: 'world', baz: 123 })).to.be.false;
+    });
+    it('does not allow extra properties by default', () => {
+        let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
+            TΦ: T_OBJECT,
+            m: [
+                { n: 'foo', t: String, f: '' },
+                { n: 'bar', t: String, f: '' },
+                { n: 'baz', t: String, f: F_OPTIONAL },
+            ]
+        })
+        expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey' })).to.be.true;
+        expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey', extra: 123 })).to.be.false;
+    });
+    it('does allow extra properties when opted in', () => {
+        let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
+            TΦ: T_OBJECT,
+            m: [
+                { n: 'foo', t: String, f: '' },
+                { n: 'bar', t: String, f: '' },
+                { n: 'baz', t: String, f: F_OPTIONAL },
+            ]
+        })
+        expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey', extra: 123 })).to.be.false;
+        expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey', extra: 123 }, { allowExtraProperties: true })).to.be.true;
+
     });
 });

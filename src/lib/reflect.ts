@@ -59,6 +59,26 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_FUNCTION]: 'function'
 };
 
+export interface MatchesValueOptions {
+    /**
+     * An array where errors encountered while validating an object are saved.
+     * If you don't supply this, you won't be able to get the list of errors.
+     */
+    errors?: Error[];
+
+    context?: string;
+
+    /**
+     * Whether to allow extra properties that do not conform to the type.
+     * Though Typescript normally allows extra properties, it is a potential
+     * security vulnerability if the user chooses to use this to validate
+     * user-controlled objects, so you have to opt in if you expect extra
+     * properties to be present.
+     *
+     * @default false
+     */
+    allowExtraProperties?: boolean;
+}
 export class ReflectedTypeRef<T extends RtType = RtType> {
     /** @internal */
     constructor(
@@ -84,8 +104,10 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
      * @param context
      * @returns
      */
-    matchesValue(value, errors: Error[] = [], context?: string) {
-        errors.push(new Error(`No validation available for type with kind '${this.kind}'`));
+    matchesValue(value, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
+        options.errors.push(new Error(`No validation available for type with kind '${this.kind}'`));
         return false;
     }
 
@@ -405,7 +427,10 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
         return this.class === ref.class;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string) {
+    override matchesValue(value: any, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
+
         if (this.ref === String)
             return typeof value === 'string';
         else if (this.ref === Number)
@@ -421,7 +446,7 @@ export class ReflectedClassRef<Class> extends ReflectedTypeRef<Constructor<Class
         else if (this.ref === BigInt)
             return typeof value === 'bigint';
 
-        return ReflectedClass.for(this.ref).matchesValue(value);
+        return ReflectedClass.for(this.ref).matchesValue(value, options);
     }
 }
 
@@ -478,7 +503,10 @@ export class ReflectedObjectRef extends ReflectedTypeRef<RtObjectType> {
         return true;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string) {
+    override matchesValue(value: any, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
+
         if (typeof value !== 'object')
             return false;
 
@@ -488,7 +516,7 @@ export class ReflectedObjectRef extends ReflectedTypeRef<RtObjectType> {
 
             if (!hasValue) {
                 if (!member.isOptional) {
-                    errors.push(new TypeError(`Missing value for member ${member.toString()}`));
+                    options.errors.push(new TypeError(`Missing value for member ${member.toString()}`));
                     matches = false;
                 }
                 continue;
@@ -496,11 +524,22 @@ export class ReflectedObjectRef extends ReflectedTypeRef<RtObjectType> {
 
             let memberValue = value[member.name];
             let memberErrors = [];
-            if (!member.type.matchesValue(memberValue, memberErrors, context)) {
-                errors.push(new TypeError(`Value for member ${member.toString()} is invalid`));
-                errors.push(...memberErrors);
+            if (!member.type.matchesValue(memberValue, { ...options, errors: memberErrors })) {
+                options.errors.push(new TypeError(`Value for member ${member.toString()} is invalid`));
+                options.errors.push(...memberErrors);
                 matches = false;
             }
+        }
+
+        let unaccountedProperties = Object.keys(value).filter(x => !this.members.some(y => y.name === x));
+        if (options.allowExtraProperties !== true && unaccountedProperties.length > 0) {
+            options.errors.push(
+                new Error(
+                    `Object contains the following undeclared properties: `
+                    + `${unaccountedProperties.join(', ')}`
+                )
+            );
+            matches = false;
         }
 
         return matches;
@@ -519,7 +558,9 @@ export class ReflectedInterfaceRef extends ReflectedTypeRef<format.InterfaceToke
         return this.token === ref.token;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string) {
+    override matchesValue(value: any, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
         return ReflectedClass.for(this.ref).matchesValue(value);
     }
 }
@@ -534,7 +575,9 @@ export class ReflectedLiteralRef<Class extends format.Literal = format.Literal> 
         return this.value === ref.value;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return this.ref === value;
     }
 }
@@ -561,8 +604,10 @@ export class ReflectedUnionRef extends ReflectedTypeRef<format.RtUnionType> {
         return true;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string) {
-        return this.types.some(t => t.matchesValue(value, errors, context));
+    override matchesValue(value: any, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
+        return this.types.some(t => t.matchesValue(value, options));
     }
 }
 
@@ -588,8 +633,10 @@ export class ReflectedIntersectionRef extends ReflectedTypeRef<format.RtIntersec
         return true;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string) {
-        return this.types.every(t => t.matchesValue(value, errors, context));
+    override matchesValue(value: any, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
+        return this.types.every(t => t.matchesValue(value, options));
     }
 }
 
@@ -609,13 +656,16 @@ export class ReflectedArrayRef extends ReflectedTypeRef<format.RtArrayType> {
         return this.elementType.equals(ref.elementType);
     }
 
-    override matchesValue(value: any, errors: Error[] =[], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
+
         if (!Array.isArray(value)) {
-            errors.push(new TypeError(`Value should be an array`));
+            options.errors.push(new TypeError(`Value should be an array`));
             return false;
         }
 
-        return (value as any[]).every(value => this.elementType.matchesValue(value, errors, context));
+        return (value as any[]).every(value => this.elementType.matchesValue(value, options));
     }
 }
 
@@ -624,9 +674,11 @@ export class ReflectedVoidRef extends ReflectedTypeRef<format.RtVoidType> {
     get kind() { return 'void' as const; }
     toString() { return `void`; }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         if (value !== void 0) {
-            errors.push(new Error(`Value must not be present`));
+            options.errors.push(new Error(`Value must not be present`));
             return false;
         }
 
@@ -639,7 +691,9 @@ export class ReflectedNullRef extends ReflectedTypeRef<format.RtNullType> {
     get kind() { return 'null' as const; }
     toString() { return `null`; }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return value === null;
     }
 }
@@ -649,7 +703,9 @@ export class ReflectedUndefinedRef extends ReflectedTypeRef<format.RtUndefinedTy
     get kind() { return 'undefined' as const; }
     toString() { return `undefined`; }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return value === undefined;
     }
 }
@@ -659,7 +715,9 @@ export class ReflectedFalseRef extends ReflectedTypeRef<format.RtFalseType> {
     get kind() { return 'false' as const; }
     toString() { return `false`; }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return value === false;
     }
 }
@@ -669,7 +727,9 @@ export class ReflectedTrueRef extends ReflectedTypeRef<format.RtTrueType> {
     get kind() { return 'true' as const; }
     toString() { return `true`; }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return value === true;
     }
 }
@@ -679,7 +739,9 @@ export class ReflectedUnknownRef extends ReflectedTypeRef<format.RtUnknownType> 
     get kind() { return 'unknown' as const; }
     toString() { return `unknown`; }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return true;
     }
 }
@@ -689,7 +751,9 @@ export class ReflectedAnyRef extends ReflectedTypeRef<format.RtAnyType> {
     get kind() { return 'any' as const; }
     toString() { return `any`; }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return true;
     }
 }
@@ -712,20 +776,22 @@ export class ReflectedTupleRef extends ReflectedTypeRef<format.RtTupleType> {
         return this.elements.every((x, i) => x.name === ref.elements[i].name && x.type.equals(ref.elements[i].type));
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         if (!Array.isArray(value)) {
-            errors.push(new Error(`Value must be an array`));
+            options.errors.push(new Error(`Value must be an array`));
             return false;
         }
 
         let array = <any[]>value;
 
         if (array.length !== this.elements.length) {
-            errors.push(new Error(`Array must have ${this.elements.length} values to match tuple type`));
+            options.errors.push(new Error(`Array must have ${this.elements.length} values to match tuple type`));
             return false;
         }
 
-        return this.elements.every((v, i) => v.type.matchesValue(array[i], errors, context));
+        return this.elements.every((v, i) => v.type.matchesValue(array[i], options));
     }
 }
 
@@ -754,8 +820,10 @@ export class ReflectedGenericRef extends ReflectedTypeRef<format.RtGenericType> 
         return this.typeParameters.every((x, i) => x.equals(ref.typeParameters[i]));
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
-        return this.baseType.matchesValue(value, errors, context);
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
+        return this.baseType.matchesValue(value, options);
     }
 }
 
@@ -797,7 +865,9 @@ export class ReflectedEnumRef extends ReflectedTypeRef<format.RtEnumType> {
         return this.enum === ref.enum;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return value in this.enum;
     }
 }
@@ -836,7 +906,9 @@ export class ReflectedFunctionRef extends ReflectedTypeRef<format.RtFunctionType
         ;
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
         return this.matches(ReflectedFunction.for(value));
     }
 }
@@ -880,9 +952,12 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
         return this.typeParameters.every((x, i) => x.equals(ref.typeParameters[i]));
     }
 
-    override matchesValue(value: any, errors: Error[] = [], context?: string): boolean {
+    override matchesValue(value: any, options?: MatchesValueOptions): boolean {
+        options ??= {};
+        options.errors ??= [];
+
         if (!this.ref.m)
-            return this.baseType.matchesValue(value, errors, context);
+            return this.baseType.matchesValue(value, options);
 
         if (typeof value !== 'object')
             return false;
@@ -893,7 +968,7 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
 
             if (!hasValue) {
                 if (!member.isOptional) {
-                    errors.push(new TypeError(`Missing value for member ${member.toString()}`));
+                    options.errors.push(new TypeError(`Missing value for member ${member.toString()}`));
                     matches = false;
                 }
                 continue;
@@ -901,9 +976,9 @@ export class ReflectedMappedRef extends ReflectedTypeRef<format.RtMappedType> {
 
             let memberValue = value[member.name];
             let memberErrors = [];
-            if (!member.type.matchesValue(memberValue, memberErrors, context)) {
-                errors.push(new TypeError(`Value for member ${member.toString()} is invalid`));
-                errors.push(...memberErrors);
+            if (!member.type.matchesValue(memberValue, { ...options, errors: memberErrors })) {
+                options.errors.push(new TypeError(`Value for member ${member.toString()} is invalid`));
+                options.errors.push(...memberErrors);
                 matches = false;
             }
         }
@@ -1742,8 +1817,10 @@ export class ReflectedProperty extends ReflectedMember {
      * @param errors
      * @returns
      */
-    matchesValue(object, errors: Error[] = []) {
-        return this.type.matchesValue(object, errors);
+    matchesValue(object, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
+        return this.type.matchesValue(object, options);
     }
 }
 
@@ -1824,7 +1901,7 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
      *                           instance's constructor will be used)
      * @returns The ReflectedClass.
      */
-    static for<ClassT>(constructorOrValue: Constructor<ClassT> | format.InterfaceToken | Function | InstanceType<Constructor<ClassT>>) {
+    static for<ClassT extends object>(constructorOrValue: Constructor<ClassT> | format.InterfaceToken | Function | InstanceType<Constructor<ClassT>>) {
 
         let flags = getFlags(constructorOrValue);
         if (flags.includes(format.F_INTERFACE))
@@ -1909,7 +1986,8 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
      * @returns boolean
      */
     implements(interfaceType: format.InterfaceToken | Constructor<any>) {
-        return !!this.interfaces.find(i => typeof interfaceType === 'function' ? i.isClass(interfaceType) : i.isInterface(interfaceType));
+        return !!this.interfaces.find(i => typeof interfaceType === 'function'
+            ? i.isClass(interfaceType) : i.isInterface(interfaceType));
     }
 
     /**
@@ -1918,14 +1996,17 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
      * @param errors
      * @returns
      */
-    matchesValue(object, errors: Error[] = []) {
+    matchesValue(object, options?: MatchesValueOptions) {
+        options ??= {};
+        options.errors ??= [];
+
         if (object === null || object === void 0) {
-            errors.push(new Error(`Value is undefined`));
+            options.errors.push(new Error(`Value is undefined`));
             return false;
         }
 
         if (typeof object !== 'object') {
-            errors.push(new Error(`Value must be an object`));
+            options.errors.push(new Error(`Value must be an object`));
             return false;
         }
 
@@ -1938,16 +2019,30 @@ export class ReflectedClass<ClassT = any> implements ReflectedMetadataTarget {
             let value = object[prop.name];
 
             if (!hasValue && !prop.isOptional) {
-                errors.push(new Error(`Property '${prop.name}' is missing in value`));
+                options.errors.push(new Error(`Property '${prop.name}' is missing in value`));
                 matches = false;
             }
             if (!hasValue)
                 continue;
-            let propMatch = prop.matchesValue(value, errors);
+            let propMatch = prop.matchesValue(value, options);
             if (globalThis.RTTI_TRACE === true)
-                console.log(` - ${this.class.name}#${prop.name} : ${prop.type} | valid(${JSON.stringify(value)}) => ${propMatch}`);
+                console.log(` - ${this.class.name}#${prop.name} : ${prop.type} | valid(${JSON.stringify(value)}) => `
+                    + `${propMatch}`);
 
             matches &&= propMatch;
+        }
+
+        let unaccountedProperties = Object.keys(object)
+            .filter(x => !this.properties.some(y => y.name === x) && !this.methods.some(y => y.name === x))
+        ;
+        if (options.allowExtraProperties !== true && unaccountedProperties.length > 0) {
+            options.errors.push(
+                new Error(
+                    `Object contains the following undeclared properties: `
+                    + `${unaccountedProperties.join(', ')}`
+                )
+            );
+            matches = false;
         }
 
         return matches;

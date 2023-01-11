@@ -1,3 +1,10 @@
+# v0.9.0 [vNext]
+- `matchesValue()` changes
+    - `matchesValue()` now accepts an `options` object instead of positional parameters
+    - Adds `allowExtraProperties` option to matchesValue() to control whether extra options are allowed
+    - **BREAKING**: `matchesValue()` does not allow extra properties by default.
+    - Fixes https://github.com/typescript-rtti/typescript-rtti/issues/92
+
 # v0.8.3
 - Updated peer dependencies to acknowledge Typescript 4.7 support
 - Support inspecting properties of mapped types, and uses this metadata in matchesValue()
