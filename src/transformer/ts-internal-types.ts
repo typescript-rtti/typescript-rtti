@@ -14,6 +14,15 @@ export const enum TypeMapKind {
     Merged,
 }
 
+export const enum InternalNodeFlags {
+    PossiblyContainsDynamicImport = 1 << 21,
+    PossiblyContainsImportMeta    = 1 << 22,
+    Ambient                       = 1 << 24, // If node was inside an ambient context -- a declaration file, or inside something with the `declare` modifier.
+    InWithStatement               = 1 << 25, // If any ancestor of node was the `statement` of a WithStatement (not the `expression`)
+    TypeCached                    = 1 << 27, // If a type was cached for node at any point
+    Deprecated                    = 1 << 28, // If has '@deprecated' JSDoc tag
+}
+
 export type TypeMapper =
     | { kind: TypeMapKind.Simple, source: ts.Type, target: ts.Type; }
     | { kind: TypeMapKind.Array, sources: readonly ts.Type[], targets: readonly ts.Type[] | undefined; }

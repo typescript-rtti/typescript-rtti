@@ -269,10 +269,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         }
 
         if (hasFlag(type.flags, ts.TypeFlags.StructuredType)) {
-            return serialize({
-                TΦ: T_OBJECT,
-                m: serializeObjectMembers(type, typeNode, encoder)
-            });
+            return structuredTypeLiteral(encoder, type, typeNode);
         }
 
         return ts.factory.createIdentifier('Object');
@@ -280,6 +277,14 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
 
     // No idea
     return ts.factory.createIdentifier('Object');
+}
+
+export function structuredTypeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode: ts.TypeNode, name?: string) {
+    return serialize({
+        TΦ: T_OBJECT,
+        n: name,
+        m: serializeObjectMembers(type, typeNode, encoder)
+    });
 }
 
 function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: TypeEncoderImpl) {

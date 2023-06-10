@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe } from "razmin";
 import { runSimple } from "../../runner.test";
-import { T_UNION } from "../../common/format";
+import * as format from "../../common/format";
 import { reflect } from '../../lib';
 
 describe('Interface token', it => {
@@ -143,7 +143,7 @@ describe('Interface token', it => {
 
         expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'method')()).to.equal(Boolean);
         expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'field')()).to.equal(String);
-        expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'blah')().TΦ).to.equal(T_UNION);
+        expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'blah')().TΦ).to.equal(format.T_UNION);
         expect(Reflect.getMetadata('rt:t', exports.IΦFoo.prototype, 'blah')().t).to.include.all.members([String, Number]);
         expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].n).to.equal('foo');
         expect(Reflect.getMetadata('rt:p', exports.IΦFoo.prototype, 'method')[0].t()).to.equal(Number);
@@ -165,6 +165,34 @@ describe('Interface token', it => {
         expect(ifaces.length).to.equal(2);
         expect(ifaces[0]).to.equal(exports.IΦFoo1);
         expect(ifaces[1]).to.equal(exports.IΦFoo2);
+    });
+    it('exposes classes from declared modules', async () => {
+        let exports = await runSimple({
+            code: `
+                declare module foobar {
+                    export class Foo1 {
+                        member1: number;
+                        member2: string;
+                    }
+                    export class Foo2 { }
+                }
+
+                export class A {
+                    foo1: foobar.Foo1;
+                    foo2: foobar.Foo2;
+                }
+            `
+        });
+
+        const typeRef: format.RtObjectType = Reflect.getMetadata('rt:t', exports.A.prototype, 'foo1')();
+        expect(typeRef.TΦ).to.equal(format.T_OBJECT);
+        expect(typeRef.n).to.equal('Foo1');
+        expect(typeRef.m.length).to.equal(2);
+        expect(typeRef.m[0].n === 'foo1');
+        expect(typeRef.m[0].t === Number);
+        expect(typeRef.m[0].n === 'foo2');
+        expect(typeRef.m[1].t === String);
+
     });
     it('emits interface decorators only once', async () => {
 

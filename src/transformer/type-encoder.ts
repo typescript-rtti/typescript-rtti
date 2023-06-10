@@ -1,10 +1,11 @@
 import ts from "typescript";
-import { T_STAND_IN } from "../common/format";
+import { T_OBJECT, T_STAND_IN } from "../common/format";
 import { literalNode } from "./literal-node";
 import { RttiContext } from "./rtti-context";
 import { serialize } from "./serialize";
-import { typeLiteral } from "./type-literal";
+import { structuredTypeLiteral, typeLiteral } from "./type-literal";
 import { hasFlag } from './utils';
+import { InternalNodeFlags } from './ts-internal-types';
 
 export class TypeEncoder {
     constructor(
@@ -31,20 +32,22 @@ export class TypeEncoder {
             // Allocate the typeMap slot so that we do not recurse if we encounter this type again
             this.typeMap.set(type['id'], null);
 
-            let expr = typeLiteral(this, type, typeNode);
-            let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
             let isEnum = hasFlag(type.flags, ts.TypeFlags.Enum) || (hasFlag(type.flags, ts.TypeFlags.EnumLiteral) && (
                 hasFlag(type.aliasSymbol?.flags, ts.SymbolFlags.Enum
             )));
 
-            let useStandIn = false;
-            let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
+            let declarations = type.symbol?.getDeclarations();
+            let declaration = declarations?.[0];
+            let sourceFile = declaration?.getSourceFile();
             let isLocal = sourceFile === this.ctx.sourceFile;
+            let isAmbient = hasFlag(declaration?.flags, InternalNodeFlags.Ambient);
+            let useStandIn = false;
 
-            if (isEnum)
+            if (isEnum) {
                 useStandIn = isLocal && !hasFlag(type.symbol.flags, ts.SymbolFlags.ConstEnum);
-            else if (type.isClassOrInterface())
-                useStandIn = isLocal;
+            } else if (type.isClassOrInterface()) {
+                useStandIn = isLocal && !isAmbient;
+            }
 
             if (useStandIn) {
                 // The class or interface may not be defined at the top level of the module.
@@ -56,6 +59,14 @@ export class TypeEncoder {
                     name: `${type.symbol.name}`
                 }));
             } else {
+                // Ambient classes/interfaces cannot use stand-ins and will never have class references or interface
+                // tokens available. Instead, we should encode this as a structured type.
+                let expr = isAmbient
+                    ? structuredTypeLiteral(this, type, typeNode, type.symbol?.name)
+                    : typeLiteral(this, type, typeNode)
+                ;
+
+                let propName = ts.isObjectLiteralExpression(expr) ? 'RΦ' : 'LΦ';
                 this.typeMap.set(type['id'], serialize({
                     [propName]: literalNode(ts.factory.createArrowFunction(
                         [], [], [

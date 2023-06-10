@@ -126,6 +126,7 @@ export interface RtUnionType {
 
 export interface RtObjectType {
     TΦ: typeof T_OBJECT;
+    n?: string;
     m: RtObjectMember[];
 }
 
