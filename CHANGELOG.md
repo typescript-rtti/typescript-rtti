@@ -4,6 +4,7 @@
     - Adds `allowExtraProperties` option to matchesValue() to control whether extra options are allowed
     - **BREAKING**: `matchesValue()` does not allow extra properties by default.
     - Fixes https://github.com/typescript-rtti/typescript-rtti/issues/92
+- Expose ambient classes/interfaces as structured types
 
 # v0.8.3
 - Updated peer dependencies to acknowledge Typescript 4.7 support
