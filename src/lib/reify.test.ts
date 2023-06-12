@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import { reify } from ".";
 import { T_UNDEFINED, T_UNION, T_VOID } from "../common/format";
 
-describe('reify<T>()', it => {
+describe('reify<T>()', () => {
     it('extracts an InterfaceToken from a passed CallSite', () => {
         let IΦFoo = { name: 'Foo', prototype: {}, identity: Symbol('Foo (interface)') };
         expect(reify(<any>{ TΦ: 'c', tp: [IΦFoo] })).to.equal(IΦFoo);

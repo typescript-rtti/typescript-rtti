@@ -1,15 +1,15 @@
-src/test.ts
 src/**/*.test.ts
 src/test/**
 
-dist/test.js
-dist/test.d.ts
-dist/test.js.map
 dist/test/**
 
 dist/**/*.test.js
 dist/**/*.test.js.map
 dist/**/*.test.d.ts
+
+dist/**/*.test-harness.js
+dist/**/*.test-harness.js.map
+dist/**/*.test-harness.d.ts
 
 dist.esm/test.js
 dist.esm/test.d.ts
@@ -19,6 +19,10 @@ dist.esm/test/**
 dist.esm/**/*.test.js
 dist.esm/**/*.test.js.map
 dist.esm/**/*.test.d.ts
+
+dist.esm/**/*.test-harness.js
+dist.esm/**/*.test-harness.js.map
+dist.esm/**/*.test-harness.d.ts
 
 test-esrequire.js
 test-module-resolver.mjs

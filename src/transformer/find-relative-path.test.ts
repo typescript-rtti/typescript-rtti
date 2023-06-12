@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import { findRelativePathToFile } from "./find-relative-path";
 
-describe('findRelativePath', it => {
+describe('findRelativePath', () => {
     it('works as expected', () => {
         expect(findRelativePathToFile('/foo/bar/baz.ts', '/foo/bar.ts')).to.equal('../bar.ts');
         expect(findRelativePathToFile('/1/2/3/4/5.ts', '/1/2/3a/4.ts')).to.equal('../../3a/4.ts');

@@ -1,8 +1,8 @@
 
 import { expect } from 'chai';
-import { describe } from 'razmin';
+import { describe, it } from '@jest/globals';
 import ts from 'typescript';
-import { runSimple } from '../../runner.test';
+import { runSimple } from '../../runner.test-harness';
 import { F_INFERRED, F_METHOD, F_PUBLIC } from '../../common/format';
 
 const hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -13,7 +13,7 @@ function hasProperty(map: ts.MapLike<any>, key: string): boolean {
 const MODULE_TYPES: ('commonjs' | 'esm')[] = ['commonjs', 'esm'];
 
 describe('emitDecoratorMetadata=true: ', () => {
-    describe('design:type', it => {
+    describe('design:type', () => {
 
         it('emits for method', async () => {
             let exports = await runSimple({
@@ -198,7 +198,7 @@ describe('emitDecoratorMetadata=true: ', () => {
                 .to.equal(undefined); // because of the circular reference
         });
     });
-    describe('design:paramtypes', it => {
+    describe('design:paramtypes', () => {
         it('emits for ctor params', async () => {
             let exports = await runSimple({
                 code: `
@@ -263,7 +263,7 @@ describe('emitDecoratorMetadata=true: ', () => {
 
         });
     });
-    describe('design:returntype', it => {
+    describe('design:returntype', () => {
         it('emits for string-like enum return type', async () => {
             let exports = await runSimple({
                 code: `
@@ -423,7 +423,7 @@ describe('emitDecoratorMetadata=true: ', () => {
         });
     });
 });
-describe('emitDecoratorMetadata=false: ', it => {
+describe('emitDecoratorMetadata=false: ', () => {
     it('does not emit design:paramtypes for ctor params', async () => {
         let exports = await runSimple({
             code: `

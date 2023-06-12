@@ -1,19 +1,5 @@
 {
     "version": "0.2.0",
     "configurations": [
-        {
-            "type": "pwa-node",
-            "request": "launch",
-            "name": "Run Tests",
-            "skipFiles": [
-                "<node_internals>/**",
-                "node_modules/zone.js/**"
-            ],
-            "program": "${workspaceFolder}\\dist\\test.js",
-            "preLaunchTask": "tsc: build - tsconfig.json",
-            "outFiles": [
-                "${workspaceFolder}/dist/**/*.js"
-            ]
-        }
     ]
 }

@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import { describe } from "razmin";
-import { runSimple } from "../../runner.test";
+import { describe, it } from "@jest/globals";
+import { runSimple } from "../../runner.test-harness";
 import * as format from "../../common/format";
 import { reflect } from '../../lib';
 
-describe('Interface token', it => {
+describe('Interface token', () => {
     it('is emitted for exported interfaces', async () => {
         let exports = await runSimple({
             code: `

@@ -193,6 +193,15 @@ function runCommonJS(module: Module, $require) {
     return module;
 }
 
+const { Script } = require('vm');
+let pinnedScripts: any[] = [];
+let originalRun = Script.prototype.runInThisContext;
+Script.prototype.runInThisContext = function (options) {
+    console.log(`HAPPENING`);
+	pinnedScripts.push(this);
+	return originalRun.call(this, options);
+};
+
 // function esRequire(moduleSpecifier : string) {
 //     return eval(`import(${JSON.stringify(moduleSpecifier)})`);
 // }

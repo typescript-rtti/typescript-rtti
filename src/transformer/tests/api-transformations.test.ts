@@ -1,11 +1,11 @@
 import { expect } from "chai";
-import { describe } from "razmin";
-import { runSimple } from "../../runner.test";
-import { MODULE_TYPES } from "./module-types.test";
+import { describe, it } from "@jest/globals";
+import { runSimple } from "../../runner.test-harness";
+import { MODULE_TYPES } from "./module-types.test-harness";
 import { reify } from '../../lib';
 
-describe('API transformations', it => {
-    describe(': reify<T>()', it => {
+describe('API transformations', () => {
+    describe(': reify<T>()', () => {
         it('will resolve to the interface symbol generated in the same file', async () => {
             let exports = await runSimple({
                 code: `
@@ -26,7 +26,7 @@ describe('API transformations', it => {
         });
         for (let moduleType of MODULE_TYPES) {
             if (moduleType !== 'esm') continue;
-            describe(` [${moduleType}]`, it => {
+            describe(` [${moduleType}]`, () => {
                 it('will resolve to the interface symbol generated in another file', async () => {
                     let exports = await runSimple({
                         moduleType: moduleType,

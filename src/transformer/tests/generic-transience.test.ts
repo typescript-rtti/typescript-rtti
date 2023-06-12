@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { describe } from "razmin";
-import { runSimple } from "../../runner.test";
+import { describe, it } from "@jest/globals";
+import { runSimple } from "../../runner.test-harness";
 import { reflect } from '../../lib';
 
-describe('Transformer: Generic transience', it => {
+describe('Transformer: Generic transience', () => {
     it('stuffs undefined on call args when needed', async () => {
         let exports = await runSimple({
             compilerOptions: {

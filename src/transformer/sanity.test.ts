@@ -1,9 +1,9 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import ts from 'typescript';
-import { runSimple } from "../runner.test";
+import { runSimple } from "../runner.test-harness";
 
-describe('Sanity', it => {
+describe('Sanity', () => {
     it('when function declarations appear in if statements', async () => {
         let exports = await runSimple({
             code: `

@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import { InterfaceToken, RtCallSite } from '../../common';
-import { runSimple } from "../../runner.test";
-import { MODULE_TYPES } from "./module-types.test";
+import { runSimple } from "../../runner.test-harness";
+import { MODULE_TYPES } from "./module-types.test-harness";
 
-describe('Imports', it => {
+describe('Imports', () => {
     for (let moduleType of MODULE_TYPES) {
-        describe(`(${moduleType})`, it => {
+        describe(`(${moduleType})`, () => {
             it('doesn\'t explode on bare imports', async () => {
                 await runSimple({
                     moduleType,

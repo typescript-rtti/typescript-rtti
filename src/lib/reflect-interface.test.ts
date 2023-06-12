@@ -1,12 +1,12 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import { ReflectedTypeRef } from ".";
 import * as format from "../common/format";
-import { runSimple } from "../runner.test";
-import { MODULE_TYPES } from "../transformer/tests/module-types.test";
+import { runSimple } from "../runner.test-harness";
+import { MODULE_TYPES } from "../transformer/tests/module-types.test-harness";
 import { reify, reflect, ReflectedClass } from "./reflect";
 
-describe('reflect<T>()', it => {
+describe('reflect<T>()', () => {
     it('reifies and reflects', async () => {
         let exports = await runSimple({
             modules: {

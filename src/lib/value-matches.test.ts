@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import { MatchesValueOptions, reflect } from "./reflect";
 import { F_OPTIONAL, RtMappedType, RtObjectType, T_MAPPED, T_OBJECT } from '../common';
 import { ReflectedTypeRef } from './reflect';
@@ -18,7 +18,7 @@ function expectValueNotToMatch(type: ReflectedTypeRef, value: any, options?: Mat
         .to.be.false;
 }
 
-describe('ReflectedClass#matchesValue()', it => {
+describe('ReflectedClass#matchesValue()', () => {
     it('works with simple interfaces', async () => {
         let IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
 
@@ -100,7 +100,7 @@ describe('ReflectedClass#matchesValue()', it => {
         expectValueToMatch(ref, { foo: 123, bar: 'world', extra: 123 }, { allowExtraProperties: true });
     });
 });
-describe('ReflectedObjectRef#matchesValue()', it => {
+describe('ReflectedObjectRef#matchesValue()', () => {
     it('supports object literals', async () => {
         let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
             TΦ: T_OBJECT,

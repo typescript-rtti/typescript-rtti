@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import { CallSite, reflect } from "../reflect";
 
-describe('Library: Generic transience', it => {
+describe('Library: Generic transience', () => {
     it('reflects upon callsites', async () => {
 
         let callSite = reflect(<CallSite>{

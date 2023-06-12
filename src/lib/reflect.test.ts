@@ -1,4 +1,4 @@
-import { describe } from "razmin";
+import { describe, it } from "@jest/globals";
 import { expect } from "chai";
 import { ReflectedClass, ReflectedTypeRef } from "./reflect";
 import * as format from '../common/format';
@@ -7,8 +7,8 @@ import { reflect, ReflectedFunction, ReflectedMethod } from "./reflect";
 /**
  * @rtti:skip
  */
-describe('ReflectedClass', it => {
-    describe('ownMethodNames', it => {
+describe('ReflectedClass', () => {
+    describe('ownMethodNames', () => {
         it('includes only the own methods', () => {
             class A {
                 foo() { }
@@ -25,7 +25,7 @@ describe('ReflectedClass', it => {
             expect(ReflectedClass.new(B).ownPropertyNames).to.eql(['bar']);
         });
     });
-    describe('ownPropertyNames', it => {
+    describe('ownPropertyNames', () => {
         it('includes only the own properties', () => {
 
             class A {
@@ -237,7 +237,7 @@ describe('ReflectedClass', it => {
 /**
  * @rtti:skip
  */
-describe('ReflectedMethod', it => {
+describe('ReflectedMethod', () => {
     it('reflects method names without metadata', () => {
         class B {
             foo() { }
@@ -483,7 +483,7 @@ describe('ReflectedMethod', it => {
 /**
  * @rtti:skip
  */
-describe('ReflectedProperty', it => {
+describe('ReflectedProperty', () => {
     it('reflects public', () => {
         class B { }
         Reflect.defineMetadata('rt:f', `${format.F_METHOD}`, B.prototype, 'foo');
@@ -707,7 +707,7 @@ describe('ReflectedProperty', it => {
 /**
  * @rtti:skip
  */
-describe('reflect(value)', it => {
+describe('reflect(value)', () => {
     it('returns a ReflectedClass when passing in a class', () => {
         class A { }
 
@@ -768,7 +768,7 @@ describe('reflect(value)', it => {
 /**
 * @rtti:skip
 */
-describe('Intrinsic types', it => {
+describe('Intrinsic types', () => {
     it('reflects null type', () => {
         class B { }
         Reflect.defineMetadata('rt:f', `${format.F_PROPERTY}`, B.prototype, 'foo');

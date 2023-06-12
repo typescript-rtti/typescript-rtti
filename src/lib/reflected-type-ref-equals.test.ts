@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { describe } from 'razmin';
+import { describe, it } from '@jest/globals';
 import * as format from '../common/format';
 import { ReflectedTypeRef } from './reflect';
 
-describe('ReflectedTypeRef#equals()', it => {
+describe('ReflectedTypeRef#equals()', () => {
     it('matches by reference', () => {
         let ref = new ReflectedTypeRef({ TΦ: format.T_VOID });
         expect(ref.equals(ref)).to.be.true;
