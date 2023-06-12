@@ -61,7 +61,7 @@ export class TypeEncoder {
             } else {
                 // Ambient classes/interfaces cannot use stand-ins and will never have class references or interface
                 // tokens available. Instead, we should encode this as a structured type.
-                let expr = isAmbient
+                let expr = (isLocal && isAmbient)
                     ? structuredTypeLiteral(this, type, typeNode, type.symbol?.name)
                     : typeLiteral(this, type, typeNode)
                 ;
