@@ -44,6 +44,7 @@ export async function resolve(url, context, defaultResolve) {
     }
 
     return {
-        url: `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`
+        url: `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`,
+        shortCircuit: true
     };
 }
