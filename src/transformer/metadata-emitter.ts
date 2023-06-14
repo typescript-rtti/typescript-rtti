@@ -221,7 +221,6 @@ export class MetadataEmitter extends RttiVisitor {
     private exportInterfaceToken(name: string, propertyName?: string, from?: string) {
         return ts.factory.createExportDeclaration(
             undefined,
-            undefined,
             false,
             ts.factory.createNamedExports(
                 [
@@ -253,7 +252,7 @@ export class MetadataEmitter extends RttiVisitor {
                     ts.factory.createArrowFunction(
                         [], [],
                         [
-                            ts.factory.createParameterDeclaration([], [], undefined, 't')
+                            ts.factory.createParameterDeclaration([], undefined, 't')
                         ],
                         undefined,
                         ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),

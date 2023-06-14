@@ -57,7 +57,7 @@ export class MetadataEncoder {
                 ts.factory.createArrowFunction(
                     [], [],
                     [
-                        ts.factory.createParameterDeclaration([], [], undefined, 't')
+                        ts.factory.createParameterDeclaration([], undefined, 't')
                     ],
                     undefined,
                     ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),

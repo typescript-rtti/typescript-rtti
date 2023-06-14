@@ -71,7 +71,7 @@ export class TypeEncoder {
                     [propName]: literalNode(ts.factory.createArrowFunction(
                         [], [], [
                         ts.factory.createParameterDeclaration(
-                            [], [], undefined, 't', undefined, undefined,
+                            [], undefined, 't', undefined, undefined,
                             undefined
                         )
                     ], undefined, ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken), expr
