@@ -88,9 +88,7 @@ const PACKAGES: Record<string, Package> = {
  * What Typescript versions should be tested (git tags)
  */
 const TYPESCRIPTS = [
-    '4.5',
-    '4.6',
-    '4.7'
+    '4.8'
 ];
 
 function run(str: string, cwd?: string, context?: string) {
