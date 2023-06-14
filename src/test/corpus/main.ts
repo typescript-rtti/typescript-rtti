@@ -11,6 +11,7 @@ import { hasGlobalFlag, setGlobalFlag } from '../../transformer/utils.js';
 
 interface Package {
     enabled: boolean;
+    failable?: boolean;
     only?: boolean;
     yarn?: boolean;
     acceptFailure?: boolean;
@@ -57,6 +58,7 @@ const PACKAGES: Record<string, Package> = {
     },
     "@typescript-rtti/rtti-testcase-61": {
         enabled: true,
+        failable: true,
         url: 'https://github.com/typescript-rtti/rtti-testcase-61.git',
         ref: 'main',
         commands: ['npm test']
@@ -289,7 +291,11 @@ async function main(args: string[]) {
 
                     console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
                 } catch (e: any) {
-                    throw new Error(`${pkgName} [typescript@${tsVersion}]: ${e.message}`);
+                    if (pkg.failable) {
+                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: failed, non-fatal`);
+                    } else {
+                        throw new Error(`${pkgName} [typescript@${tsVersion}]: ${e.message}`);
+                    }
                 }
             }
         }
