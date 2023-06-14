@@ -52,7 +52,7 @@ const PACKAGES: Record<string, Package> = {
     "typescript-rtti": {
         enabled: true, // 🎉
         url: 'https://github.com/typescript-rtti/typescript-rtti.git',
-        ref: 'c936bfcb7aba086a6b8a16275a9398d9d19215e2',
+        ref: '234831b21c316519930b7af4beea96c5abbc1b06',
         commands: ['npm run build', 'npm test']
     },
     "@typescript-rtti/rtti-testcase-61": {
