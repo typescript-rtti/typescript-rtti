@@ -130,6 +130,9 @@ async function modify<T = any>(filename: string, modifier: (t: T) => void, targe
         let config;
         let isModule = target === 'esm';
         config = await import('file://' + path.resolve(process.cwd(), filename).replace(/\\/g, '/'));
+        if (config.default)
+            config = config.default;
+
         modifier(config);
 
         if (isModule)
