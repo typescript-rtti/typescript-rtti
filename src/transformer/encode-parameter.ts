@@ -50,17 +50,15 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
         typeExpr = encoder.referToType(checker.getTypeAtLocation(param));
     }
 
-    if (ts.canHaveModifiers(param)) {
-        for (let modifier of getModifiers(param)) {
-            if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword)
-                f.push(format.F_READONLY);
-            if (modifier.kind === ts.SyntaxKind.PrivateKeyword)
-                f.push(format.F_PRIVATE);
-            if (modifier.kind === ts.SyntaxKind.PublicKeyword)
-                f.push(format.F_PUBLIC);
-            if (modifier.kind === ts.SyntaxKind.ProtectedKeyword)
-                f.push(format.F_PROTECTED);
-        }
+    for (let modifier of getModifiers(param)) {
+        if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword)
+            f.push(format.F_READONLY);
+        if (modifier.kind === ts.SyntaxKind.PrivateKeyword)
+            f.push(format.F_PRIVATE);
+        if (modifier.kind === ts.SyntaxKind.PublicKeyword)
+            f.push(format.F_PUBLIC);
+        if (modifier.kind === ts.SyntaxKind.ProtectedKeyword)
+            f.push(format.F_PROTECTED);
     }
 
     let meta: format.RtSerialized<format.RtParameter> = {

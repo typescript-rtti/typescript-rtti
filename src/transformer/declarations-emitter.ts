@@ -6,7 +6,7 @@ import { RttiContext } from "./rtti-context";
 
 export class DeclarationsEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
-        return new DeclarationsEmitter(ctx).visitNode(sourceFile);
+        return <ts.SourceFile> new DeclarationsEmitter(ctx).visitNode(sourceFile);
     }
 
     @Visit(ts.SyntaxKind.FunctionDeclaration)

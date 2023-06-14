@@ -16,7 +16,7 @@ import { WORKAROUND_TYPESCRIPT_49794 } from './workarounds';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
-        return new MetadataEmitter(ctx).visitNode(sourceFile);
+        return <ts.SourceFile>new MetadataEmitter(ctx).visitNode(sourceFile);
     }
 
     metadataEncoder = new MetadataEncoder(this.ctx);
