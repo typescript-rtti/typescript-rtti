@@ -28,14 +28,12 @@ export function hostMetadataDecorator() {
             factory.createParameterDeclaration(
                 undefined,
                 undefined,
-                undefined,
                 factory.createIdentifier("t"),
                 undefined,
                 undefined,
                 undefined
             ),
             factory.createParameterDeclaration(
-                undefined,
                 undefined,
                 undefined,
                 factory.createIdentifier("p"),

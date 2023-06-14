@@ -62,14 +62,12 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                             factory.createParameterDeclaration(
                                 undefined,
                                 undefined,
-                                undefined,
                                 factory.createIdentifier("k"),
                                 undefined,
                                 undefined,
                                 undefined
                             ),
                             factory.createParameterDeclaration(
-                                undefined,
                                 undefined,
                                 undefined,
                                 factory.createIdentifier("v"),
@@ -87,14 +85,12 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                 factory.createParameterDeclaration(
                                     undefined,
                                     undefined,
-                                    undefined,
                                     factory.createIdentifier("t"),
                                     undefined,
                                     undefined,
                                     undefined
                                 ),
                                 factory.createParameterDeclaration(
-                                    undefined,
                                     undefined,
                                     factory.createToken(ts.SyntaxKind.DotDotDotToken),
                                     factory.createIdentifier("a"),
@@ -145,7 +141,6 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                             factory.createParameterDeclaration(
                                 undefined,
                                 undefined,
-                                undefined,
                                 factory.createIdentifier("f"),
                                 undefined,
                                 undefined,
@@ -154,14 +149,12 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                             factory.createParameterDeclaration(
                                 undefined,
                                 undefined,
-                                undefined,
                                 factory.createIdentifier("d"),
                                 undefined,
                                 undefined,
                                 undefined
                             ),
                             factory.createParameterDeclaration(
-                                undefined,
                                 undefined,
                                 undefined,
                                 factory.createIdentifier("n"),
@@ -184,7 +177,6 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                         undefined,
                                         undefined,
                                         [factory.createParameterDeclaration(
-                                            undefined,
                                             undefined,
                                             undefined,
                                             factory.createIdentifier("d"),
@@ -239,14 +231,12 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                 factory.createParameterDeclaration(
                                     undefined,
                                     undefined,
-                                    undefined,
                                     factory.createIdentifier("c"),
                                     undefined,
                                     undefined,
                                     undefined
                                 ),
                                 factory.createParameterDeclaration(
-                                    undefined,
                                     undefined,
                                     undefined,
                                     factory.createIdentifier("d"),
@@ -257,7 +247,6 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                 factory.createParameterDeclaration(
                                     undefined,
                                     undefined,
-                                    undefined,
                                     factory.createIdentifier("dp"),
                                     undefined,
                                     undefined,
@@ -266,14 +255,12 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                 factory.createParameterDeclaration(
                                     undefined,
                                     undefined,
-                                    undefined,
                                     factory.createIdentifier("dsp"),
                                     undefined,
                                     undefined,
                                     undefined
                                 ),
                                 factory.createParameterDeclaration(
-                                    undefined,
                                     undefined,
                                     undefined,
                                     factory.createIdentifier("n"),
@@ -298,7 +285,6 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                                     undefined,
                                                     undefined,
                                                     [factory.createParameterDeclaration(
-                                                        undefined,
                                                         undefined,
                                                         undefined,
                                                         factory.createIdentifier("d"),
@@ -326,7 +312,6 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                                     undefined,
                                                     undefined,
                                                     [factory.createParameterDeclaration(
-                                                        undefined,
                                                         undefined,
                                                         undefined,
                                                         factory.createArrayBindingPattern([
@@ -374,7 +359,6 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                                                 undefined,
                                                 undefined,
                                                 [factory.createParameterDeclaration(
-                                                    undefined,
                                                     undefined,
                                                     undefined,
                                                     factory.createArrayBindingPattern([
@@ -452,14 +436,12 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                             factory.createParameterDeclaration(
                                 undefined,
                                 undefined,
-                                undefined,
                                 factory.createIdentifier("o"),
                                 undefined,
                                 undefined,
                                 undefined
                             ),
                             factory.createParameterDeclaration(
-                                undefined,
                                 undefined,
                                 undefined,
                                 factory.createIdentifier("a"),
@@ -486,7 +468,6 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                         undefined,
                         undefined,
                         [factory.createParameterDeclaration(
-                            undefined,
                             undefined,
                             undefined,
                             factory.createIdentifier("id"),

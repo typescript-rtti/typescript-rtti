@@ -166,7 +166,6 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                         } else {
                             ownedImpo = ts.factory.createImportDeclaration(
                                 undefined,
-                                undefined,
                                 ts.factory.createImportClause(
                                     false, ts.factory.createIdentifier(impo.localName),
                                     undefined
@@ -177,7 +176,6 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                         }
                     } else {
                         ownedImpo = ts.factory.createImportDeclaration(
-                            undefined,
                             undefined,
                             ts.factory.createImportClause(
                                 false, undefined,
