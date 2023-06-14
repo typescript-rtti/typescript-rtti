@@ -60,6 +60,7 @@ workflows:
   version: 2
   build:
     jobs:
-      - node-17
+      - node-20
+      - node-18
       - node-16
       - node-14
