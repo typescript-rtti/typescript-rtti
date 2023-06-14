@@ -11,7 +11,7 @@ commands:
     steps:
       - checkout
       - run: sudo apt-get update
-      - run: sudo apt-get install python
+      - run: sudo apt-get install python2
       - restore_cache:
           keys:
           - v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
