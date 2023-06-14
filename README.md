@@ -456,5 +456,7 @@ reports as the above are all already tracked in existing issues.
 
 # Related/Similar Projects
 
+- [typia](https://github.com/samchon/typia)
+- [deepkit](https://github.com/deepkit/deepkit-framework)
 - [Hookyns/tst-reflect](https://github.com/Hookyns/tst-reflect)
 - [gfx/typescript-rtti](https://github.com/gfx/typescript-rtti) (No relation to this codebase)
