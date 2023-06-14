@@ -3,6 +3,7 @@ import * as format from '../common/format';
 import { forwardRef, functionForwardRef } from './forward-ref';
 import { literalNode } from './literal-node';
 import { TypeEncoderImpl } from './type-literal';
+import { getModifiers } from './utils';
 
 export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDeclaration | ts.BindingElement | ts.OmittedExpression): format.RtSerialized<format.RtParameter> {
 
@@ -49,8 +50,8 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
         typeExpr = encoder.referToType(checker.getTypeAtLocation(param));
     }
 
-    if (param.modifiers) {
-        for (let modifier of Array.from(param.modifiers)) {
+    if (ts.canHaveModifiers(param)) {
+        for (let modifier of getModifiers(param)) {
             if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword)
                 f.push(format.F_READONLY);
             if (modifier.kind === ts.SyntaxKind.PrivateKeyword)

@@ -8,7 +8,7 @@ import { InterfaceAnalyzer } from "./common/interface-analyzer";
 import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
 import { MetadataEncoder } from "./metadata-encoder";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
-import { expressionForPropertyName, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
+import { expressionForPropertyName, getModifiers, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
 import { serialize } from './serialize';
 import { literalNode } from './literal-node';
 import { T_ENUM } from '../common';
@@ -238,7 +238,7 @@ export class MetadataEmitter extends RttiVisitor {
     @Visit(ts.SyntaxKind.EnumDeclaration)
     enum(decl: ts.EnumDeclaration) {
 
-        if (hasModifier(decl.modifiers, ts.SyntaxKind.ConstKeyword)) {
+        if (hasModifier(getModifiers(decl), ts.SyntaxKind.ConstKeyword)) {
             // Const enums have no runtime representation, so no need to link their runtime object
             // to the type reference.
             return decl;
@@ -280,7 +280,7 @@ export class MetadataEmitter extends RttiVisitor {
     @Visit(ts.SyntaxKind.InterfaceDeclaration)
     interface(decl: ts.InterfaceDeclaration) {
         let emitName = decl.name.text;
-        if (hasModifiers(decl.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
+        if (hasModifiers(getModifiers(decl), [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
             emitName = 'default';
 
         let tokenDecl = ts.factory.createVariableStatement(
@@ -336,7 +336,7 @@ export class MetadataEmitter extends RttiVisitor {
                 result.node,
                 tokenDecl,
                 ...(
-                    hasModifier(decl.modifiers, ts.SyntaxKind.ExportKeyword)
+                    hasModifier(getModifiers(decl), ts.SyntaxKind.ExportKeyword)
                         ? [this.exportInterfaceToken(emitName)]
                         : []
                 ),
@@ -381,7 +381,7 @@ export class MetadataEmitter extends RttiVisitor {
             //    if (true) var a = __RΦ.f(function a() { }, [ ... ])
 
             let expr = ts.factory.createFunctionExpression(
-                decl.modifiers, decl.asteriskToken, decl.name, decl.typeParameters, decl.parameters,
+                getModifiers(decl), decl.asteriskToken, decl.name, decl.typeParameters, decl.parameters,
                 decl.type, decl.body
             );
 
@@ -445,7 +445,7 @@ export class MetadataEmitter extends RttiVisitor {
             console.log(`Decorating class method ${decl.parent.name?.text ?? '<anonymous>'}#${decl.name.getText()}`);
 
         let metadata = this.metadataEncoder.method(decl);
-        let isAbstract = hasModifier(ts.canHaveModifiers(decl) ? ts.getModifiers(decl) : [], ts.SyntaxKind.AbstractKeyword);
+        let isAbstract = hasModifier(getModifiers(decl), ts.SyntaxKind.AbstractKeyword);
 
         if (isAbstract) {
             this.outboardCollector.collect(decl, metadata);
@@ -486,7 +486,7 @@ export class MetadataEmitter extends RttiVisitor {
 
             if (ts.isInterfaceDeclaration(node)) {
                 let interfaceName = `IΦ${node.name.text}`;
-                if (hasModifiers(node.modifiers, [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
+                if (hasModifiers(getModifiers(node), [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
                     interfaceName = `IΦdefault`;
                 host = ts.factory.createIdentifier(interfaceName);
             }
@@ -494,7 +494,7 @@ export class MetadataEmitter extends RttiVisitor {
             let isStatic = false;
 
             if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node) || ts.isGetAccessor(dec.node) || ts.isSetAccessor(dec.node))
-                isStatic = hasModifier(ts.canHaveModifiers(dec.node) ? ts.getModifiers(dec.node) : [], ts.SyntaxKind.StaticKeyword);
+                isStatic = hasModifier(getModifiers(dec.node), ts.SyntaxKind.StaticKeyword);
             if (ts.isClassDeclaration(dec.node))
                 isStatic = true;
 

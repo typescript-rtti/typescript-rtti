@@ -13,7 +13,7 @@ import { legacyMetadataDecorator, metadataDecorator } from './metadata-decorator
 import { RttiContext } from './rtti-context';
 import { serialize } from './serialize';
 import { TypeEncoder } from './type-encoder';
-import { expressionForPropertyName, hasFlag, hasModifier, propertyNameToString, referenceSymbol } from './utils';
+import { expressionForPropertyName, getModifiers, hasFlag, hasModifier, propertyNameToString, referenceSymbol } from './utils';
 
 /**
  * Extracts type metadata from various syntactic elements and outputs
@@ -155,7 +155,7 @@ export class MetadataEncoder {
         } else if (ts.isInterfaceDeclaration(node.parent)) {
             if (node.parent.name)
                 return `interface ${node.parent.name.text}`;
-            else if (hasModifier(node.parent.modifiers, ts.SyntaxKind.DefaultKeyword))
+            else if (hasModifier(getModifiers(node.parent), ts.SyntaxKind.DefaultKeyword))
                 return `default interface`;
             else
                 return `unknown interface`;
@@ -199,14 +199,14 @@ export class MetadataEncoder {
     methodFlags(node: ts.MethodDeclaration | ts.MethodSignature | ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction) {
         if (ts.isFunctionDeclaration(node) || ts.isArrowFunction(node)) {
             let type = F_FUNCTION;
-            return `${type}${isAsync(node.modifiers)}${ts.isArrowFunction(node) ? F_ARROW_FUNCTION : ''}`;
+            return `${type}${isAsync(getModifiers(node))}${ts.isArrowFunction(node) ? F_ARROW_FUNCTION : ''}`;
         }
 
         const nodeModifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : [];
         let type = F_METHOD;
         let flags = `${type}${getVisibility(nodeModifiers)}${isAbstract(nodeModifiers)}${isAsync(nodeModifiers)}`;
 
-        if (ts.isMethodDeclaration(node) && (node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword))
+        if (ts.isMethodDeclaration(node) && getModifiers(node).some(x => x.kind === ts.SyntaxKind.StaticKeyword))
             flags += F_STATIC;
 
         if (node.questionToken)
