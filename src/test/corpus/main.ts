@@ -91,7 +91,9 @@ const PACKAGES: Record<string, Package> = {
  */
 const TYPESCRIPTS = [
     '4.8',
-    '4.9'
+    '4.9',
+    '5.0',
+    '5.1'
 ];
 
 function run(str: string, cwd?: string, context?: string) {
