@@ -213,12 +213,20 @@ export function propertyNameToString(propName: ts.PropertyName) {
     }
 }
 
-export function hasModifier(modifiers: ts.ModifiersArray | undefined, modifier: ts.SyntaxKind) {
+export function hasModifier(modifiers: readonly ts.Modifier[] | undefined, modifier: ts.SyntaxKind) {
     return modifiers?.some(x => x.kind === modifier) ?? false;
 }
 
-export function hasModifiers(modifiersArray: ts.ModifiersArray | undefined, modifiers: ts.SyntaxKind[]) {
+export function hasModifiers(modifiersArray: readonly ts.Modifier[] | undefined, modifiers: ts.SyntaxKind[]) {
     return modifiers.every(modifier => hasModifier(modifiersArray, modifier));
+}
+
+export function getModifiers(node: ts.Node): readonly ts.Modifier[] {
+    return ts.canHaveModifiers(node) ? (ts.getModifiers(node) ?? []) : [];
+}
+
+export function getDecorators(node: ts.Node): readonly ts.Decorator[] {
+    return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
 }
 
 export function referenceSymbol(
@@ -769,7 +777,7 @@ export function getLocalSymbolForExportDefault(symbol: ts.Symbol) {
 export function isExportDefaultSymbol(symbol: ts.Symbol): boolean {
     if (!symbol.declarations)
         return false;
-    return symbol && (symbol.declarations?.length ?? 0) > 0 && hasModifier(symbol.declarations[0].modifiers, ts.SyntaxKind.DefaultKeyword);
+    return symbol && (symbol.declarations?.length ?? 0) > 0 && hasModifier(ts.canHaveModifiers(symbol.declarations[0]) ? ts.getModifiers(symbol.declarations[0]) : [], ts.SyntaxKind.DefaultKeyword);
 }
 
 export function skipOuterExpressions(node: ts.Expression, kinds?: ts.OuterExpressionKinds): ts.Expression;

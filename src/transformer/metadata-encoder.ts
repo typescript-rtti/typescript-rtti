@@ -125,10 +125,12 @@ export class MetadataEncoder {
 
         // flags
 
+        let klassModifiers = ts.canHaveModifiers(klass) ? ts.getModifiers(klass) : [];
         let fType = ts.isInterfaceDeclaration(klass) ? F_INTERFACE : F_CLASS;
+
         decs.push(metadataDecorator(
             'rt:f',
-            `${fType}${getVisibility(klass.modifiers)}${isAbstract(klass.modifiers)}${isExported(klass.modifiers)}`
+            `${fType}${getVisibility(klassModifiers)}${isAbstract(klassModifiers)}${isExported(klassModifiers)}`
         ));
 
         return decs;
@@ -141,7 +143,7 @@ export class MetadataEncoder {
         if (ts.isClassDeclaration(node.parent)) {
             if (node.parent.name)
                 return `class ${node.parent.name.text}`;
-            else if (hasModifier(node.parent.modifiers, ts.SyntaxKind.DefaultKeyword))
+            else if (hasModifier(ts.canHaveModifiers(node.parent) ? ts.getModifiers(node.parent) : [], ts.SyntaxKind.DefaultKeyword))
                 return `default class`;
             else
                 return `unknown class`;
@@ -181,14 +183,16 @@ export class MetadataEncoder {
             type = this.checker.getTypeAtLocation(node);
         }
 
+        const nodeModifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : [];
+
         return [
             ...this.type(
                 type,
                 typeNode, 'type',
                 (ts.isPropertyDeclaration(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node))
-                && node.decorators?.length > 0
+                && ts.canHaveDecorators(node) && ts.getDecorators(node)?.length > 0
             ),
-            metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(node.modifiers)}${isReadOnly(node.modifiers)}${node.questionToken ? F_OPTIONAL : ''}`)
+            metadataDecorator('rt:f', `${F_PROPERTY}${getVisibility(nodeModifiers)}${isReadOnly(nodeModifiers)}${node.questionToken ? F_OPTIONAL : ''}`)
         ];
     }
 
@@ -198,8 +202,9 @@ export class MetadataEncoder {
             return `${type}${isAsync(node.modifiers)}${ts.isArrowFunction(node) ? F_ARROW_FUNCTION : ''}`;
         }
 
+        const nodeModifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : [];
         let type = F_METHOD;
-        let flags = `${type}${getVisibility(node.modifiers)}${isAbstract(node.modifiers)}${isAsync(node.modifiers)}`;
+        let flags = `${type}${getVisibility(nodeModifiers)}${isAbstract(nodeModifiers)}${isAsync(nodeModifiers)}`;
 
         if (ts.isMethodDeclaration(node) && (node.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword))
             flags += F_STATIC;
@@ -233,14 +238,18 @@ export class MetadataEncoder {
         let methodHint = this.ctx.locationHint;
 
         let decs: ts.Decorator[] = [];
+        let nodeDecorators: readonly ts.Decorator[] = [];
 
-        if (this.emitStandardMetadata && ts.isMethodDeclaration(node) && node.decorators?.length > 0)
+        if (ts.canHaveDecorators(node))
+            nodeDecorators = ts.getDecorators(node);
+
+        if (this.emitStandardMetadata && ts.isMethodDeclaration(node) && nodeDecorators?.length > 0)
             decs.push(legacyMetadataDecorator('design:type', literalNode(ts.factory.createIdentifier('Function'))));
 
         decs.push(...this.params(node));
         decs.push(metadataDecorator('rt:f', this.methodFlags(node)));
 
-        let allowStandardMetadata = ts.isMethodDeclaration(node) && node.decorators?.length > 0;
+        let allowStandardMetadata = ts.isMethodDeclaration(node) && nodeDecorators?.length > 0;
 
         if (node.type) {
             decs.push(...this.typeNode(node.type, 'returntype', allowStandardMetadata));
@@ -281,9 +290,14 @@ export class MetadataEncoder {
 
         if (this.emitStandardMetadata && eligibleForLegacyDecorators) {
             let parent = containingNode ?? node.parent;
-            let isDecorated = node.decorators?.length > 0;
-            if (ts.isConstructorDeclaration(node) && parent)
-                isDecorated = parent.decorators?.length > 0;
+            let isDecorated = false;
+
+            if (ts.canHaveDecorators(node))
+                isDecorated = ts.getDecorators(node)?.length > 0;
+
+            if (ts.isConstructorDeclaration(node) && parent && ts.canHaveDecorators(parent))
+                isDecorated = ts.getDecorators(parent)?.length > 0;
+
             if (isDecorated)
                 decs.push(metadataDecorator('design:paramtypes', standardParamTypes.map(t => literalNode(t))));
         }

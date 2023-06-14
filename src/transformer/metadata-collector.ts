@@ -1,4 +1,5 @@
 import * as ts from 'typescript';
+import { getDecorators, getModifiers } from './utils';
 
 export interface MetadataCollector {
     collect<T extends ts.Node>(node: T, decorators: ts.Decorator[]): T;
@@ -12,8 +13,7 @@ export class InlineMetadataCollector {
         if (ts.isPropertyDeclaration(node)) {
             return <any>ts.factory.updatePropertyDeclaration(
                 node,
-                [...(node.decorators || []), ...decorators],
-                node.modifiers,
+                [...getDecorators(node), ...decorators, ...getModifiers(node)],
                 node.name,
                 node.questionToken || node.exclamationToken,
                 node.type,
@@ -22,8 +22,7 @@ export class InlineMetadataCollector {
         } else if (ts.isGetAccessor(node)) {
             return <any>ts.factory.updateGetAccessorDeclaration(
                 node,
-                [...(node.decorators || []), ...decorators],
-                node.modifiers,
+                [...getDecorators(node), ...decorators, ...getModifiers(node)],
                 node.name,
                 node.parameters,
                 node.type,
@@ -32,8 +31,7 @@ export class InlineMetadataCollector {
         } else if (ts.isSetAccessor(node)) {
             return <any>ts.factory.updateSetAccessorDeclaration(
                 node,
-                [...(node.decorators || []), ...decorators],
-                node.modifiers,
+                [...getDecorators(node), ...decorators, ...getModifiers(node)],
                 node.name,
                 node.parameters,
                 node.body
@@ -41,8 +39,7 @@ export class InlineMetadataCollector {
         } else if (ts.isMethodDeclaration(node)) {
             return <any>ts.factory.updateMethodDeclaration(
                 node,
-                [...(node.decorators || []), ...decorators],
-                node.modifiers,
+                [...getDecorators(node), ...decorators, ...getModifiers(node)],
                 node.asteriskToken,
                 node.name,
                 node.questionToken,
@@ -54,8 +51,7 @@ export class InlineMetadataCollector {
         } else if (ts.isClassDeclaration(node)) {
             return <any>ts.factory.updateClassDeclaration(
                 node,
-                [...(node.decorators || []), ...decorators],
-                node.modifiers,
+                [...getDecorators(node), ...decorators, ...getModifiers(node)],
                 node.name,
                 node.typeParameters,
                 node.heritageClauses,
@@ -102,7 +98,7 @@ export class ExternalMetadataCollector implements MetadataCollector {
         // Only apply legacy decorators (inline) when there are other
         // decorators to match TS' own semantics
 
-        if (node.decorators?.length > 0 && legacyDecorators.length > 0) {
+        if (getDecorators(node)?.length > 0 && legacyDecorators.length > 0) {
             node = this.inlineCollector.collect(node, legacyDecorators);
         }
 

@@ -1,4 +1,5 @@
 # v0.9.0 [vNext]
+- BREAKING: Typescript 4.7 is no longer supported. Please use Typescript 4.8 instead.
 - `matchesValue()` changes
     - `matchesValue()` now accepts an `options` object instead of positional parameters
     - Adds `allowExtraProperties` option to matchesValue() to control whether extra options are allowed

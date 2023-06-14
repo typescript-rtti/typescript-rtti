@@ -3,7 +3,7 @@ import { legacyDecorator } from './legacy-decorator';
 import { literalNode } from './literal-node';
 import { ExternalDecorator } from './metadata-collector';
 import { serialize } from './serialize';
-import { expressionForPropertyName, hasFlag, hasModifier } from './utils';
+import { expressionForPropertyName, getModifiers, hasFlag, hasModifier } from './utils';
 
 export function metadataDecorator(key: string, object: any) {
     return ts.factory.createDecorator(
@@ -138,8 +138,8 @@ export function decorateClassExpression(classExpr: ts.ClassExpression, decorator
     }
 
     let propDecorators = externalDecorators.filter(x => x.property);
-    let staticPropDecorators = propDecorators.filter(x => hasModifier(x.node.modifiers, ts.SyntaxKind.StaticKeyword));
-    let instancePropDecorators = propDecorators.filter(x => !hasModifier(x.node.modifiers, ts.SyntaxKind.StaticKeyword));
+    let staticPropDecorators = propDecorators.filter(x => hasModifier(getModifiers(x.node), ts.SyntaxKind.StaticKeyword));
+    let instancePropDecorators = propDecorators.filter(x => !hasModifier(getModifiers(x.node), ts.SyntaxKind.StaticKeyword));
 
     return ts.factory.createCallExpression(
         ts.factory.createPropertyAccessExpression(

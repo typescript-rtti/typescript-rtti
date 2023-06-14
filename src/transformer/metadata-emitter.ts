@@ -118,7 +118,7 @@ export class MetadataEmitter extends RttiVisitor {
         let details = ClassAnalyzer.analyze(decl, this.context);
         let className = decl.name.getText();
 
-        if (hasModifier(decl.modifiers, ts.SyntaxKind.DeclareKeyword))
+        if (hasModifier(ts.canHaveModifiers(decl) ? ts.getModifiers(decl) : [], ts.SyntaxKind.DeclareKeyword))
             return decl;
 
         return this.scope(decl, () => {
@@ -446,7 +446,7 @@ export class MetadataEmitter extends RttiVisitor {
             console.log(`Decorating class method ${decl.parent.name?.text ?? '<anonymous>'}#${decl.name.getText()}`);
 
         let metadata = this.metadataEncoder.method(decl);
-        let isAbstract = hasModifier(decl.modifiers, ts.SyntaxKind.AbstractKeyword);
+        let isAbstract = hasModifier(ts.canHaveModifiers(decl) ? ts.getModifiers(decl) : [], ts.SyntaxKind.AbstractKeyword);
 
         if (isAbstract) {
             this.outboardCollector.collect(decl, metadata);
@@ -495,7 +495,7 @@ export class MetadataEmitter extends RttiVisitor {
             let isStatic = false;
 
             if (ts.isPropertyDeclaration(dec.node) || ts.isMethodDeclaration(dec.node) || ts.isGetAccessor(dec.node) || ts.isSetAccessor(dec.node))
-                isStatic = hasModifier(dec.node.modifiers, ts.SyntaxKind.StaticKeyword);
+                isStatic = hasModifier(ts.canHaveModifiers(dec.node) ? ts.getModifiers(dec.node) : [], ts.SyntaxKind.StaticKeyword);
             if (ts.isClassDeclaration(dec.node))
                 isStatic = true;
 
