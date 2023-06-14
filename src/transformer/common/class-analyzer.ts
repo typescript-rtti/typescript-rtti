@@ -1,10 +1,11 @@
 import { Visit, VisitorBase } from "./visitor-base";
 import { ClassDetails } from "./class-details";
 import * as ts from 'typescript';
+import { getModifiers } from '../utils';
 
 export class ClassAnalyzer extends VisitorBase {
     private isStatic(decl: ts.Declaration) {
-        return (decl.modifiers ?? <ts.Modifier[]>[]).some(x => x.kind === ts.SyntaxKind.StaticKeyword);
+        return (getModifiers(decl)).some(x => x.kind === ts.SyntaxKind.StaticKeyword);
     }
 
     static analyze(decl: ts.ClassDeclaration | ts.ClassExpression, context: ts.TransformationContext) {
@@ -53,13 +54,14 @@ export class ClassAnalyzer extends VisitorBase {
     @Visit(ts.SyntaxKind.Constructor)
     ctor(decl: ts.ConstructorDeclaration) {
         for (let param of decl.parameters) {
+            let paramModifiers = getModifiers(param);
             let isProperty =
-                param.modifiers
+                paramModifiers
                 && (
-                    param.modifiers.some(x => x.kind === ts.SyntaxKind.PublicKeyword)
-                    || param.modifiers.some(x => x.kind === ts.SyntaxKind.ProtectedKeyword)
-                    || param.modifiers.some(x => x.kind === ts.SyntaxKind.PrivateKeyword)
-                    || param.modifiers.some(x => x.kind === ts.SyntaxKind.ReadonlyKeyword)
+                    paramModifiers.some(x => x.kind === ts.SyntaxKind.PublicKeyword)
+                    || paramModifiers.some(x => x.kind === ts.SyntaxKind.ProtectedKeyword)
+                    || paramModifiers.some(x => x.kind === ts.SyntaxKind.PrivateKeyword)
+                    || paramModifiers.some(x => x.kind === ts.SyntaxKind.ReadonlyKeyword)
                 )
                 ;
 
