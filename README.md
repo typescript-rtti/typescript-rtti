@@ -155,7 +155,7 @@ reflect(B).getMethod('baz').returnType           // => A
 # Setup
 
 Prerequisites
-- Typescript 4.5.5 or newer (supports Typescript 4.6!)
+- Typescript 4.8 - 5.1
 - Node.js v14 or newer (when using Node.js)
 
 Installation
