@@ -33,7 +33,7 @@ export type TypeMapper =
 export interface AnonymousType extends ts.ObjectType {
     target?: AnonymousType;  // Instantiation target
     mapper?: TypeMapper;     // Instantiation mapper
-    instantiations?: ts.ESMap<string, ts.Type>; // Instantiations of generic type alias (undefined if non-generic)
+    instantiations?: Map<string, ts.Type>; // Instantiations of generic type alias (undefined if non-generic)
 }
 export interface MappedType extends AnonymousType {
     declaration: ts.MappedTypeNode;
