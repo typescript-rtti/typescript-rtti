@@ -106,7 +106,7 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
             //////////////////////////////////////////////////////////
             // Transform reflect<T>() and reify<T>()
 
-            sourceFile = ApiCallTransformer.transform(sourceFile, ctx);
+            sourceFile = <ts.SourceFile>ApiCallTransformer.transform(sourceFile, ctx);
 
             function generateInterfaceSymbols(statements: ts.Statement[]): ts.Statement[] {
                 for (let iface of ctx.interfaceSymbols) {
