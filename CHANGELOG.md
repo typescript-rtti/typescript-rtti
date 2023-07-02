@@ -1,4 +1,4 @@
-# v0.9.1 [vNext]
+# v0.9.1
 - Fixes type references acquired via namespace imports where the type declarations file name does not correspond
   to the Javascript file name.
 
