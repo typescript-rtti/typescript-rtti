@@ -35,7 +35,7 @@ commands:
 jobs:
   node-14:
     docker:
-      - image: cimg/node:14.19
+      - image: cimg/node:14.21
     working_directory: ~/repo
     steps:
       - run_tests:
