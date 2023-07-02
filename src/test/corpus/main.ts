@@ -66,7 +66,7 @@ const PACKAGES: Record<string, Package> = {
         enabled: true,
         yarn: true,
         url: 'https://github.com/capaj/decapi.git',
-        ref: '2.0.1',
+        ref: 'v2.0.1',
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
     "capaj/decapi@1.0.0": {
@@ -74,7 +74,7 @@ const PACKAGES: Record<string, Package> = {
         yarn: true,
         failable: true,
         url: 'https://github.com/capaj/decapi.git',
-        ref: '1.0.0',
+        ref: 'v1.0.0',
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
     "capaj/decapi@rtti-wip": {
