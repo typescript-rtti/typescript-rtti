@@ -1,3 +1,7 @@
+# v0.9.2
+- No changes (Previous release on NPM had a stale build caused by changes to the NPM scripts during the recent
+  Jest migration.)
+
 # v0.9.1
 - Fixes type references acquired via namespace imports where the type declarations file name does not correspond
   to the Javascript file name.
