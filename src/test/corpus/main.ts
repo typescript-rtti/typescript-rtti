@@ -85,8 +85,8 @@ const PACKAGES: Record<string, Package> = {
  * What Typescript versions should be tested (git tags)
  */
 const TYPESCRIPTS = [
-    { tsVersion: '4.8', compiler: 'ttsc', jestCompiler: 'ttypescript', precommands: [] },
-    { tsVersion: '4.9', compiler: 'ttsc', jestCompiler: 'ttypescript' },
+    { tsVersion: '4.8', compiler: 'ttsc', jestCompiler: 'ttypescript', precommands: [ 'npm install ttypescript --force' ] },
+    { tsVersion: '4.9', compiler: 'ttsc', jestCompiler: 'ttypescript', precommands: [ 'npm install ttypescript --force' ] },
     { tsVersion: '5.0', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] },
     { tsVersion: '5.1', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] }
 ];
@@ -102,7 +102,7 @@ function run(str: string, cwd?: string, context?: string) {
     let runtime = (Date.now() - startedAt) / 1000.0;
 
     if (result.code !== 0) {
-        console.error(`corpus: Failed to run: '${str}': exit code ${result.code}`);
+        console.error(`⚠️ ${str} (exit code ${result.code})`);
         console.error(`stdout:`);
         console.error(result.stdout);
         console.error();
@@ -300,9 +300,9 @@ async function main(args: string[]) {
                     console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
                 } catch (e: any) {
                     if (pkg.failable) {
-                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: failed, acceptable`);
+                        console.log(`⚠️ ${pkgName} [typescript@${tsVersion}]: acceptable failure (see above)`);
                     } else {
-                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: failed, unacceptable`);
+                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: unacceptable failure (see above)`);
                         unacceptableFailures += 1;
                     }
                 }
