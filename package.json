@@ -36,7 +36,7 @@
     "test": "jest --runInBand",
     "test:corpus": "npm run build && node ./dist.esm/test/corpus/main",
     "test:corpus:trace": "npm run -- test:corpus -- --trace",
-    "prepublishOnly": "npm test && npm run test:corpus",
+    "prepublishOnly": "npm run build && npm test && npm run test:corpus",
     "docs": "typedoc ."
   },
   "author": "William Lahti",
