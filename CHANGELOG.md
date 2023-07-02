@@ -1,3 +1,8 @@
+# v0.9.3 [vNext]
+- Fixes an issue with build tools which validate that namespace imports correspond to existing exports within the
+  module being imported (for example Angular CLI). This causes an issue when trying to consume ESM libraries
+  which were not built with Typescript RTTI.
+
 # v0.9.2
 - No changes (Previous release on NPM had a stale build caused by changes to the NPM scripts during the recent
   Jest migration.)

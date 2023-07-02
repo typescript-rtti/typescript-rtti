@@ -6,7 +6,7 @@ import { getPreferredExportForImport } from './get-exports-for-symbol';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 import { MappedType } from './ts-internal-types';
-import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, propertyPrepend,
+import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, optionalExportRef, propertyPrepend,
     serializeEntityNameAsExpression, typeHasValue } from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
@@ -606,10 +606,24 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                 if (exportedName === 'default') {
                     return ts.factory.createIdentifier(impo.localName);
                 } else {
-                    return ts.factory.createPropertyAccessExpression(
-                        ts.factory.createIdentifier(impo.localName),
-                        exportedName
-                    );
+                    if (!isCommonJS) {
+                        // Since ES exports and imports are statically analyzable, some tools
+                        // regard it as an error to reference an export which does not exist.
+                        // When we encode references to interface tokens and the imported library
+                        // was not built with RTTI, we will invoke such errors. It is also possible
+                        // that this could happen with normal reified exports; if the code itself never
+                        // references the reified export but we do, and the version of the library
+                        // differs (and does not include that symbol) at bundle time.
+                        //
+                        // To avoid this, we opt out of such static analysis by making the access of the
+                        // export dynamic using the `oe()` helper in the emit.
+                        return optionalExportRef(impo.localName, exportedName);
+                    } else {
+                        return ts.factory.createPropertyAccessExpression(
+                            ts.factory.createIdentifier(impo.localName),
+                            exportedName
+                        );
+                    }
                 }
             }
         } else {

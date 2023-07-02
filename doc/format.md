@@ -75,6 +75,14 @@ const __RΦ = {
     },
 
     /**
+     * __RΦ.oe
+     *
+     * Provides a dynamic property access to avoid errors when accessing exports which may not exist.
+     * "oe" is intended to stand for "optional export reference" here.
+     */
+    oe: (o, k) => o[k],
+
+    /**
      * RΦ.t
      *
      * The type table for this compilation unit. All types referenced within the emitted RTTI are stored here.

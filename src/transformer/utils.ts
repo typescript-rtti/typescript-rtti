@@ -159,6 +159,27 @@ export function dottedNameToExpr(dottedName: string): ts.Identifier | ts.Propert
         ;
 }
 
+/**
+ * Uses the `oe` utility function to perform a dynamic access of an object. This is used to ensure that
+ * RTTI-specific exports which may not be present do not cause problems in build systems which statically
+ * analyze whether the referenced export exists. (ie Angular's build process).
+ *
+ * Output: __RΦ.oe(<nsImport>, '<exportName>').
+ * @param nsImport
+ * @param exportName
+ * @returns
+ */
+export function optionalExportRef(nsImport: string, exportName: string) {
+    return ts.factory.createCallExpression(
+        ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('__RΦ'), 'oe'),
+        [],
+        [
+            ts.factory.createIdentifier(nsImport),
+            ts.factory.createStringLiteral(exportName)
+        ]
+    );
+}
+
 export function propertyPrepend(expr: ts.Expression, propAccess: ts.PropertyAccessExpression | ts.Identifier): ts.Expression {
     if (ts.isIdentifier(propAccess)) {
         return ts.factory.createPropertyAccessExpression(expr, propAccess);
