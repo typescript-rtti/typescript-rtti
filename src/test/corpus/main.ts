@@ -227,7 +227,7 @@ async function main(args: string[]) {
                     // npm@7 peer deps
 
                     if (pkg.yarn) {
-                        run(`yarn`, local, context);
+                        run(`yarn --ignore-engines`, local, context);
                     } else {
                         run(`npm install --force`, local, context);
                     }
