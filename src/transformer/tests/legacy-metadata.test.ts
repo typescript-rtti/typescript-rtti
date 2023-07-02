@@ -262,6 +262,41 @@ describe('emitDecoratorMetadata=true: ', () => {
             expect(params[4]).to.equal(RegExp);
 
         });
+        it.only('emits imported class', async () => {
+
+            let exports = await runSimple({
+                trace: true,
+                code: `
+                    /// <reference path="./test-defn.d.ts" />
+                    import * as test from 'test';
+                    function noop() { return (t, ...a) => {} };
+                    export class C {
+                        @noop() method(foo: test.Foo) { }
+                    }
+                `,
+                modules: {
+                    'test': {
+                        Foo: class {
+                            static blah = 123;
+                        }
+                    },
+                    './test-defn.d.ts': `
+                        declare module "test" {
+                            export class Foo {
+                                static blah: number;
+                            }
+                        }
+                    `
+                },
+                compilerOptions: {
+                    emitDecoratorMetadata: true
+                }
+            });
+
+            let params = Reflect.getMetadata('design:paramtypes', exports.C.prototype, 'method');
+
+            expect(params[0].blah).to.equal(123);
+        });
     });
     describe('design:returntype', () => {
         it('emits for string-like enum return type', async () => {

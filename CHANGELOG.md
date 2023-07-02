@@ -1,3 +1,7 @@
+# v0.9.1 [vNext]
+- Fixes type references acquired via namespace imports where the type declarations file name does not correspond
+  to the Javascript file name.
+
 # v0.9.0
 - **BREAKING**: Typescript 4.7 is no longer supported. Please use Typescript 4.8-5.1 instead.
 - `matchesValue()` changes

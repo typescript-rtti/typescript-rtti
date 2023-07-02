@@ -381,7 +381,7 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                 while (ts.isQualifiedName(typeName))
                     typeName = typeName.left;
 
-                let localSymbol = checker.getSymbolAtLocation(typeNode.typeName);
+                let localSymbol = checker.getSymbolAtLocation(typeName);
                 if (localSymbol) {
                     let localDecl = localSymbol.declarations[0];
                     if (localDecl) {
@@ -393,6 +393,9 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                         } else if (ts.isImportSpecifier(localDecl)) {
                             let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
                             detectedImportPath = specifier.text;
+                        } else if (ts.isNamespaceImport(localDecl)) {
+                            modulePath = (localDecl.parent.parent.moduleSpecifier as ts.StringLiteral).text;
+                            isExportedAsDefault = false;
                         }
 
                         if (detectedImportPath) {
