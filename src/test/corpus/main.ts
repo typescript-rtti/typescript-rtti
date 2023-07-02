@@ -293,7 +293,7 @@ async function main(args: string[]) {
 
                     for (let command of pkg.commands) {
                         if (command === 'tsc')
-                            command = compiler;
+                            command = path.resolve(local, `./node_modules/.bin/${compiler}`);
                         run(command, local, context);
                     }
 
