@@ -70,7 +70,7 @@ const PACKAGES: Record<string, Package> = {
         url: 'https://github.com/capaj/decapi.git',
         ref: 'v2.0.1',
         target: 'esm',
-        precommands: ['rimraf yarn.lock'],
+        precommands: ['rimraf yarn.lock', 'yarn config set ignore-engines true'],
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
     "typeorm/typeorm": {
