@@ -89,7 +89,7 @@ const PACKAGES: Record<string, Package> = {
         enabled: true,
         url: 'https://github.com/typeorm/typeorm.git',
         ref: '0.3.11',
-        commands: ['ttsc']
+        commands: ['tsc']
     }
 };
 
@@ -97,10 +97,10 @@ const PACKAGES: Record<string, Package> = {
  * What Typescript versions should be tested (git tags)
  */
 const TYPESCRIPTS = [
-    '4.8',
-    '4.9',
-    // '5.0',
-    // '5.1'
+    { tsVersion: '4.8', compiler: 'ttsc' },
+    { tsVersion: '4.9', compiler: 'ttsc' },
+    { tsVersion: '5.0', compiler: 'tspc', precommands: [ 'npm install ts-patch' ] },
+    { tsVersion: '5.1', compiler: 'tspc', precommands: [ 'npm install ts-patch' ] }
 ];
 
 function run(str: string, cwd?: string, context?: string) {
@@ -217,7 +217,7 @@ async function main(args: string[]) {
             if (hasOnly && !pkg.only)
                 continue;
 
-            for (let tsVersion of TYPESCRIPTS) {
+            for (let { tsVersion, compiler, precommands } of TYPESCRIPTS) {
                 try {
                     let context = `${pkgName} [typescript@${tsVersion}]`;
                     let local = `${pkgName.replace(/\//g, '__')}`;
@@ -255,7 +255,7 @@ async function main(args: string[]) {
                         for (let key of Object.keys(pkg.scripts)) {
                             let command = (pkg.scripts[key] ?? '');
 
-                            command = command.replace(/\btsc\b/g, 'ttsc');
+                            command = command.replace(/\btsc\b/g, compiler);
                             command = command.replace(/\brm -rf\b/ig, 'rimraf');
 
                             pkg.scripts[key] = command;
@@ -269,7 +269,7 @@ async function main(args: string[]) {
                             jestConfig = JSON.parse(JSON.stringify(jestConfig));
                             jestConfig.globals ??= {};
                             jestConfig.globals['ts-jest'] ??= {};
-                            jestConfig.globals['ts-jest'].compiler = 'ttypescript';
+                            jestConfig.globals['ts-jest'].compiler = 'ts-patch/compiler';
                         }, pkg.target);
                     }
 
@@ -285,10 +285,10 @@ async function main(args: string[]) {
                             try {
                                 let stat = await fs.stat(path.join(pkgDir, pkg));
                                 if (stat.isDirectory()) {
-                                    // Patch package.json to call ttsc instead of tsc
+                                    // Patch package.json to call transforming compiler instead of tsc
                                     modify(path.join(pkgDir, pkg, 'package.json'), pkg => {
                                         for (let key of Object.keys(pkg.scripts))
-                                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, 'ttsc');
+                                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, compiler);
                                     });
                                 }
                             } catch (e: any) {
@@ -297,7 +297,12 @@ async function main(args: string[]) {
                         }
                     }
 
+                    for (let command of (precommands ?? []))
+                        run(command, local, context);
+
                     for (let command of pkg.commands) {
+                        if (command === 'tsc')
+                            command = compiler;
                         run(command, local, context);
                     }
 
