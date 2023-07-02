@@ -262,10 +262,9 @@ describe('emitDecoratorMetadata=true: ', () => {
             expect(params[4]).to.equal(RegExp);
 
         });
-        it.only('emits imported class', async () => {
+        it('emits imported class', async () => {
 
             let exports = await runSimple({
-                trace: true,
                 code: `
                     /// <reference path="./test-defn.d.ts" />
                     import * as test from 'test';
