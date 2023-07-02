@@ -14,7 +14,6 @@ interface Package {
     failable?: boolean;
     only?: boolean;
     yarn?: boolean;
-    acceptFailure?: boolean;
     url: string;
     ref: string;
     target?: 'esm' | 'commonjs',
@@ -63,14 +62,22 @@ const PACKAGES: Record<string, Package> = {
         ref: 'main',
         commands: ['npm test']
     },
-    "capaj/decapi": {
+    "capaj/decapi@2.0.1": {
         enabled: true,
         yarn: true,
+        url: 'https://github.com/capaj/decapi.git',
+        ref: '2.0.1',
+        commands: ['npm run -- test --runInBand --no-cache --ci ']
+    },
+    "capaj/decapi@1.0.0": {
+        enabled: true,
+        yarn: true,
+        failable: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: '1.0.0',
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
-    "capaj/decapi-rtti": {
+    "capaj/decapi@rtti-wip": {
         enabled: false,
         yarn: true,
         url: 'https://github.com/capaj/decapi.git',
@@ -199,6 +206,8 @@ async function main(args: string[]) {
     try {
         let hasOnly = Object.values(PACKAGES).some(x => x.only === true);
 
+        let unacceptableFailures = 0;
+
         for (let pkgName of Object.keys(PACKAGES)) {
             let pkg = PACKAGES[pkgName];
 
@@ -295,12 +304,17 @@ async function main(args: string[]) {
                     console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
                 } catch (e: any) {
                     if (pkg.failable) {
-                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: failed, non-fatal`);
+                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: failed, acceptable`);
                     } else {
-                        throw new Error(`${pkgName} [typescript@${tsVersion}]: ${e.message}`);
+                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: failed, unacceptable`);
+                        unacceptableFailures += 1;
                     }
                 }
             }
+        }
+
+        if (unacceptableFailures > 0) {
+            throw new Error(`${unacceptableFailures} unacceptable failures occurred. Build failed.`)
         }
     } catch (e: any) {
         console.error(`❌ ${e.message}`);
