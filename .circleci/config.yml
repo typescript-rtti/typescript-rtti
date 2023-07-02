@@ -16,7 +16,13 @@ commands:
           keys:
           - v1-dependencies-<< parameters.version >>-{{ checksum "package.json" }}
           - v1-dependencies-<< parameters.version >>-
-      - run: npm --version
+      - run:
+          name: Initial NPM version
+          command: npm --version
+      - run: npm install npm@latest -g
+      - run:
+          name: Upgraded NPM version
+          command: npm --version
       - run: npm install
       - save_cache:
           paths:
