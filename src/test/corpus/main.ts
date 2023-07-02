@@ -73,25 +73,6 @@ const PACKAGES: Record<string, Package> = {
         precommands: ['rimraf yarn.lock'],
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
-    "capaj/decapi@1.0.0": {
-        enabled: true,
-        yarn: true,
-        failable: true,
-        url: 'https://github.com/capaj/decapi.git',
-        ref: '1.0.0',
-        precommands: ['rimraf yarn.lock'],
-        commands: [
-            'npm run -- test --runInBand --no-cache --ci '
-        ]
-    },
-    "capaj/decapi@rtti-wip": {
-        enabled: false,
-        yarn: true,
-        url: 'https://github.com/capaj/decapi.git',
-        ref: 'rtti-wip',
-        target: 'esm',
-        commands: ['npm run -- test --runInBand --no-cache --ci ']
-    },
     "typeorm/typeorm": {
         enabled: true,
         url: 'https://github.com/typeorm/typeorm.git',
