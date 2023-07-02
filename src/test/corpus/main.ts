@@ -17,6 +17,8 @@ interface Package {
     url: string;
     ref: string;
     target?: 'esm' | 'commonjs',
+    precommands?: string[];
+    jestESM?: boolean;
     commands: string[];
 }
 
@@ -67,6 +69,8 @@ const PACKAGES: Record<string, Package> = {
         yarn: true,
         url: 'https://github.com/capaj/decapi.git',
         ref: 'v2.0.1',
+        target: 'esm',
+        precommands: ['rimraf yarn.lock'],
         commands: ['npm run -- test --runInBand --no-cache --ci ']
     },
     "capaj/decapi@1.0.0": {
@@ -74,8 +78,11 @@ const PACKAGES: Record<string, Package> = {
         yarn: true,
         failable: true,
         url: 'https://github.com/capaj/decapi.git',
-        ref: 'v1.0.0',
-        commands: ['npm run -- test --runInBand --no-cache --ci ']
+        ref: '1.0.0',
+        precommands: ['rimraf yarn.lock'],
+        commands: [
+            'npm run -- test --runInBand --no-cache --ci '
+        ]
     },
     "capaj/decapi@rtti-wip": {
         enabled: false,
@@ -97,10 +104,10 @@ const PACKAGES: Record<string, Package> = {
  * What Typescript versions should be tested (git tags)
  */
 const TYPESCRIPTS = [
-    { tsVersion: '4.8', compiler: 'ttsc' },
-    { tsVersion: '4.9', compiler: 'ttsc' },
-    { tsVersion: '5.0', compiler: 'tspc', precommands: [ 'npm install ts-patch' ] },
-    { tsVersion: '5.1', compiler: 'tspc', precommands: [ 'npm install ts-patch' ] }
+    { tsVersion: '4.8', compiler: 'ttsc', jestCompiler: 'ttypescript', precommands: [] },
+    { tsVersion: '4.9', compiler: 'ttsc', jestCompiler: 'ttypescript' },
+    { tsVersion: '5.0', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] },
+    { tsVersion: '5.1', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] }
 ];
 
 function run(str: string, cwd?: string, context?: string) {
@@ -146,7 +153,7 @@ async function modify<T = any>(filename: string, modifier: (t: T) => void, targe
         modifier(config);
 
         if (isModule)
-            await fs.writeFile(filename, `export default ${JSON.stringify(config.default, undefined, 2)};`);
+            await fs.writeFile(filename, `export default ${JSON.stringify(config, undefined, 2)};`);
         else
             await fs.writeFile(filename, `module.exports = ${JSON.stringify(config, undefined, 2)};`);
 
@@ -217,7 +224,7 @@ async function main(args: string[]) {
             if (hasOnly && !pkg.only)
                 continue;
 
-            for (let { tsVersion, compiler, precommands } of TYPESCRIPTS) {
+            for (let { tsVersion, compiler, jestCompiler, precommands } of TYPESCRIPTS) {
                 try {
                     let context = `${pkgName} [typescript@${tsVersion}]`;
                     let local = `${pkgName.replace(/\//g, '__')}`;
@@ -231,16 +238,20 @@ async function main(args: string[]) {
                     run(`cpy ${path.join(tsrttiDir, 'dist.esm')} .tsrtti`, local, context);
                     run(`cpy "${path.join(tsrttiDir, 'package.json')}" "${path.join(local, '.tsrtti', 'package.json')}"`, undefined, context);
 
+                    for (let command of (pkg.precommands ?? [])) {
+                        run(command, local, context);
+                    }
+
                     // forced to allow for codebases that have not yet updated to
                     // npm@7 peer deps
-
-                    run(`npm install typescript@${tsVersion} --force`, local, context);
 
                     if (pkg.yarn) {
                         run(`yarn`, local, context);
                     } else {
                         run(`npm install --force`, local, context);
                     }
+
+                    run(`npm install typescript@${tsVersion} --force`, local, context);
 
                     trace(`Transforming project-level tsconfig.json...`, context);
                     await modify<{ compilerOptions: ts.CompilerOptions; }>(path.join(local, 'tsconfig.json'), config => {
@@ -266,10 +277,9 @@ async function main(args: string[]) {
                     if (await fileExists(path.join(local, 'jest.config.js'))) {
                         trace(`Transforming jest config...`, context);
                         await modify(path.join(local, 'jest.config.js'), jestConfig => {
-                            jestConfig = JSON.parse(JSON.stringify(jestConfig));
                             jestConfig.globals ??= {};
                             jestConfig.globals['ts-jest'] ??= {};
-                            jestConfig.globals['ts-jest'].compiler = 'ts-patch/compiler';
+                            jestConfig.globals['ts-jest'].compiler = jestCompiler;
                         }, pkg.target);
                     }
 
