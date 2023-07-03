@@ -1,4 +1,4 @@
-# v0.9.4 [vNext]
+# v0.9.4
 - Patch release to fix the new build tooling changes
 
 # v0.9.3
