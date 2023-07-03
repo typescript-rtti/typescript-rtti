@@ -7,3 +7,4 @@ corpus.*/
 coverage/
 .nyc_output/
 *.tsbuildinfo
+playground/
