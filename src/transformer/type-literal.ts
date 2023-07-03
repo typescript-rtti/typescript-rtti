@@ -606,24 +606,10 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                 if (exportedName === 'default') {
                     return ts.factory.createIdentifier(impo.localName);
                 } else {
-                    if (!isCommonJS) {
-                        // Since ES exports and imports are statically analyzable, some tools
-                        // regard it as an error to reference an export which does not exist.
-                        // When we encode references to interface tokens and the imported library
-                        // was not built with RTTI, we will invoke such errors. It is also possible
-                        // that this could happen with normal reified exports; if the code itself never
-                        // references the reified export but we do, and the version of the library
-                        // differs (and does not include that symbol) at bundle time.
-                        //
-                        // To avoid this, we opt out of such static analysis by making the access of the
-                        // export dynamic using the `oe()` helper in the emit.
-                        return optionalExportRef(impo.localName, exportedName);
-                    } else {
-                        return ts.factory.createPropertyAccessExpression(
-                            ts.factory.createIdentifier(impo.localName),
-                            exportedName
-                        );
-                    }
+                    return ts.factory.createPropertyAccessExpression(
+                        ts.factory.createIdentifier(impo.localName),
+                        exportedName
+                    );
                 }
             }
         } else {
@@ -664,8 +650,21 @@ export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeN
                         referenced: true
                     });
                 }
-
-                return propertyPrepend(ts.factory.createIdentifier(impo.localName), expr);
+                if (!isCommonJS) {
+                    // Since ES exports and imports are statically analyzable, some tools
+                    // regard it as an error to reference an export which does not exist.
+                    // When we encode references to interface tokens and the imported library
+                    // was not built with RTTI, we will invoke such errors. It is also possible
+                    // that this could happen with normal reified exports; if the code itself never
+                    // references the reified export but we do, and the version of the library
+                    // differs (and does not include that symbol) at bundle time.
+                    //
+                    // To avoid this, we opt out of such static analysis by making the access of the
+                    // export dynamic using the `oe()` helper in the emit.
+                    return optionalExportRef(impo.localName, exportedName);
+                } else {
+                    return propertyPrepend(ts.factory.createIdentifier(impo.localName), expr);
+                }
             }
         }
     }

@@ -1,3 +1,6 @@
+# v0.9.4 [vNext]
+- Patch release to fix the new build tooling changes
+
 # v0.9.3
 - Fixes an issue with build tools which validate that namespace imports correspond to existing exports within the
   module being imported (for example Angular CLI). This causes an issue when trying to consume ESM libraries
