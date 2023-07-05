@@ -148,7 +148,7 @@ describe('Imports', () => {
                         `,
                         './a.ts': `
                             export default class A {
-                                method(hello : lib.A) { return 123; }
+                                method(hello : A) { return 123; }
                             }
                         `
                     }
