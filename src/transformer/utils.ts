@@ -1,6 +1,10 @@
 import ts from 'typescript';
 import { RttiContext } from './rtti-context';
 
+export function isInterfaceType(type: ts.Type) {
+    return type.isClassOrInterface() && !type.isClass();
+}
+
 export function getRootNameOfQualifiedName(qualifiedName: ts.QualifiedName): string {
     if (ts.isQualifiedName(qualifiedName.left))
         return getRootNameOfQualifiedName(qualifiedName.left);
@@ -159,25 +163,67 @@ export function dottedNameToExpr(dottedName: string): ts.Identifier | ts.Propert
         ;
 }
 
+export function replacePropertyRoot(propertyExpr: ts.PropertyAccessExpression, newRootExpr: ts.Expression) {
+    if (ts.isPropertyAccessExpression(propertyExpr.expression)) {
+        return ts.factory.createPropertyAccessExpression(replacePropertyRoot(propertyExpr.expression, newRootExpr), propertyExpr.name);
+    } else {
+        return ts.factory.createPropertyAccessExpression(newRootExpr, propertyExpr.name);
+    }
+}
+
+export function getPropertyRoot(propertyExpr: ts.PropertyAccessExpression) {
+    if (ts.isPropertyAccessExpression(propertyExpr.expression))
+        return getPropertyRoot(propertyExpr.expression);
+    return propertyExpr.expression;
+}
+
+export function optionalExportRef(...args) {
+    return null;
+}
+
 /**
  * Uses the `oe` utility function to perform a dynamic access of an object. This is used to ensure that
  * RTTI-specific exports which may not be present do not cause problems in build systems which statically
  * analyze whether the referenced export exists. (ie Angular's build process).
  *
- * Output: __RΦ.oe(<nsImport>, '<exportName>').
- * @param nsImport
- * @param exportName
+ * Given optionalExportRef(<object>, <identifier>),
+ *  outputs: __RΦ.oe(<object>, '<identifier>')
+ *
+ * Given optionalExportRef(<object>, <property-access>),
+ *  outputs: __RΦ.oe(<object>, '<property-access-first-identifier>')[<property-access-rest>]
+ *
  * @returns
  */
-export function optionalExportRef(nsImport: string, exportName: string) {
-    return ts.factory.createCallExpression(
+export function optionalExportRef2(object: ts.Expression, expr: ts.Identifier | ts.PropertyAccessExpression) {
+    let propertyName: string;
+    let propertyAccess: ts.PropertyAccessExpression;
+
+    if (ts.isIdentifier(expr)) {
+        propertyName = expr.text;
+    } else if (ts.isPropertyAccessExpression(expr)) {
+        let propertyRoot = getPropertyRoot(expr);
+
+        propertyAccess = expr;
+        if (ts.isIdentifier(propertyRoot)) {
+            propertyName = propertyRoot.text;
+        } else {
+            throw new Error(`Property root should have been an identifier!`);
+        }
+    }
+
+    let callExpr = ts.factory.createCallExpression(
         ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier('__RΦ'), 'oe'),
         [],
         [
-            ts.factory.createIdentifier(nsImport),
-            ts.factory.createStringLiteral(exportName)
+            object,
+            ts.factory.createStringLiteral(propertyName)
         ]
     );
+
+    if (propertyAccess)
+        return replacePropertyRoot(propertyAccess, callExpr);
+
+    return callExpr;
 }
 
 export function propertyPrepend(expr: ts.Expression, propAccess: ts.PropertyAccessExpression | ts.Identifier): ts.Expression {
@@ -1392,6 +1438,11 @@ export function skipAlias(symbol: ts.Symbol, checker: ts.TypeChecker) {
     return symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
 }
 
+/**
+ * True if this type has a value at runtime (ie a class, Promise, or other reified type)
+ * @param type
+ * @returns
+ */
 export function typeHasValue(type: ts.Type) {
     return <boolean>type.isClass()
         || type.symbol?.name === 'Promise' // TODO: this is a bit hacky

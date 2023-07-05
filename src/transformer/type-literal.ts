@@ -6,7 +6,7 @@ import { getPreferredExportForImport } from './get-exports-for-symbol';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 import { MappedType } from './ts-internal-types';
-import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isNodeJS, optionalExportRef, propertyPrepend,
+import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isInterfaceType, isNodeJS, optionalExportRef, propertyPrepend,
     serializeEntityNameAsExpression, typeHasValue } from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
@@ -30,7 +30,6 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
     let containingSourceFile = ctx.sourceFile;
     let checker = ctx.checker;
     let program = ctx.program;
-    let importMap = ctx.importMap;
 
     if (!type)
         return ts.factory.createIdentifier('Object');
@@ -380,6 +379,39 @@ function referToLocalTypeWithIdentifier(ctx: RttiContext, type: ts.Type) {
     return expr;
 }
 
+function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode: ts.TypeNode): [ string, ts.Symbol ] {
+    const checker = ctx.checker;
+
+    if (!typeNode || !ts.isTypeReferenceNode(typeNode))
+        return [ undefined, symbol ];
+
+    let typeName = typeNode.typeName;
+    while (ts.isQualifiedName(typeName))
+        typeName = typeName.left;
+
+    let localSymbol = checker.getSymbolAtLocation(typeName);
+    let localDecl = localSymbol?.declarations?.[0];
+
+    if (!localDecl)
+        return [ undefined, symbol ];
+
+    let specifier: ts.StringLiteral;
+    if (ts.isImportClause(localDecl)) {
+        specifier = <ts.StringLiteral>localDecl.parent?.moduleSpecifier;
+        symbol = localSymbol;
+    } else if (ts.isImportSpecifier(localDecl)) {
+        specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
+        symbol = localSymbol;
+    } else if (ts.isNamespaceImport(localDecl)) {
+        specifier = <ts.StringLiteral>localDecl.parent.parent.moduleSpecifier;
+    }
+
+    if (specifier)
+        return [ specifier.text, symbol ];
+
+    return [ undefined, symbol ];
+}
+
 /**
  * Handles referring to a type which has been imported from somewhere else.
  *
@@ -393,250 +425,58 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
     const checker = ctx.checker;
     let program = ctx.program;
     let symbol = type.symbol;
-    let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
     let containingSourceFile = ctx.sourceFile;
     let importMap = ctx.importMap;
 
     // This is imported. The symbol we've been examining is going
     // to be the one in the remote file.
 
-    let modulePath: string; //parents[0] ? JSON.parse(parents[0].name) : undefined;
-    let isExportedAsDefault = symbol?.name === 'default';
+    let importPath: string;
 
-    if (typeNode) {
-        if (ts.isTypeReferenceNode(typeNode)) {
-            let typeName = typeNode.typeName;
-            while (ts.isQualifiedName(typeName))
-                typeName = typeName.left;
+    [ importPath, symbol ] = getImportedPathForSymbol(ctx, symbol, typeNode);
 
-            let localSymbol = checker.getSymbolAtLocation(typeName);
-            if (localSymbol) {
-                let localDecl = localSymbol.declarations[0];
-                if (localDecl) {
-                    let detectedImportPath: string;
+    if (!importPath)
+        [ importPath, symbol ] = inferImportPath(ctx, type, symbol);
 
-                    if (ts.isImportClause(localDecl)) {
-                        let specifier = <ts.StringLiteral>localDecl.parent?.moduleSpecifier;
-                        detectedImportPath = specifier.text;
-                    } else if (ts.isImportSpecifier(localDecl)) {
-                        let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
-                        detectedImportPath = specifier.text;
-                    } else if (ts.isNamespaceImport(localDecl)) {
-                        modulePath = (localDecl.parent.parent.moduleSpecifier as ts.StringLiteral).text;
-                        isExportedAsDefault = false;
-                    }
+    if (!importPath)
+        return ts.factory.createIdentifier(`Object`);
 
-                    if (detectedImportPath) {
-                        modulePath = detectedImportPath;
-                        symbol = localSymbol;
-                        isExportedAsDefault = checker.getImmediateAliasedSymbol(localSymbol)?.name === 'default';
-                    }
-                }
-            }
-        } else {
-            // TODO
-            // In certain cases, Typescript will collapse a more complex type into a simpler one.
-            // This can happen with enums in cases like `MyEnum | undefined` when `strictNullChecks` is not
-            // enabled. I've been unable to pin down exactly when this occurs, but if we simply continue
-            // instead of throwing, the modulePath will be undefined, allowing us to try to find the type
-            // import another way that doesn't depend on the type node anyway.
-
-            //throw new Error(`Unexpected type node type: '${ts.SyntaxKind[typeNode.kind]}'`);
-        }
-    }
-
-    if (!modulePath) {
-        // The type is not directly imported in this file.
-
-        let destFile = sourceFile.fileName;
-
-        // Attempt to locate the "best" re-export for this symbol
-        // This attempts to prevent reaching deep into a module
-        // when a higher export is available, while also skipping
-        // any potential re-exports which are already above this file.
-
-        let preferredExport = getPreferredExportForImport(program, containingSourceFile, symbol);
-        if (preferredExport) {
-            destFile = preferredExport.sourceFile.fileName;
-            symbol = preferredExport.symbol;
-            isExportedAsDefault = symbol?.name === 'default' || !symbol;
-        }
-
-        // Treat /index.js et al specially: On Node.js this is equivalent to importing
-        // the containing folder due to the node resolution algorithm. This can be important
-        // if the .d.ts file does not have a corresponding .js file alongside it (for instance,
-        // see the 'winston' package)
-
-        if (isNodeJS()) {
-            if (destFile.endsWith('/index.d.ts'))
-                destFile = destFile.replace(/\/index\.d\.ts$/, '');
-            else if (destFile.endsWith('/index.js'))
-                destFile = destFile.replace(/\/index\.js$/, '');
-            else if (destFile.endsWith('/index.ts'))
-                destFile = destFile.replace(/\/index\.ts$/, '');
-        }
-
-        if (destFile.endsWith('.d.ts') && hasFilesystemAccess()) {
-            // Make sure we have a .js file alongside the .d.ts.
-            if (!fileExists(destFile.replace(/\.d\.ts$/, '.js'))) {
-                console.warn(
-                    `RTTI: warning: Cannot import symbol '${symbol.name}' from declaration file '${destFile}' `
-                    + `because there is no corresponding Javascript file alongside the declaration `
-                    + `file! Refusing to emit type references for this symbol.`
-                );
-                return ts.factory.createIdentifier(`Object`);
-            }
-        }
-
-        if (destFile.endsWith('.d.ts'))
-            destFile = destFile.replace(/\.d\.ts$/, '');
-        else if (destFile.endsWith('.ts'))
-            destFile = destFile.replace(/\.ts$/, '');
-
-        // TODO: The import now has no extension, but for Deno it is required.
-        // I think only a configuration option could fix this, in which case we
-        // would append .js here
-
-        let relativePath = findRelativePathToFile(ctx.sourceFile.fileName, destFile);
-
-        // Find 'node_modules' in the resulting path and cut everything up to and including it out
-        // to ensure we allow node resolution algorithm to work at runtime. In theory this case could
-        // be hit when not using Node (or a Node-compatible bundler) but it seems exceedingly unlikely.
-        // If this happens for you unexpectedly, please file a bug.
-
-        let pathParts = relativePath.split('/');
-        let nodeModulesIndex = pathParts.indexOf('node_modules');
-        if (nodeModulesIndex >= 0) {
-            let originalPath = relativePath;
-            let pathToNodeModules = pathParts.slice(0, nodeModulesIndex + 1).join('/');
-            let packagePath = pathParts.slice(nodeModulesIndex + 1);
-            relativePath = packagePath.join('/');
-
-            if (packagePath.length > 0) {
-                let pathIntoPackageParts = packagePath.slice();
-                let packageName = pathIntoPackageParts.shift();
-                if (packageName.startsWith('@')) {
-                    // assume its a scoped package
-                    packageName += '/' + pathIntoPackageParts.shift();
-                }
-
-                // At this point, if we happen to be on Node.js, then it should be safe to introspect
-                // the package.json.
-
-                if (isNodeJS()) {
-                    let requireN = require;
-                    function requireX(path) {
-                        return requireN(path);
-                    }
-
-                    const fs: typeof nodeFsT = requireX('fs');
-                    const path: typeof nodePathT = requireX('path');
-
-                    let pkgJsonPath = path.resolve(
-                        path.dirname(ctx.sourceFile.fileName),
-                        pathToNodeModules,
-                        packageName,
-                        'package.json'
-                    );
-
-                    if (!pkgJsonPath) {
-                        throw new Error(`Failed to resolve path for package.json [file='${ctx.sourceFile.fileName}', node_modules='${pathToNodeModules}', packageName='${packageName}']`);
-                        debugger;
-                    }
-
-                    let pkgJson: any;
-
-                    if (ctx.pkgJsonMap.has(pkgJsonPath)) {
-                        pkgJson = ctx.pkgJsonMap.get(pkgJsonPath);
-                    } else {
-                        try {
-                            if (fs.existsSync(pkgJsonPath)) {
-                                let buf = fs.readFileSync(pkgJsonPath);
-                                let json = JSON.parse(buf.toString('utf-8'));
-                                pkgJson = json;
-                                ctx.pkgJsonMap.set(pkgJsonPath, pkgJson);
-                            }
-                        } catch (e) {
-                            console.error(`RTTI: Caught error while reading ${pkgJsonPath}: ${e.message}`);
-                            console.error(e);
-                            console.error(`RTTI: Proceeding with potentially non-optimal import path '${relativePath}'`);
-                        }
-                    }
-
-                    if (pkgJson) {
-                        let absPathToNodeModules = path.resolve(
-                            path.dirname(ctx.sourceFile.fileName),
-                            pathToNodeModules
-                        );
-                        let entrypoints = [pkgJson.main, pkgJson.module, pkgJson.browser]
-                            .filter(x => x);
-
-                        for (let entrypoint of entrypoints) {
-                            if (typeof entrypoint !== 'string') {
-                                // see typescript package.json 'browser' field
-                                continue;
-                            }
-                            let entrypointFile = path.resolve(path.dirname(pkgJsonPath), entrypoint);
-                            let absolutePath = path.resolve(absPathToNodeModules, relativePath);
-
-                            if (entrypointFile === absolutePath) {
-                                relativePath = packageName;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-            }
-        }
-
-
-        if (relativePath) {
-            modulePath = relativePath;
-        } else {
-            if (globalThis.RTTI_TRACE)
-                console.warn(`RTTI: Cannot determine relative path from '${ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
-            modulePath = destFile;
-        }
-    }
-
-    let exportedName = 'default';
-    if (type.isClassOrInterface() && !type.isClass())
-        exportedName = `IΦdefault`;
 
     let isCommonJS = program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
 
-    if (isExportedAsDefault) {
+    if (isExportedAsDefault(checker, symbol)) {
+        let defaultName = isInterfaceType(type) ? `IΦdefault` : 'default';
+
         if (isCommonJS && !hoistImportsInCommonJS) {
             return ts.factory.createPropertyAccessExpression(
                 ts.factory.createCallExpression(
                     ts.factory.createIdentifier('require'),
                     [], [
-                    ts.factory.createStringLiteral(modulePath)
+                    ts.factory.createStringLiteral(importPath)
                 ]
-                ), exportedName);
+                ), defaultName);
         } else {
 
-            let impo = importMap.get(`*default:${modulePath}`);
+            let impo = importMap.get(`*default:${importPath}`);
             if (!impo) {
-                importMap.set(`*default:${modulePath}`, impo = {
+                importMap.set(`*default:${importPath}`, impo = {
                     importDeclaration: ctx.currentTopStatement,
-                    isDefault: exportedName === 'default',
-                    isNamespace: exportedName !== 'default',
+                    isDefault: defaultName === 'default',
+                    isNamespace: defaultName !== 'default',
                     localName: `LΦ_${ctx.freeImportReference++}`,
-                    modulePath: modulePath,
-                    name: `*${exportedName}:${modulePath}`,
+                    modulePath: importPath,
+                    name: `*${defaultName}:${importPath}`,
                     refName: '',
                     referenced: true
                 });
             }
 
-            if (exportedName === 'default') {
+            if (defaultName === 'default') {
                 return ts.factory.createIdentifier(impo.localName);
             } else {
                 return ts.factory.createPropertyAccessExpression(
                     ts.factory.createIdentifier(impo.localName),
-                    exportedName
+                    defaultName
                 );
             }
         }
@@ -644,13 +484,14 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
         // Named export
 
         let expr: ts.Identifier | ts.PropertyAccessExpression;
+        let exportName: string;
 
         if (typeHasValue(type)) {
             let entityName = checker.symbolToEntityName(symbol, ts.SymbolFlags.Class, undefined, undefined);
             expr = serializeEntityNameAsExpression(entityName, containingSourceFile);
         } else {
-            let symbolName = `IΦ${type.symbol.name}`;
-            expr = ts.factory.createIdentifier(symbolName); // TODO: qualified names
+            exportName = `IΦ${type.symbol.name}`;
+            expr = ts.factory.createIdentifier(exportName); // TODO: qualified names
         }
 
         // This is used in the legacy type encoder to ensure matching semantics to Typescript's own
@@ -661,19 +502,19 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
             return propertyPrepend(
                 ts.factory.createCallExpression(
                     ts.factory.createIdentifier('require'),
-                    [], [ts.factory.createStringLiteral(modulePath)]
+                    [], [ts.factory.createStringLiteral(importPath)]
                 ), expr
             );
         } else {
-            let impo = ctx.importMap.get(`*:${modulePath}`);
+            let impo = ctx.importMap.get(`*:${importPath}`);
             if (!impo) {
-                ctx.importMap.set(`*:${modulePath}`, impo = {
+                ctx.importMap.set(`*:${importPath}`, impo = {
                     importDeclaration: ctx.currentTopStatement,
                     isDefault: false,
                     isNamespace: true,
                     localName: `LΦ_${ctx.freeImportReference++}`,
-                    modulePath: modulePath,
-                    name: `*:${modulePath}`,
+                    modulePath: importPath,
+                    name: `*:${importPath}`,
                     refName: '',
                     referenced: true
                 });
@@ -689,10 +530,197 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
                 //
                 // To avoid this, we opt out of such static analysis by making the access of the
                 // export dynamic using the `oe()` helper in the emit.
-                return optionalExportRef(impo.localName, exportedName);
+                return optionalExportRef(ts.factory.createIdentifier(impo.localName), expr);
             } else {
                 return propertyPrepend(ts.factory.createIdentifier(impo.localName), expr);
             }
         }
     }
+}
+
+/**
+ * Attempt to infer the best import path for the given symbol, and dealias the symbol so that we
+ * refer to it the right way when importing.
+ *
+ * @param ctx
+ * @param type
+ * @param symbol
+ * @returns
+ */
+function inferImportPath(
+    ctx: RttiContext, type: ts.Type, symbol: ts.Symbol
+): [ string, ts.Symbol ] {
+    let program = ctx.program;
+    let containingSourceFile = ctx.sourceFile;
+    let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+
+    // The type is not directly imported in this file.
+
+    let destFile = sourceFile.fileName;
+
+    // Attempt to locate the "best" re-export for this symbol
+    // This attempts to prevent reaching deep into a module
+    // when a higher export is available, while also skipping
+    // any potential re-exports which are already above this file.
+
+    let preferredExport = getPreferredExportForImport(program, containingSourceFile, symbol);
+    if (preferredExport) {
+        destFile = preferredExport.sourceFile.fileName;
+        symbol = preferredExport.symbol;
+    }
+
+    // Treat /index.js et al specially: On Node.js this is equivalent to importing
+    // the containing folder due to the node resolution algorithm. This can be important
+    // if the .d.ts file does not have a corresponding .js file alongside it (for instance,
+    // see the 'winston' package)
+
+    if (isNodeJS()) {
+        if (destFile.endsWith('/index.d.ts'))
+            destFile = destFile.replace(/\/index\.d\.ts$/, '');
+        else if (destFile.endsWith('/index.js'))
+            destFile = destFile.replace(/\/index\.js$/, '');
+        else if (destFile.endsWith('/index.ts'))
+            destFile = destFile.replace(/\/index\.ts$/, '');
+    }
+
+    if (destFile.endsWith('.d.ts') && hasFilesystemAccess()) {
+        // Make sure we have a .js file alongside the .d.ts.
+        if (!fileExists(destFile.replace(/\.d\.ts$/, '.js'))) {
+            console.warn(
+                `RTTI: warning: Cannot import symbol '${symbol.name}' from declaration file '${destFile}' `
+                + `because there is no corresponding Javascript file alongside the declaration `
+                + `file! Refusing to emit type references for this symbol.`
+            );
+
+            return [ null, symbol ];
+        }
+    }
+
+    if (destFile.endsWith('.d.ts'))
+        destFile = destFile.replace(/\.d\.ts$/, '');
+    else if (destFile.endsWith('.ts'))
+        destFile = destFile.replace(/\.ts$/, '');
+
+    // TODO: The import now has no extension, but for Deno it is required.
+    // I think only a configuration option could fix this, in which case we
+    // would append .js here
+
+    let relativePath = findRelativePathToFile(ctx.sourceFile.fileName, destFile);
+
+    // Find 'node_modules' in the resulting path and cut everything up to and including it out
+    // to ensure we allow node resolution algorithm to work at runtime. In theory this case could
+    // be hit when not using Node (or a Node-compatible bundler) but it seems exceedingly unlikely.
+    // If this happens for you unexpectedly, please file a bug.
+
+    let pathParts = relativePath.split('/');
+    let nodeModulesIndex = pathParts.indexOf('node_modules');
+    if (nodeModulesIndex >= 0) {
+        let originalPath = relativePath;
+        let pathToNodeModules = pathParts.slice(0, nodeModulesIndex + 1).join('/');
+        let packagePath = pathParts.slice(nodeModulesIndex + 1);
+        relativePath = packagePath.join('/');
+
+        if (packagePath.length > 0) {
+            let pathIntoPackageParts = packagePath.slice();
+            let packageName = pathIntoPackageParts.shift();
+            if (packageName.startsWith('@')) {
+                // assume its a scoped package
+                packageName += '/' + pathIntoPackageParts.shift();
+            }
+
+            // At this point, if we happen to be on Node.js, then it should be safe to introspect
+            // the package.json.
+
+            if (isNodeJS()) {
+                let requireN = require;
+                function requireX(path) {
+                    return requireN(path);
+                }
+
+                const fs: typeof nodeFsT = requireX('fs');
+                const path: typeof nodePathT = requireX('path');
+
+                let pkgJsonPath = path.resolve(
+                    path.dirname(ctx.sourceFile.fileName),
+                    pathToNodeModules,
+                    packageName,
+                    'package.json'
+                );
+
+                if (!pkgJsonPath) {
+                    throw new Error(`Failed to resolve path for package.json [file='${ctx.sourceFile.fileName}', node_modules='${pathToNodeModules}', packageName='${packageName}']`);
+                    debugger;
+                }
+
+                let pkgJson: any;
+
+                if (ctx.pkgJsonMap.has(pkgJsonPath)) {
+                    pkgJson = ctx.pkgJsonMap.get(pkgJsonPath);
+                } else {
+                    try {
+                        if (fs.existsSync(pkgJsonPath)) {
+                            let buf = fs.readFileSync(pkgJsonPath);
+                            let json = JSON.parse(buf.toString('utf-8'));
+                            pkgJson = json;
+                            ctx.pkgJsonMap.set(pkgJsonPath, pkgJson);
+                        }
+                    } catch (e) {
+                        console.error(`RTTI: Caught error while reading ${pkgJsonPath}: ${e.message}`);
+                        console.error(e);
+                        console.error(`RTTI: Proceeding with potentially non-optimal import path '${relativePath}'`);
+                    }
+                }
+
+                if (pkgJson) {
+                    let absPathToNodeModules = path.resolve(
+                        path.dirname(ctx.sourceFile.fileName),
+                        pathToNodeModules
+                    );
+                    let entrypoints = [pkgJson.main, pkgJson.module, pkgJson.browser]
+                        .filter(x => x);
+
+                    for (let entrypoint of entrypoints) {
+                        if (typeof entrypoint !== 'string') {
+                            // see typescript package.json 'browser' field
+                            continue;
+                        }
+                        let entrypointFile = path.resolve(path.dirname(pkgJsonPath), entrypoint);
+                        let absolutePath = path.resolve(absPathToNodeModules, relativePath);
+
+                        if (entrypointFile === absolutePath) {
+                            relativePath = packageName;
+                            break;
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+    let modulePath: string;
+
+    if (relativePath) {
+        modulePath = relativePath;
+    } else {
+        if (globalThis.RTTI_TRACE)
+            console.warn(`RTTI: Cannot determine relative path from '${ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
+        modulePath = destFile;
+    }
+
+    return [ modulePath, symbol ];
+}
+
+function dealias(checker: ts.TypeChecker, symbol: ts.Symbol) {
+    if (!symbol)
+        return undefined;
+
+    if (hasFlag(symbol.flags, ts.SymbolFlags.Alias))
+        return checker.getImmediateAliasedSymbol(symbol);
+
+    return symbol;
+}
+
+function isExportedAsDefault(checker: ts.TypeChecker, symbol: ts.Symbol) {
+    return dealias(checker, symbol)?.name === 'default';
 }
