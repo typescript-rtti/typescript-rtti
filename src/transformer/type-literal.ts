@@ -309,8 +309,8 @@ function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: T
 }
 
 /**
- * Responsible for outputting an expression for types which are referred to by identifier and may be defined locally,
- * imported, or defined globally.
+ * Responsible for outputting an expression for types which are referred to by identifier (classes, interfaces, enums)
+ * and may be defined locally, imported, or defined globally.
  *
  * @param ctx
  * @param type
@@ -318,7 +318,7 @@ function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: T
  * @param options
  * @returns
  */
-export function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode, options?: TypeLiteralOptions): ts.Expression {
+function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode, options?: TypeLiteralOptions): ts.Expression {
     let program = ctx.program;
     let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
 
@@ -379,6 +379,15 @@ function referToLocalTypeWithIdentifier(ctx: RttiContext, type: ts.Type) {
     return expr;
 }
 
+/**
+ * Determine what module specifier was used to import the given symbol, and resolve that symbol based on the import
+ * method as necessary.
+ *
+ * @param ctx
+ * @param symbol
+ * @param typeNode
+ * @returns
+ */
 function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode: ts.TypeNode): [ string, ts.Symbol ] {
     const checker = ctx.checker;
 
@@ -423,26 +432,18 @@ function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode:
  */
 function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode, hoistImportsInCommonJS: boolean) {
     const checker = ctx.checker;
-    let program = ctx.program;
-    let symbol = type.symbol;
-    let containingSourceFile = ctx.sourceFile;
-    let importMap = ctx.importMap;
+    const program = ctx.program;
+    const containingSourceFile = ctx.sourceFile;
+    const importMap = ctx.importMap;
+    const isCommonJS = program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
 
     // This is imported. The symbol we've been examining is going
     // to be the one in the remote file.
 
-    let importPath: string;
-
-    [ importPath, symbol ] = getImportedPathForSymbol(ctx, symbol, typeNode);
-
-    if (!importPath)
-        [ importPath, symbol ] = inferImportPath(ctx, type, symbol);
+    let [ importPath, symbol ] = findImportableSymbolForType(ctx, type, typeNode);
 
     if (!importPath)
         return ts.factory.createIdentifier(`Object`);
-
-
-    let isCommonJS = program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
 
     if (isExportedAsDefault(checker, symbol)) {
         let defaultName = isInterfaceType(type) ? `IΦdefault` : 'default';
@@ -456,7 +457,6 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
                 ]
                 ), defaultName);
         } else {
-
             let impo = importMap.get(`*default:${importPath}`);
             if (!impo) {
                 importMap.set(`*default:${importPath}`, impo = {
@@ -536,6 +536,18 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
             }
         }
     }
+}
+
+function findImportableSymbolForType(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode): [ string, ts.Symbol ] {
+    let symbol = type.symbol;
+    let importPath: string;
+
+    [ importPath, symbol ] = getImportedPathForSymbol(ctx, symbol, typeNode);
+
+    if (!importPath)
+        [ importPath, symbol ] = inferImportPath(ctx, type, symbol);
+
+    return [ importPath, symbol ];
 }
 
 /**
