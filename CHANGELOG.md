@@ -1,3 +1,7 @@
+# v0.9.5 [vNext]
+- Fix cases where references to generated imports were for the default export instead of appropriate specific exports
+  when targeting ES modules.
+
 # v0.9.4
 - Patch release to fix the new build tooling changes
 
