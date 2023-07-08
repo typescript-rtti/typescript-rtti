@@ -183,10 +183,6 @@ export function getPropertyRoot(propertyExpr: ts.PropertyAccessExpression) {
     return propertyExpr.expression;
 }
 
-export function optionalExportRef(...args) {
-    return null;
-}
-
 /**
  * Uses the `oe` utility function to perform a dynamic access of an object. This is used to ensure that
  * RTTI-specific exports which may not be present do not cause problems in build systems which statically
@@ -200,7 +196,7 @@ export function optionalExportRef(...args) {
  *
  * @returns
  */
-export function optionalExportRef2(object: ts.Expression, expr: ts.Identifier | ts.PropertyAccessExpression) {
+export function optionalExportRef(object: ts.Expression, expr: ts.Identifier | ts.PropertyAccessExpression) {
     let propertyName: string;
     let propertyAccess: ts.PropertyAccessExpression;
 
