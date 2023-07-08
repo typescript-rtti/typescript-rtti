@@ -1,6 +1,11 @@
 import ts from 'typescript';
 import { RttiContext } from './rtti-context';
 
+export function assert(check: () => boolean) {
+    if (!check())
+        throw new Error(`Assertion failed: ${check.toString().replace(/.*?=> */, '')}`);
+}
+
 export function isInterfaceType(type: ts.Type) {
     return type.isClassOrInterface() && !type.isClass();
 }
@@ -118,6 +123,7 @@ export function serializeEntityNameAsExpressionFallback(
         ts.factory.createPropertyAccessExpression(temp, node.right)
     );
 }
+
 /**
  * Serializes an entity name as an expression for decorator type metadata.
  *
