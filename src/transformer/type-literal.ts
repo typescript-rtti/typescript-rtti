@@ -445,7 +445,7 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
     if (!importPath)
         return ts.factory.createIdentifier(`Object`);
 
-    if (isExportedAsDefault(checker, symbol)) {
+    if (!symbol || isExportedAsDefault(checker, symbol)) {
         let defaultName = isInterfaceType(type) ? `IΦdefault` : 'default';
 
         if (isCommonJS && !hoistImportsInCommonJS) {
