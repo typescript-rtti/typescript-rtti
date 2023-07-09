@@ -50,6 +50,42 @@ describe('ReflectedClass#matchesValue()', () => {
         expect(reflect(IΦA).matchesValue({ foo: 'hello' })).to.be.true;
         expect(reflect(IΦA).matchesValue({ foo: 'hello world' })).to.be.false;
     });
+
+    const BUILTIN_TYPES = [
+        { name: 'BigInt', type: BigInt, trueCases: [BigInt(32), BigInt(0)], falseCases: ["hello world", NaN, Infinity] },
+        { name: 'String', type: String, trueCases: ["hello world", ""], falseCases: [32, true, BigInt(32), NaN, Infinity] },
+        { name: 'Number', type: Number, trueCases: [32, 32.4, 0, -32, NaN, Infinity], falseCases: ["hello", BigInt(32) ] },
+        { name: 'Boolean', type: Boolean, trueCases: [ true, false ], falseCases: ["hello", BigInt(32), 32, 32.5, NaN, Infinity ]},
+        { name: 'Symbol', type: Symbol, trueCases: [ Symbol("foo"), Symbol("bar") ], falseCases: ["hello", BigInt(32), 32, 32.5, NaN, Infinity ]}
+    ];
+
+    for (const { name, type, trueCases, falseCases } of BUILTIN_TYPES) {
+        it(`supports builtin type ${name}`, async () => {
+            const IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
+
+            Reflect.defineMetadata('rt:P', ['foo'], IΦA);
+            Reflect.defineMetadata('rt:t', () => type, IΦA.prototype, 'foo');
+
+            for (let trueCase of trueCases) {
+                try {
+                    expect(reflect(IΦA).matchesValue({ foo: trueCase })).to.be.true;
+                    expect(reflect(IΦA).getProperty('foo').matchesValue(trueCase)).to.be.true;
+                } catch (e) {
+                    throw new Error(`Value ${String(trueCase)} should be allowed. Error was: ${e.message}`);
+                }
+            }
+
+            for (let falseCase of falseCases) {
+                try {
+                    expect(reflect(IΦA).matchesValue({ foo: falseCase })).to.be.false;
+                    expect(reflect(IΦA).getProperty('foo').matchesValue(falseCase)).to.be.false;
+                } catch (e) {
+                    throw new Error(`Value ${String(falseCase)} should not be allowed. Error was: ${e.message}`);
+                }
+            }
+        });
+    }
+
     it('supports mapped types', async () => {
         let ref = ReflectedTypeRef.createFromRtRef(<RtMappedType>{
             TΦ: T_MAPPED,
