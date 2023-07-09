@@ -41,12 +41,12 @@ describe('Imports', () => {
             });
             it('does not modify import order', async () => {
                 globalThis['test__imports'] = [];
-                let exports = await runSimple({
+                await runSimple({
                     moduleType,
                     code: `
-                        import "polyfills";
-                        import { reflect } from "./FΦtypescript-rtti";
-                        import foo from "./foo";
+                        import "./polyfills.js";
+                        import { reflect } from "./FΦtypescript-rtti.js";
+                        import foo from "./foo.js";
                         export const callsite = reflect<foo>();
                         export const order = globalThis['test__imports']
                     `,
@@ -61,22 +61,22 @@ describe('Imports', () => {
                         './polyfills.ts': `
                             globalThis['test__imports'] = \`\${globalThis['test__imports'] || ''}(polyfills)\`;
                         `
-                    }
+                    },
+                    checks: exports => {
+                        expect(exports.order).to.equal('(polyfills)(foo)');
+
+                        let callsite: RtCallSite = exports.callsite;
+                        let interfaceToken = <InterfaceToken>callsite.tp[0];
+
+                        expect(interfaceToken.name).to.equal('Foo');
+                    },
                 });
-
-                expect(exports.order).to.equal('(polyfills)(foo)');
-
-                let callsite: RtCallSite = exports.callsite;
-                let interfaceToken = <InterfaceToken>callsite.tp[0];
-
-                expect(interfaceToken.name).to.equal('Foo');
-
             });
             it('emits correctly for bound imports', async () => {
-                let exports = await runSimple({
+                await runSimple({
                     moduleType,
                     code: `
-                        import { A } from "./lib";
+                        import { A } from "./lib.js";
                         export { A };
 
                         export class C {
@@ -87,17 +87,18 @@ describe('Imports', () => {
                         './lib.ts': `
                             export class A { }
                         `
+                    },
+                    checks: exports => {
+                        let params = Reflect.getMetadata('rt:p', exports.C.prototype, 'method');
+                        expect(params[0].t()).to.equal(exports.A);
                     }
                 });
-
-                let params = Reflect.getMetadata('rt:p', exports.C.prototype, 'method');
-                expect(params[0].t()).to.equal(exports.A);
             });
             it('emits correctly for star imports', async () => {
-                let exports = await runSimple({
+                await runSimple({
                     moduleType,
                     code: `
-                        import * as lib from "./libf";
+                        import * as lib from "./libf.js";
                         export class C {
                             method(hello : lib.A) { return 123; }
                         }
@@ -106,17 +107,91 @@ describe('Imports', () => {
                         './libf.ts': `
                             export class A { }
                         `
+                    },
+                    checks: exports => {
+                        let params = Reflect.getMetadata('rt:p', exports.C.prototype, 'method');
+                        expect(params[0].t()).to.exist;
                     }
                 });
+            });
+            it.skip('emits correctly for interfaces when using namespace imports', async () => {
+                class Foo {
+                    blah: number
+                }
 
-                let params = Reflect.getMetadata('rt:p', exports.C.prototype, 'method');
-                expect(params[0].t()).to.exist;
+                await runSimple({
+                    moduleType,
+                    trace: true,
+                    code: `
+                        import type * as express from "express";
+                        export interface Event {
+                            request: express.Request;
+                            response: express.Response;
+                        }
+                    `,
+                    modules: {
+                        'express': { },
+                        '@types/express': `
+                            export interface Request {
+                                headers: string;
+                            }
+
+                            export interface Response {
+                                headers: string;
+                            }
+                        `
+                    },
+                    checks: exports => {
+                        let requestType = Reflect.getMetadata('rt:t', exports.IΦEvent.prototype, 'request')();
+                        let headersType = Reflect.getMetadata('rt:t', requestType.prototype, 'headers')();
+                        expect(headersType).to.eql(String);
+                    }
+                });
+            });
+            it.skip('emits correctly for @types/ imports', async () => {
+                class Foo {
+                    blah: number
+                }
+
+                class Bar {
+                    blah: number;
+                }
+
+                await runSimple({
+                    moduleType,
+                    trace: true,
+                    code: `
+                        import { Foo } from "foo";
+                        export class C {
+                            bar = new Foo().bar;
+                        }
+                    `,
+                    modules: {
+                        'foo': { Foo },
+                        'bar': { Bar },
+                        '@types/foo': `
+                            import { Bar } from 'bar';
+                            export class Foo {
+                                bar: Bar;
+                            }
+                        `,
+                        '@types/bar': `
+                            export class Bar {
+                                blah: number;
+                            }
+                        `
+                    },
+                    checks: exports => {
+                        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'bar');
+                        expect(type()).to.eql(Bar);
+                    }
+                });
             });
             it('can emit a class imported as default', async () => {
-                let exports = await runSimple({
+                await runSimple({
                     moduleType,
                     code: `
-                        import A from "./foo";
+                        import A from "./foo.js";
                         export { A };
                         export class B {
                             constructor(hello : A) { }
@@ -126,36 +201,38 @@ describe('Imports', () => {
                         './foo.ts': `
                             export default class A { }
                         `
+                    },
+                    checks: exports => {
+                        let params = Reflect.getMetadata('rt:p', exports.B);
+
+                        expect(params.length).to.equal(1);
+                        expect(params[0].t()).to.equal(exports.A);
                     }
                 });
-
-                let params = Reflect.getMetadata('rt:p', exports.B);
-
-                expect(params.length).to.equal(1);
-                expect(params[0].t()).to.equal(exports.A);
             });
             it('emits correctly for non-default re-export of a default export', async () => {
-                let exports = await runSimple({
+                await runSimple({
                     moduleType,
                     code: `
-                        import { A } from "./libf";
+                        import { A } from "./libf.js";
                         export function f(a : A) { }
-                        export { A } from "./libf";
+                        export { A } from "./libf.js";
                     `,
                     modules: {
                         './libf.ts': `
-                            export { default as A } from './a'
+                            export { default as A } from './a.js'
                         `,
                         './a.ts': `
                             export default class A {
                                 method(hello : A) { return 123; }
                             }
                         `
+                    },
+                    checks: exports => {
+                        let params = Reflect.getMetadata('rt:p', exports.f);
+                        expect(params[0].t()).to.equal(exports.A);
                     }
                 });
-
-                let params = Reflect.getMetadata('rt:p', exports.f);
-                expect(params[0].t()).to.equal(exports.A);
             });
         });
     }

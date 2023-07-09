@@ -31,7 +31,7 @@ export class ApiCallTransformer extends RttiVisitor {
         return ts.isIdentifier(expr.expression)
             && this.isAnyImportedSymbol(
                 this.checker.getSymbolAtLocation(expr.expression),
-                ['typescript-rtti', './FΦtypescript-rtti'], name ? [name] : ['reify', 'reflect']
+                ['typescript-rtti', './FΦtypescript-rtti', './FΦtypescript-rtti.js'], name ? [name] : ['reify', 'reflect']
             )
             ;
     }

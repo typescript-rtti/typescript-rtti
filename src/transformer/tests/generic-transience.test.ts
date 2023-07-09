@@ -5,7 +5,7 @@ import { reflect } from '../../lib';
 
 describe('Transformer: Generic transience', () => {
     it('stuffs undefined on call args when needed', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -23,19 +23,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.b()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.b()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [],
-            r: undefined,
-            tp: [String],
         });
     });
     it('is supported at the top level', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -49,19 +50,20 @@ describe('Transformer: Generic transience', () => {
             `,
             modules: {
                 'typescript-rtti': {}
+            },
+            checks: exports => {
+                expect(exports.t).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.t).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [],
-            r: undefined,
-            tp: [String],
         });
     });
     it('is supported in function calls', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -76,19 +78,20 @@ describe('Transformer: Generic transience', () => {
             `,
             modules: {
                 'typescript-rtti': {}
+            },
+            checks: exports => {
+                expect(exports.t).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.t).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [],
-            r: undefined,
-            tp: [String],
         });
     });
     it('reflects generic transience via JSDoc', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -110,19 +113,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.b()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [123],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.b()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [123],
-            r: undefined,
-            tp: [String],
         });
     });
     it('reflects generic transience via JSDoc with other JSDoc', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -148,19 +152,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.b()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [123],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.b()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [123],
-            r: undefined,
-            tp: [String],
         });
     });
     it('reflects generic transience via call-site reflection on function declarations', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -178,19 +183,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.b()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [123],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.b()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [123],
-            r: undefined,
-            tp: [String],
         });
     });
     it('reflects nsted generic transience via call-site reflection on function expressions', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -212,19 +218,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.c()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [123],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.c()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [123],
-            r: undefined,
-            tp: [String],
         });
     });
     it('reflects nested generic transience via call-site reflection on arrow functions', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -246,19 +253,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.c()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [Number],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.c()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [Number],
-            r: undefined,
-            tp: [String],
         });
     });
     it('reflects generic transience to reflect<T>()', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -274,15 +282,16 @@ describe('Transformer: Generic transience', () => {
             `,
             modules: {
                 'typescript-rtti': {
-                    reflect
+                    reflect: (_, callsite) => callsite
                 }
+            },
+            checks: exports => {
+                expect(exports.b().tp[0]).to.equal(String);
             }
         });
-
-        expect(exports.b().isClass(String)).to.be.true;
     });
     it('reflects nested generic transience via call-site reflection on methods', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -310,19 +319,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.c()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [Number],
+                    r: undefined,
+                    tp: [String],
+                });
             }
-        });
-
-        expect(exports.c()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [Number],
-            r: undefined,
-            tp: [String],
         });
     });
     it('does not output call-site metadata unless opted in', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -340,13 +350,14 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.b()).to.equal(1);
             }
         });
-
-        expect(exports.b()).to.equal(1);
     });
     it('passes nested call site information', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -369,20 +380,20 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.c()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [Number],
+                    r: undefined,
+                    tp: [String],
+                });
             }
         });
-
-        expect(exports.c()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [Number],
-            r: undefined,
-            tp: [String],
-        });
-
     });
     it('does not pass nested call site information without opting in', async () => {
-        let exports = await runSimple({
+        await runSimple({
             compilerOptions: {
                 declaration: true
             },
@@ -405,16 +416,16 @@ describe('Transformer: Generic transience', () => {
                 'typescript-rtti': {
                     reflect: () => { }
                 }
+            },
+            checks: exports => {
+                expect(exports.c()).to.eql({
+                    TΦ: 'c',
+                    t: undefined,
+                    p: [Number],
+                    r: undefined,
+                    tp: [Object],
+                });
             }
         });
-
-        expect(exports.c()).to.eql({
-            TΦ: 'c',
-            t: undefined,
-            p: [Number],
-            r: undefined,
-            tp: [Object],
-        });
-
     });
 });

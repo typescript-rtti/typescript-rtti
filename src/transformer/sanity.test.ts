@@ -5,31 +5,34 @@ import { runSimple } from "../runner.test-harness";
 
 describe('Sanity', () => {
     it('when function declarations appear in if statements', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let foo = false;
                 if (false)
                     function a() { return 321; }
                 else
                     foo = true;
-            `
+            `,
+            checks: exports => {
+                expect(exports.foo).to.equal(true);
+            }
         });
 
-        expect(exports.foo).to.equal(true);
     });
     it('when function declarations are named', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let foo = false;
                 function a() { return 321; }
                 foo = a() === 321;
-            `
+            `,
+            checks: exports => {
+                expect(exports.foo).to.equal(true);
+            }
         });
-
-        expect(exports.foo).to.equal(true);
     });
     it('when function declarations appear in if statements (2)', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let foo = false;
                 if (true)
@@ -39,45 +42,49 @@ describe('Sanity', () => {
 
                 export let bar = a();
                 export let func = a;
-            `
+            `,
+            checks: exports => {
+                expect(exports.bar).to.equal(321);
+            }
         });
-
-        expect(exports.bar).to.equal(321);
     });
     it('when unnamed function expressions appear in property assignments', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let foo = { bar: () => 123 };
-            `
+            `,
+            checks: exports => {
+                expect(exports.foo.bar.name).to.equal('bar');
+            }
         });
-
-        expect(exports.foo.bar.name).to.equal('bar');
     });
     it('when arrow functions appear in property assignments', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let foo = { bar: () => 123 };
-            `
+            `,
+            checks: exports => {
+                expect(exports.foo.bar.name).to.equal('bar');
+            }
         });
-
-        expect(exports.foo.bar.name).to.equal('bar');
     });
     it('prevails, do not collapse exports', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export interface A { }
                 export function B() { }
                 export class C { foo() { } }
-            `
+            `,
+            checks: exports => {
+                expect(typeof exports.IΦA.identity).to.equal('symbol');
+                expect(typeof exports.B).to.equal('function');
+                expect(typeof exports.C).to.equal('function');
+                expect(typeof exports.C.prototype.foo).to.equal('function');
+            }
         });
-
-        expect(typeof exports.IΦA.identity).to.equal('symbol');
-        expect(typeof exports.B).to.equal('function');
-        expect(typeof exports.C).to.equal('function');
-        expect(typeof exports.C.prototype.foo).to.equal('function');
     });
     it('prevails, do not crash on symbol methods', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 let sym = Symbol();
                 export class A {
@@ -92,13 +99,14 @@ describe('Sanity', () => {
                         return 'works';
                     }
                 }
-            `
+            `,
+            checks: exports => {
+                expect(new exports.A().foo()).to.equal('works');
+            }
         });
-
-        expect(new exports.A().foo()).to.equal('works');
     });
     it('prevails, do not crash on symbol methods from property access', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 let foo = {
                     sym: Symbol()
@@ -116,13 +124,14 @@ describe('Sanity', () => {
                         return 'works';
                     }
                 }
-            `
+            `,
+            checks: exports => {
+                expect(new exports.A().foo()).to.equal('works');
+            }
         });
-
-        expect(new exports.A().foo()).to.equal('works');
     });
     it('prevails, do not crash on exported symbol methods in CommonJS', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let sym = Symbol();
                 export class A {
@@ -137,10 +146,12 @@ describe('Sanity', () => {
                         return 'works';
                     }
                 }
-            `
+            `,
+            checks: exports => {
+                expect(new exports.A().foo()).to.equal('works');
+            }
         });
 
-        expect(new exports.A().foo()).to.equal('works');
     });
     it('prevails, emits properly with a file containing only a type', async () => {
         await runSimple({
@@ -233,7 +244,7 @@ describe('Sanity', () => {
                     foo,
                     Bar,
                     Foobar
-                } from './registry';
+                } from './registry.js';
             `,
             modules: {
                 './registry.ts': `
@@ -247,7 +258,7 @@ describe('Sanity', () => {
     it('prevails, emits properly for type alias', async () => {
         await runSimple({
             code: `
-                export { HookExecutor } from './registry';
+                export { HookExecutor } from './registry.js';
             `,
             modules: {
                 './registry.ts': `
@@ -262,7 +273,7 @@ describe('Sanity', () => {
     it('prevails, emits properly for exported variable', async () => {
         await runSimple({
             code: `
-                export { foo } from './registry';
+                export { foo } from './registry.js';
             `,
             modules: {
                 './registry.ts': `
@@ -272,22 +283,24 @@ describe('Sanity', () => {
         });
     });
     it('prevails, does not interfere with the name of a class expression', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let A = class B { };
-            `
+            `,
+            checks: exports => {
+                expect(exports.A.name).to.equal('B');
+            }
         });
-
-        expect(exports.A.name).to.equal('B');
     });
     it('prevails, supports implicit naming of a class expression', async () => {
-        let exports = await runSimple({
+        await runSimple({
             code: `
                 export let A = class { };
-            `
+            `,
+            checks: exports => {
+                expect(exports.A.name).to.equal('A');
+            }
         });
-
-        expect(exports.A.name).to.equal('A');
     });
     it('prevails, does not crush under the weight of a declared class', async () => {
         await runSimple({

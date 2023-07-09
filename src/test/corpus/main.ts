@@ -3,7 +3,7 @@ import * as fst from 'fs';
 import * as path from 'path';
 import stripJsonComments from 'strip-json-comments';
 import shell from 'shelljs';
-import rimraf from 'rimraf';
+import { rimraf } from 'rimraf';
 import { promisify } from 'util';
 import { Stats } from 'fs';
 import ts from 'typescript';
@@ -211,7 +211,7 @@ async function main(args: string[]) {
                     let local = `${pkgName.replace(/\//g, '__')}`;
 
                     trace(`RUN: rm -Rf ${local}`, context);
-                    await promisify(rimraf)(local);
+                    await rimraf(local);
 
                     run(`git clone ${pkg.url} ${local}`, undefined, context);
                     run(`git checkout ${pkg.ref}`, local, context);

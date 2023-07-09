@@ -1,8 +1,11 @@
 import * as ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
-import { esRequire } from '../test-esrequire.js';
+import * as os from 'os';
+import * as childProcess from 'child_process';
+import * as tsrtti from './index';
 import transformer from './transformer';
+import { rimraf } from 'rimraf';
 
 export interface RunInvocation {
     code: string;
@@ -13,6 +16,7 @@ export interface RunInvocation {
     outputTransformer?: (filename: string, code: string) => string;
     modules?: Record<string, any>;
     trace?: boolean;
+    checks?: (exports: any) => void;
 }
 
 function normalizeFilename(filename: string, extension?: string) {
@@ -49,9 +53,16 @@ export function compile(invocation: RunInvocation): Record<string, string> {
         './main.ts': ts.createSourceFile('./main.ts', invocation.code, options.target!)
     };
 
-    let otherFiles = Object.keys(invocation?.modules ?? {}).filter(x => x.endsWith('.ts'));
-    for (let otherFile of otherFiles) {
-        inputs[otherFile] = ts.createSourceFile(otherFile, invocation.modules[otherFile], options.target!);
+    let otherFiles = Object.keys(invocation?.modules ?? {}).filter(x => x.endsWith('.ts') || x.startsWith('@types/'));
+    for (let filename of otherFiles) {
+        let source = invocation.modules[filename];
+        if (filename.startsWith('@types/')) {
+            let packageName = filename.replace(/^@types\//, '');
+            source = `declare module "${packageName}" {\n${source}\n}`;
+            filename = `@types/${packageName}.d.ts`;
+        }
+
+        inputs[filename] = ts.createSourceFile(filename, source, options.target!);
     }
 
     let outputs: Record<string, string> = {};
@@ -63,6 +74,10 @@ export function compile(invocation: RunInvocation): Record<string, string> {
 
     if (invocation.target) {
         options.target = invocation.target;
+    }
+
+    if (invocation.trace) {
+        console.log(`Test: Feeding ${Object.keys(inputs).length} files to Typescript: ${Object.keys(inputs).join(', ')}`);
     }
 
     const program = ts.createProgram(Object.keys(inputs), options, {
@@ -138,6 +153,8 @@ export function compile(invocation: RunInvocation): Record<string, string> {
         let semanticDiags = program.getSemanticDiagnostics();
         let diags = ([] as ts.Diagnostic[]).concat(optionsDiags, syntacticDiags, semanticDiags);
 
+        diags = diags.filter(x => ![2307].includes(x.code)); // filter 'Cannot find module...'
+
         if (diags.length > 0) {
             throw new Error(`Typescript did not compile this test correctly. Errors: ${JSON.stringify(diags.map(x => ts.formatDiagnostic(x, {
                 getCanonicalFileName: fileName => fileName,
@@ -202,10 +219,6 @@ Script.prototype.runInThisContext = function (options) {
 	return originalRun.call(this, options);
 };
 
-// function esRequire(moduleSpecifier : string) {
-//     return eval(`import(${JSON.stringify(moduleSpecifier)})`);
-// }
-
 /**
  * Compile the given code using Typescript and typescript-rtti transformer plugin and return the
  * resulting exports.
@@ -214,62 +227,181 @@ Script.prototype.runInThisContext = function (options) {
  * @returns
  */
 export async function runSimple(invocation: RunInvocation) {
-    let outputs = compile(invocation);
+    await runSimpleCJS({ ...invocation, moduleType: 'commonjs' });
+    await runSimpleESM({ ...invocation, moduleType: 'esm' });
+}
 
+async function runSimpleCJS(invocation: RunInvocation) {
+    let outputs = compile(invocation);
     if (invocation.trace) {
-        console.log(`========================`);
+        let outputs = compile(invocation);
         for (let filename of Object.keys(outputs)) {
-            console.log(`  ${filename}:`);
-            console.log(`    ${outputs[filename].replace(/\r?\n/g, `\n    `)}`);
+            console.log(`    // [CJS] ${filename}\n\n    ${outputs[filename].replace(/\r?\n/g, `\n    `)}`);
         }
-        console.log(`========================`);
     }
 
-    let outputText = outputs['./main.js'];
-
-    let exports: Record<string, any> = {};
     let modules: Record<string, Module> = {};
 
-    if (invocation.moduleType === 'esm') {
+    let $require = (moduleName: string) => {
+        let fileName = moduleName;
 
-        global['moduleOverrides'] = { ...outputs, ...invocation.modules };
+        fileName = normalizeFilename(fileName, 'js');
 
-        if (invocation.trace) {
-            console.log(`RTTI Test: executing code under test...`);
+        let code = outputs[fileName];
+
+        if (!code && typeof invocation.modules?.[moduleName] === 'string') {
+            code = invocation.modules?.[moduleName];
         }
-        exports = await esRequire(`./main.js`);
-    } else {
-        let $require = (moduleName: string) => {
-            let fileName = moduleName;
 
-            fileName = normalizeFilename(fileName, 'js');
+        if (code) {
+            if (modules[fileName])
+                return modules[fileName].exports;
 
-            if (outputs[fileName]) {
-                if (modules[fileName])
-                    return modules[fileName].exports;
+            return modules[fileName] ?? runCommonJS(modules[fileName] = {
+                exports: {}, code,
+                filename: fileName
+            }, $require).exports;
+        }
 
-                return modules[fileName] ?? runCommonJS(modules[fileName] = {
-                    exports: {}, code: outputs[fileName],
-                    filename: fileName
-                }, $require).exports;
-            }
+        let symbols = invocation.modules?.[moduleName];
 
-            let symbols = invocation.modules?.[moduleName];
+        if (!symbols && moduleName === 'typescript-rtti') {
+            symbols = tsrtti;
+        }
 
-            if (!symbols) {
-                throw new Error(
-                    `(RTTI Test) Cannot find module '${moduleName}' [aka '${fileName}']. `
-                    + `Compilation outputs are: ${JSON.stringify(Object.keys(outputs))}, `
-                    + `JSON modules are: ${JSON.stringify(Object.keys(invocation?.modules ?? [])
-                        .filter(x => !x.endsWith('.ts')))}`
-                );
-            }
+        if (!symbols) {
+            throw new Error(
+                `(RTTI Test) Cannot find module '${moduleName}' [aka '${fileName}']. `
+                + `Compilation outputs are: ${JSON.stringify(Object.keys(outputs))}, `
+                + `JSON modules are: ${JSON.stringify(Object.keys(invocation?.modules ?? [])
+                    .filter(x => !x.endsWith('.ts')))}`
+            );
+        }
 
-            return symbols;
-        };
+        return symbols;
+    };
 
-        return $require('./main.js');
+    let exports = $require('./main.js');
+
+    if (invocation.checks)
+        invocation.checks(exports);
+}
+
+async function runSimpleESM(invocation: RunInvocation) {
+    if (invocation.trace) {
+        let outputs = compile(invocation);
+        for (let filename of Object.keys(outputs)) {
+            console.log(`    // [ESM] ${filename}\n\n    ${outputs[filename].replace(/\r?\n/g, `\n    `)}`);
+        }
     }
 
-    return exports;
+    let tsrttiLocation = path.resolve(__dirname, "..", "dist.esm", "index.js").replace(/\\/g, '/');
+    invocation.modules ??= {}
+
+    if (!invocation.modules['typescript-rtti']) {
+        invocation.modules['typescript-rtti'] = `
+            export * from "file://${tsrttiLocation}";
+        `
+    }
+
+    let outputs = compile(invocation);
+    let exports: Record<string, any> = {};
+    let files = { ...outputs, ...invocation.modules };
+
+    let folder = path.resolve(os.tmpdir(), `tsrtti_esm_test_${Math.random() * 1_000_000 | 0}`);
+
+    await rimraf(folder);
+    fs.mkdirSync(folder);
+    fs.mkdirSync(path.resolve(folder, "node_modules"));
+
+    fs.writeFileSync(path.resolve(folder, "package.json"), JSON.stringify({
+        type: 'module',
+        main: './__test.js'
+    }));
+
+    let pkgJson = JSON.stringify({
+        type: 'module',
+        main: './index.js'
+    });
+
+    for (let file of Object.keys(files)) {
+        let filePath = path.resolve(folder, file);
+        let fileContent = files[file];
+
+        if (typeof fileContent !== 'string') {
+            let object = fileContent;
+            fileContent = ``;
+
+            for (let key of Object.keys(object)) {
+                fileContent += `export const ${key} = ${serializeJavascriptObject(object[key])};`;
+                fileContent += `\n`;
+            }
+        }
+
+        if (!file.startsWith("./")) {
+            filePath = path.resolve(folder, "node_modules", file, "index.js");
+            fs.mkdirSync(path.resolve(folder, "node_modules", file));
+            fs.writeFileSync(path.resolve(folder, "node_modules", file, "package.json"), pkgJson);
+        }
+
+        fs.writeFileSync(filePath, fileContent);
+    }
+
+    let reflectMetadataLocation = path.resolve(__dirname, "..", "node_modules", "reflect-metadata").replace(/\\/g, '/');
+    let chaiLocation = path.resolve(__dirname, "..", "node_modules", "chai").replace(/\\/g, '/')
+
+    fs.writeFileSync(path.resolve(folder, "__test.js"), `
+        import "file://${reflectMetadataLocation}/Reflect.js";
+        import * as exports from './main.js';
+        import * as chai_1 from "file://${chaiLocation}/index.mjs";
+
+        (${(invocation.checks ?? (() => {})).toString()})(exports)
+    `);
+
+    if (invocation.trace) {
+        console.log(`RTTI Test: executing code under test...`);
+    }
+
+    let proc = childProcess.spawn('node', [`${path.resolve(folder, '__test.js')}`], {
+        stdio: 'pipe'
+    });
+
+    if (invocation.trace) {
+        console.log(`RTTI Test: test folder is ${folder}`);
+    }
+
+    let stdout = Buffer.alloc(0);
+
+    proc.stdout.on('data', buf => stdout = Buffer.concat([stdout, Buffer.from(buf)]));
+    proc.stderr.on('data', buf => stdout = Buffer.concat([stdout, Buffer.from(buf)]));
+
+    await new Promise<void>((resolve, reject) => proc.on('exit', code => {
+        if (code === 0) {
+            resolve();
+            return;
+        }
+
+        reject(new Error(`Failed in ESM mode. Test folder: ${folder}\nOutput:\n${stdout.toString('utf-8')}`));
+    }));
+
+    await rimraf(folder);
+}
+
+function serializeJavascriptObject(object: object, depth = 1) {
+    if (object === undefined)
+        return `undefined`;
+    else if (typeof object === 'function')
+        return object.toString();
+    else if (object === null || typeof object !== 'object')
+        return JSON.stringify(object);
+
+    let obj = `{\n`;
+
+    for (let key of Object.keys(object)) {
+        obj += `${Array(depth + 1).join('    ')}${JSON.stringify(key)}: ${serializeJavascriptObject(object[key], depth + 1)},\n`;
+    }
+
+    obj += `${Array(depth).join('    ')}}`
+
+    return obj;
 }

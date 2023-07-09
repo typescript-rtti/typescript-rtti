@@ -612,30 +612,51 @@ export function rtStore(typeMap: Map<number, ts.Expression>) {
                             undefined,
                             undefined,
                             [
-                              factory.createParameterDeclaration(
-                                undefined,
-                                undefined,
-                                factory.createIdentifier("o"),
-                                undefined,
-                                undefined,
-                                undefined
-                              ),
-                              factory.createParameterDeclaration(
-                                undefined,
-                                undefined,
-                                factory.createIdentifier("k"),
-                                undefined,
-                                undefined,
-                                undefined
-                              )
+                                factory.createParameterDeclaration(
+                                    undefined,
+                                    undefined,
+                                    factory.createIdentifier("o"),
+                                    undefined,
+                                    undefined,
+                                    undefined
+                                ),
+                                factory.createParameterDeclaration(
+                                    undefined,
+                                    undefined,
+                                    factory.createIdentifier("k"),
+                                    undefined,
+                                    undefined,
+                                    undefined
+                                )
                             ],
                             undefined,
                             factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                            factory.createElementAccessExpression(
-                              factory.createIdentifier("o"),
-                              factory.createIdentifier("k")
+                            factory.createBlock(
+                                [factory.createTryStatement(
+                                    factory.createBlock(
+                                        [factory.createReturnStatement(factory.createElementAccessExpression(
+                                            factory.createIdentifier("o"),
+                                            factory.createIdentifier("k")
+                                        ))],
+                                        true
+                                    ),
+                                    factory.createCatchClause(
+                                        factory.createVariableDeclaration(
+                                            factory.createIdentifier("e"),
+                                            undefined,
+                                            undefined,
+                                            undefined
+                                        ),
+                                        factory.createBlock(
+                                            [factory.createReturnStatement(factory.createIdentifier("undefined"))],
+                                            true
+                                        )
+                                    ),
+                                    undefined
+                                )],
+                                true
                             )
-                          )
+                        )
                     ),
                     t: literalNode(typeStore)
                 })

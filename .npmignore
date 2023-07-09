@@ -24,9 +24,6 @@ dist.esm/**/*.test-harness.js
 dist.esm/**/*.test-harness.js.map
 dist.esm/**/*.test-harness.d.ts
 
-test-esrequire.js
-test-module-resolver.mjs
-
 corpus.*/
 .corpus/
 

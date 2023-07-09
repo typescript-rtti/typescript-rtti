@@ -611,11 +611,7 @@ function inferImportPath(
     if (destFile.endsWith('.d.ts'))
         destFile = destFile.replace(/\.d\.ts$/, '');
     else if (destFile.endsWith('.ts'))
-        destFile = destFile.replace(/\.ts$/, '');
-
-    // TODO: The import now has no extension, but for Deno it is required.
-    // I think only a configuration option could fix this, in which case we
-    // would append .js here
+        destFile = destFile.replace(/\.ts$/, '.js');
 
     let relativePath = findRelativePathToFile(ctx.sourceFile.fileName, destFile);
 
