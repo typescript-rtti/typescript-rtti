@@ -59,7 +59,7 @@ export function compile(invocation: RunInvocation): Record<string, string> {
         if (filename.startsWith('@types/')) {
             let packageName = filename.replace(/^@types\//, '');
             source = `declare module "${packageName}" {\n${source}\n}`;
-            filename = `@types/${packageName}.d.ts`;
+            filename = `./${packageName}.d.ts`;
         }
 
         inputs[filename] = ts.createSourceFile(filename, source, options.target!);
@@ -84,12 +84,11 @@ export function compile(invocation: RunInvocation): Record<string, string> {
         getSourceFile: (fileName: string) => {
             fileName = normalizeFilename(fileName, 'ts');
 
-            if (invocation.trace) {
-                console.log(`Test: Typescript requests to open '${fileName}'...`);
-            }
-
-            if (inputs[fileName])
+            if (inputs[fileName]) {
+                if (invocation.trace)
+                    console.log(`Test: Typescript opened input '${fileName}'`);
                 return inputs[fileName];
+            }
 
             // libs
 
@@ -97,14 +96,21 @@ export function compile(invocation: RunInvocation): Record<string, string> {
             try {
                 let stat = fs.statSync(libLoc);
 
-                if (!stat.isFile())
+                if (!stat.isFile()) {
+                    if (invocation.trace)
+                        console.log(`Test: Typescript tried to open library '${fileName}': not found`);
                     return;
+                }
             } catch (e) {
+                if (invocation.trace)
+                    console.log(`Test: Typescript tried to open library '${fileName}', error: ${e.message}`);
                 return;
             }
 
             let buf = fs.readFileSync(libLoc);
 
+            if (invocation.trace)
+                console.log(`Test: Typescript opened library ${fileName}`);
             return ts.createSourceFile(libLoc, buf.toString('utf-8'), ts.ScriptTarget.Latest);
         },
         writeFile: (filename: string, text: string) => {
@@ -325,6 +331,9 @@ async function runSimpleESM(invocation: RunInvocation) {
     });
 
     for (let file of Object.keys(files)) {
+        if (file.startsWith('@types/'))
+            continue;
+
         let filePath = path.resolve(folder, file);
         let fileContent = files[file];
 

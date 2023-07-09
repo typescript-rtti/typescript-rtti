@@ -562,9 +562,10 @@ function findImportableSymbolForType(ctx: RttiContext, type: ts.Type, typeNode: 
 function inferImportPath(
     ctx: RttiContext, type: ts.Type, symbol: ts.Symbol
 ): [ string, ts.Symbol ] {
-    let program = ctx.program;
-    let containingSourceFile = ctx.sourceFile;
-    let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+    const program = ctx.program;
+    const containingSourceFile = ctx.sourceFile;
+    const sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
+    const isCommonJS = program.getCompilerOptions().module === ts.ModuleKind.CommonJS;
 
     // The type is not directly imported in this file.
 
@@ -581,12 +582,11 @@ function inferImportPath(
         symbol = preferredExport.symbol;
     }
 
-    // Treat /index.js et al specially: On Node.js this is equivalent to importing
-    // the containing folder due to the node resolution algorithm. This can be important
-    // if the .d.ts file does not have a corresponding .js file alongside it (for instance,
-    // see the 'winston' package)
+    // Treat /index.js et al specially when compiling for Node.js in CommonJS mode.
+    // This is equivalent to importing the containing folder by default due to the
+    // node resolution algorithm.
 
-    if (isNodeJS()) {
+    if (isCommonJS && isNodeJS()) {
         if (destFile.endsWith('/index.d.ts'))
             destFile = destFile.replace(/\/index\.d\.ts$/, '');
         else if (destFile.endsWith('/index.js'))
@@ -702,7 +702,6 @@ function inferImportPath(
                     }
                 }
             }
-
         }
     }
 
@@ -714,6 +713,14 @@ function inferImportPath(
         if (globalThis.RTTI_TRACE)
             console.warn(`RTTI: Cannot determine relative path from '${ctx.sourceFile.fileName}' to '${sourceFile.fileName}'! Using absolute path!`);
         modulePath = destFile;
+    }
+
+    // It's never appropriate to generate an import to @types/*. Additionally, the structure of @types packages
+    // almost never has any relation to the structure of the package it is providing types for, so just assume
+    // the root of the package.
+
+    if (modulePath.startsWith('@types/')) {
+        modulePath = modulePath.replace(/^@types\//, '').replace(/\/.*/, '');
     }
 
     return [ modulePath, symbol ];

@@ -148,42 +148,61 @@ describe('Imports', () => {
                     }
                 });
             });
-            it.skip('emits correctly for @types/ imports', async () => {
-                class Foo {
-                    blah: number
-                }
-
-                class Bar {
-                    blah: number;
-                }
-
+            it('emits correctly for classes imported via type import', async () => {
                 await runSimple({
                     moduleType,
                     trace: true,
                     code: `
-                        import { Foo } from "foo";
+                        import type * as foo from "foo";
                         export class C {
-                            bar = new Foo().bar;
+                            foo: foo.Foo;
                         }
                     `,
                     modules: {
-                        'foo': { Foo },
-                        'bar': { Bar },
-                        '@types/foo': `
-                            import { Bar } from 'bar';
-                            export class Foo {
-                                bar: Bar;
+                        'foo': {
+                            Foo: class {
+                                bar: number
                             }
-                        `,
-                        '@types/bar': `
-                            export class Bar {
-                                blah: number;
+                        },
+                        '@types/foo': `
+                            export class Foo {
+                                bar: number;
                             }
                         `
                     },
                     checks: exports => {
-                        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'bar');
-                        expect(type()).to.eql(Bar);
+                        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');
+                        expect(type().name).to.eql('Foo');
+                    }
+                });
+            });
+            it('emits correctly for interfaces imported via type import', async () => {
+                await runSimple({
+                    moduleType,
+                    trace: true,
+                    code: `
+                        import type * as foo from "foo";
+                        export class C {
+                            foo: foo.Foo;
+                        }
+                    `,
+                    modules: {
+                        'foo': {
+                            IΦFoo: <InterfaceToken>{
+                                name: 'Foo',
+                                identity: Symbol('Foo (interface)'),
+                                prototype: {}
+                            }
+                        },
+                        '@types/foo': `
+                            export interface Foo {
+                                bar: number;
+                            }
+                        `
+                    },
+                    checks: exports => {
+                        let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'foo');
+                        expect(type().name).to.eql('Foo');
                     }
                 });
             });
