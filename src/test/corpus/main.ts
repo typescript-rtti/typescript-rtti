@@ -4,7 +4,6 @@ import * as path from 'path';
 import stripJsonComments from 'strip-json-comments';
 import shell from 'shelljs';
 import { rimraf } from 'rimraf';
-import { promisify } from 'util';
 import { Stats } from 'fs';
 import ts from 'typescript';
 import { hasGlobalFlag, setGlobalFlag } from '../../transformer/utils.js';
@@ -14,6 +13,7 @@ interface Package {
     failable?: boolean;
     only?: boolean;
     yarn?: boolean;
+    transformSubPackages?: boolean;
     url: string;
     ref: string;
     target?: 'esm' | 'commonjs',
@@ -57,12 +57,20 @@ const PACKAGES: Record<string, Package> = {
         ref: 'ce43d452e193d180d0829e108b52be48831b0408',
         commands: ['npm run build', 'npm test']
     },
-    "@typescript-rtti/rtti-testcase-61": {
+    "@typescript-rtti/issue-61": {
         enabled: true,
         failable: true,
         url: 'https://github.com/typescript-rtti/rtti-testcase-61.git',
         ref: 'main',
         commands: ['npm test']
+    },
+    "@typescript-rtti/issue-98": {
+        enabled: true,
+        failable: true,
+        transformSubPackages: false,
+        url: 'https://github.com/typescript-rtti/rtti-testcase-98.git',
+        ref: 'main',
+        commands: ['tsc -b', 'node .typescript/packages/import/Importing.js']
     },
     "capaj/decapi@2.0.1": {
         enabled: true,
@@ -102,7 +110,7 @@ function run(str: string, cwd?: string, context?: string) {
     let runtime = (Date.now() - startedAt) / 1000.0;
 
     if (result.code !== 0) {
-        console.error(`⚠️ ${str} (exit code ${result.code})`);
+        console.error(`⚠️  ${str} (exit code ${result.code})`);
         console.error(`stdout:`);
         console.error(result.stdout);
         console.error();
@@ -266,24 +274,26 @@ async function main(args: string[]) {
 
                     // Patch all subpackage package.jsons
 
-                    let pkgDir = path.join(local, 'packages');
-                    let stat: Stats;
+                    if (pkg.transformSubPackages !== false) {
+                        let pkgDir = path.join(local, 'packages');
+                        let stat: Stats;
 
-                    if (await dirExists(pkgDir)) {
-                        let packages = await fs.readdir(pkgDir);
-                        for (let pkg of packages) {
-                            trace(`Transforming package.json for subpackage '${pkg}'...`, context);
-                            try {
-                                let stat = await fs.stat(path.join(pkgDir, pkg));
-                                if (stat.isDirectory()) {
-                                    // Patch package.json to call transforming compiler instead of tsc
-                                    modify(path.join(pkgDir, pkg, 'package.json'), pkg => {
-                                        for (let key of Object.keys(pkg.scripts))
-                                            pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, compiler);
-                                    });
+                        if (await dirExists(pkgDir)) {
+                            let packages = await fs.readdir(pkgDir);
+                            for (let pkg of packages) {
+                                trace(`Transforming package.json for subpackage '${pkg}'...`, context);
+                                try {
+                                    let stat = await fs.stat(path.join(pkgDir, pkg));
+                                    if (stat.isDirectory()) {
+                                        // Patch package.json to call transforming compiler instead of tsc
+                                        modify(path.join(pkgDir, pkg, 'package.json'), pkg => {
+                                            for (let key of Object.keys(pkg.scripts))
+                                                pkg.scripts[key] = (pkg.scripts[key] ?? '').replace(/\btsc\b/g, compiler);
+                                        });
+                                    }
+                                } catch (e: any) {
+                                    throw new Error(`Could not patch package.json in subpackage '${pkg}': ${e.message}`);
                                 }
-                            } catch (e: any) {
-                                throw new Error(`Could not patch package.json in subpackage '${pkg}': ${e.message}`);
                             }
                         }
                     }
@@ -292,17 +302,17 @@ async function main(args: string[]) {
                         run(command, local, context);
 
                     for (let command of pkg.commands) {
-                        if (command === 'tsc')
-                            command = path.resolve(local, `./node_modules/.bin/${compiler}`);
+                        if (command === 'tsc' || command.startsWith('tsc '))
+                            command = command.replace(/^tsc/, path.resolve(local, `./node_modules/.bin/${compiler}`));
                         run(command, local, context);
                     }
 
-                    console.log(`✅ ${pkgName} [typescript@${tsVersion}]: success`);
+                    console.log(`✅  ${pkgName} [typescript@${tsVersion}]: success`);
                 } catch (e: any) {
                     if (pkg.failable) {
-                        console.log(`⚠️ ${pkgName} [typescript@${tsVersion}]: acceptable failure (see above)`);
+                        console.log(`⚠️  ${pkgName} [typescript@${tsVersion}]: acceptable failure (see above)`);
                     } else {
-                        console.log(`❌ ${pkgName} [typescript@${tsVersion}]: unacceptable failure (see above)`);
+                        console.log(`❌  ${pkgName} [typescript@${tsVersion}]: unacceptable failure (see above)`);
                         unacceptableFailures += 1;
                     }
                 }
