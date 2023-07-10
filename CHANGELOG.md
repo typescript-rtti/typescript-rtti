@@ -1,4 +1,4 @@
-# v0.9.6 [vNext]
+# v0.9.6
 - When outputting type references for reified types (classes/interfaces) which were imported via `import type`, an
   import is not generated and a structured type is outputted instead, to better match the author's intention (which
   would be to avoid creating a runtime dependency). ([Issue #101](https://github.com/typescript-rtti/typescript-rtti/issues/101))
