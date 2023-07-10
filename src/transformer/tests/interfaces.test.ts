@@ -220,7 +220,7 @@ describe('Interface token', () => {
                 }
             `,
             outputTransformer(filename, code) {
-                code = code.replace(/__RΦ\.m\(/g, `((key, value) => ((globalThis.__metadataDecorators ??= []).push([key, value]), __RΦ.m(key, value)))(`)
+                code = code.replace(/__RΦ\.m\(/g, `((key, value) => ((globalThis.__metadataDecorators = globalThis.__metadataDecorators ?? []).push([key, value]), __RΦ.m(key, value)))(`)
                 return code;
             },
             checks: exports => {
