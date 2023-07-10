@@ -2363,7 +2363,6 @@ if (!WORKAROUND_TYPESCRIPT_49794) {
             // Test fails, and not sure there's a way to make it pass :-\
             // https://github.com/typescript-rtti/typescript-rtti/issues/76#issuecomment-1169451079
             await runSimple({
-                trace: true,
                 code: `
                     function dec() {
                         return (target, pk?, index?) => {

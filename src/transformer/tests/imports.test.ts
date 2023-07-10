@@ -121,7 +121,6 @@ describe('Imports', () => {
 
                 await runSimple({
                     moduleType,
-                    trace: true,
                     code: `
                         import type * as express from "express";
                         export interface Event {
@@ -151,7 +150,6 @@ describe('Imports', () => {
             it('emits correctly for classes imported via type import', async () => {
                 await runSimple({
                     moduleType,
-                    trace: true,
                     code: `
                         import type * as foo from "foo";
                         export class C {
@@ -179,7 +177,6 @@ describe('Imports', () => {
             it('emits correctly for interfaces imported via type import', async () => {
                 await runSimple({
                     moduleType,
-                    trace: true,
                     code: `
                         import type * as foo from "foo";
                         export class C {
