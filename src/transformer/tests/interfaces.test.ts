@@ -19,7 +19,7 @@ describe('Interface token', () => {
     it('is emitted for imported interfaces', async () => {
         await runSimple({
             code: `
-                import { Foo } from './foo';
+                import { Foo } from './foo.js';
                 export interface Bar {
                     foo : Foo;
                 }
@@ -39,7 +39,7 @@ describe('Interface token', () => {
     it('is re-exported along with interface re-export', async () => {
         await runSimple({
             code: `
-                import { Foo } from './foo';
+                import { Foo } from './foo.js';
                 export { Foo };
             `,
             modules: {
@@ -58,7 +58,7 @@ describe('Interface token', () => {
     it('is emitted for interfaces across multiple re-exports', async () => {
         await runSimple({
             code: `
-                import { Foo } from './foo2';
+                import { Foo } from './foo2.js';
                 export interface Bar {
                     foo : Foo;
                 }
