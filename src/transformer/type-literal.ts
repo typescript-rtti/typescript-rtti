@@ -143,11 +143,17 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     });
                 }
 
+                let tpNodes: ts.TypeNode[] = [];
+
+                if (typeNode && ts.isTypeReferenceNode(typeNode) && typeNode.typeArguments) {
+                    tpNodes = Array.from(typeNode.typeArguments);
+                }
+
                 try {
                     return serialize({
                         TΦ: T_GENERIC,
-                        t: literalNode(encoder.referToType(typeRef.target)),
-                        p: (typeRef.typeArguments ?? []).map(x => literalNode(encoder.referToType(x)))
+                        t: literalNode(encoder.referToType(typeRef.target, typeNode)),
+                        p: (typeRef.typeArguments ?? []).map((x, i) => literalNode(encoder.referToType(x, tpNodes[i])))
                     });
                 } catch (e) {
                     console.error(`RTTI: Error while serializing type '${typeRef.symbol.name}': ${e.message}`);
@@ -472,37 +478,28 @@ function referToImportedTypeWithIdentifier(encoder: TypeEncoderImpl, type: ts.Ty
     if (!symbol || isExportedAsDefault(checker, symbol)) {
         let defaultName = isInterfaceType(type) ? `IΦdefault` : 'default';
 
-        if (isCommonJS && !hoistImportsInCommonJS) {
-            return ts.factory.createPropertyAccessExpression(
-                ts.factory.createCallExpression(
-                    ts.factory.createIdentifier('require'),
-                    [], [
-                    ts.factory.createStringLiteral(importPath)
-                ]
-                ), defaultName);
-        } else {
-            let impo = importMap.get(`*default:${importPath}`);
-            if (!impo) {
-                importMap.set(`*default:${importPath}`, impo = {
-                    importDeclaration: ctx.currentTopStatement,
-                    isDefault: defaultName === 'default',
-                    isNamespace: defaultName !== 'default',
-                    localName: `LΦ_${ctx.freeImportReference++}`,
-                    modulePath: importPath,
-                    name: `*${defaultName}:${importPath}`,
-                    refName: '',
-                    referenced: true
-                });
-            }
 
-            if (defaultName === 'default') {
-                return ts.factory.createIdentifier(impo.localName);
-            } else {
-                return ts.factory.createPropertyAccessExpression(
-                    ts.factory.createIdentifier(impo.localName),
-                    defaultName
-                );
-            }
+        let impo = importMap.get(`*default:${importPath}`);
+        if (!impo) {
+            importMap.set(`*default:${importPath}`, impo = {
+                importDeclaration: ctx.currentTopStatement,
+                isDefault: defaultName === 'default',
+                isNamespace: defaultName !== 'default',
+                localName: `LΦ_${ctx.freeImportReference++}`,
+                modulePath: importPath,
+                name: `*${defaultName}:${importPath}`,
+                refName: '',
+                referenced: true
+            });
+        }
+
+        if (defaultName === 'default') {
+            return ts.factory.createIdentifier(impo.localName);
+        } else {
+            return ts.factory.createPropertyAccessExpression(
+                ts.factory.createIdentifier(impo.localName),
+                defaultName
+            );
         }
     } else {
         // Named export
@@ -518,46 +515,33 @@ function referToImportedTypeWithIdentifier(encoder: TypeEncoderImpl, type: ts.Ty
             expr = ts.factory.createIdentifier(exportName); // TODO: qualified names
         }
 
-        // This is used in the legacy type encoder to ensure matching semantics to Typescript's own
-        // implementation. The import (ie require()) must be hoisted to the top of the file to ensure
-        // that circular dependencies resolve the same way.
-
-        if (isCommonJS && !hoistImportsInCommonJS) {
-            return propertyPrepend(
-                ts.factory.createCallExpression(
-                    ts.factory.createIdentifier('require'),
-                    [], [ts.factory.createStringLiteral(importPath)]
-                ), expr
-            );
+        let impo = ctx.importMap.get(`*:${importPath}`);
+        if (!impo) {
+            ctx.importMap.set(`*:${importPath}`, impo = {
+                importDeclaration: ctx.currentTopStatement,
+                isDefault: false,
+                isNamespace: true,
+                localName: `LΦ_${ctx.freeImportReference++}`,
+                modulePath: importPath,
+                name: `*:${importPath}`,
+                refName: '',
+                referenced: true
+            });
+        }
+        if (!isCommonJS) {
+            // Since ES exports and imports are statically analyzable, some tools
+            // regard it as an error to reference an export which does not exist.
+            // When we encode references to interface tokens and the imported library
+            // was not built with RTTI, we will invoke such errors. It is also possible
+            // that this could happen with normal reified exports; if the code itself never
+            // references the reified export but we do, and the version of the library
+            // differs (and does not include that symbol) at bundle time.
+            //
+            // To avoid this, we opt out of such static analysis by making the access of the
+            // export dynamic using the `oe()` helper in the emit.
+            return optionalExportRef(ts.factory.createIdentifier(impo.localName), expr);
         } else {
-            let impo = ctx.importMap.get(`*:${importPath}`);
-            if (!impo) {
-                ctx.importMap.set(`*:${importPath}`, impo = {
-                    importDeclaration: ctx.currentTopStatement,
-                    isDefault: false,
-                    isNamespace: true,
-                    localName: `LΦ_${ctx.freeImportReference++}`,
-                    modulePath: importPath,
-                    name: `*:${importPath}`,
-                    refName: '',
-                    referenced: true
-                });
-            }
-            if (!isCommonJS) {
-                // Since ES exports and imports are statically analyzable, some tools
-                // regard it as an error to reference an export which does not exist.
-                // When we encode references to interface tokens and the imported library
-                // was not built with RTTI, we will invoke such errors. It is also possible
-                // that this could happen with normal reified exports; if the code itself never
-                // references the reified export but we do, and the version of the library
-                // differs (and does not include that symbol) at bundle time.
-                //
-                // To avoid this, we opt out of such static analysis by making the access of the
-                // export dynamic using the `oe()` helper in the emit.
-                return optionalExportRef(ts.factory.createIdentifier(impo.localName), expr);
-            } else {
-                return propertyPrepend(ts.factory.createIdentifier(impo.localName), expr);
-            }
+            return propertyPrepend(ts.factory.createIdentifier(impo.localName), expr);
         }
     }
 }

@@ -298,42 +298,6 @@ export function getDecorators(node: ts.Node): readonly ts.Decorator[] {
     return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
 }
 
-export function referenceImportedSymbol(
-    ctx: RttiContext,
-    modulePath: string,
-    identifier: string,
-    hasValue?: boolean,
-    importDecl?: ts.Statement
-) {
-    let impo = ctx.importMap.get(`*:${modulePath}`);
-    if (!impo) {
-        ctx.importMap.set(`*:${modulePath}`, impo = {
-            importDeclaration: importDecl ?? ctx.currentTopStatement,
-            isDefault: false,
-            isNamespace: true,
-            localName: `LΦ_${ctx.freeImportReference++}`,
-            modulePath: modulePath,
-            name: `*:${modulePath}`,
-            refName: '',
-            referenced: true
-        });
-    }
-
-    impo.referenced = true;
-
-    if (hasValue === true) {
-        return ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), identifier);
-    } else if (hasValue === false) {
-        return ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), `IΦ${identifier}`);
-    }
-
-    return ts.factory.createBinaryExpression(
-        ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), identifier),
-        ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
-        ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier(impo.localName), `IΦ${identifier}`)
-    );
-}
-
 export function isExternalOrCommonJsModule(file: ts.SourceFile): boolean {
     return ((file as any)['externalModuleIndicator'] || (file as any)['commonJsModuleIndicator']) !== undefined;
 }

@@ -72,7 +72,7 @@ describe('reflect<T>()', () => {
                 `
             },
             code: `
-                import IMovable from './IMovable';
+                import IMovable from './IMovable.js';
 
                 /**
                  * @rtti:callsite 1
