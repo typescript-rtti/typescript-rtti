@@ -25,7 +25,6 @@ export interface TypeLiteralOptions {
 }
 
 export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: ts.TypeNode, options?: TypeLiteralOptions): ts.Expression {
-
     let ctx = encoder.ctx;
     let containingSourceFile = ctx.sourceFile;
     let checker = ctx.checker;
@@ -59,7 +58,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         return serialize({
             TΦ: T_ENUM,
             n: type.symbol?.name ?? type.aliasSymbol?.name,
-            e: literalNode(referToTypeWithIdentifier(ctx, type, typeNode, options))
+            e: literalNode(referToTypeWithIdentifier(encoder, type, typeNode, options))
         });
     } else if (type.isUnion()) {
         return serialize({
@@ -264,7 +263,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
 
             return ts.factory.createIdentifier(`Function`);
         } else if (type.isClassOrInterface()) {
-            return referToTypeWithIdentifier(ctx, type, typeNode, options);
+            return referToTypeWithIdentifier(encoder, type, typeNode, options);
         }
 
         if (hasFlag(type.flags, ts.TypeFlags.StructuredType)) {
@@ -318,7 +317,8 @@ function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: T
  * @param options
  * @returns
  */
-function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode, options?: TypeLiteralOptions): ts.Expression {
+function referToTypeWithIdentifier(encoder: TypeEncoderImpl, type: ts.Type, typeNode: ts.TypeNode, options?: TypeLiteralOptions): ts.Expression {
+    let ctx = encoder.ctx;
     let program = ctx.program;
     let sourceFile = type.symbol.declarations?.[0]?.getSourceFile();
 
@@ -339,9 +339,9 @@ function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeNode: ts
     // If this symbol is imported, we need to handle it specially.
 
     if (getTypeLocality(ctx, type, typeNode) === 'imported')
-        return referToImportedTypeWithIdentifier(ctx, type, typeNode, options?.hoistImportsInCommonJS ?? false);
+        return referToImportedTypeWithIdentifier(encoder, type, typeNode, options?.hoistImportsInCommonJS ?? false);
     else
-        return referToLocalTypeWithIdentifier(ctx, type);
+        return referToLocalTypeWithIdentifier(encoder, type);
 }
 
 /**
@@ -352,9 +352,11 @@ function referToTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeNode: ts
  * @param type
  * @returns
  */
-function referToLocalTypeWithIdentifier(ctx: RttiContext, type: ts.Type) {
-    let checker = ctx.checker;
-    let containingSourceFile = ctx.sourceFile;
+function referToLocalTypeWithIdentifier(encoder: TypeEncoderImpl, type: ts.Type) {
+    const ctx = encoder.ctx;
+    const checker = ctx.checker;
+    const containingSourceFile = ctx.sourceFile;
+
     let expr: ts.Identifier | ts.PropertyAccessExpression;
 
     if (typeHasValue(type)) {
@@ -388,11 +390,11 @@ function referToLocalTypeWithIdentifier(ctx: RttiContext, type: ts.Type) {
  * @param typeNode
  * @returns
  */
-function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode: ts.TypeNode): [ string, ts.Symbol ] {
+function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode: ts.TypeNode): [ string, ts.Symbol, boolean ] {
     const checker = ctx.checker;
 
     if (!typeNode)
-        return [ undefined, symbol ];
+        return [ undefined, symbol, undefined ];
 
     let localSymbol: ts.Symbol;
 
@@ -405,29 +407,34 @@ function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode:
 
         localSymbol = checker.getSymbolAtLocation(typeName);
     } else {
-        return [ undefined, symbol ];
+        return [ undefined, symbol, undefined ];
     }
 
     let localDecl = localSymbol?.declarations?.[0];
 
     if (!localDecl)
-        return [ undefined, symbol ];
+        return [ undefined, symbol, undefined ];
 
     let specifier: ts.StringLiteral;
+    let typeOnly = false;
+
     if (ts.isImportClause(localDecl)) {
         specifier = <ts.StringLiteral>localDecl.parent?.moduleSpecifier;
         symbol = localSymbol;
+        typeOnly = ts.isTypeOnlyImportOrExportDeclaration(localDecl);
     } else if (ts.isImportSpecifier(localDecl)) {
         specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
         symbol = localSymbol;
+        typeOnly = ts.isTypeOnlyImportOrExportDeclaration(localDecl);
     } else if (ts.isNamespaceImport(localDecl)) {
         specifier = <ts.StringLiteral>localDecl.parent.parent.moduleSpecifier;
+        typeOnly = ts.isTypeOnlyImportOrExportDeclaration(localDecl);
     }
 
     if (specifier)
-        return [ specifier.text, symbol ];
+        return [ specifier.text, symbol, typeOnly ];
 
-    return [ undefined, symbol ];
+    return [ undefined, symbol, undefined ];
 }
 
 /**
@@ -439,7 +446,8 @@ function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode:
  * @param hoistImportsInCommonJS
  * @returns
  */
-function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode, hoistImportsInCommonJS: boolean) {
+function referToImportedTypeWithIdentifier(encoder: TypeEncoderImpl, type: ts.Type, typeNode: ts.TypeNode, hoistImportsInCommonJS: boolean) {
+    const ctx = encoder.ctx;
     const checker = ctx.checker;
     const program = ctx.program;
     const containingSourceFile = ctx.sourceFile;
@@ -449,7 +457,14 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
     // This is imported. The symbol we've been examining is going
     // to be the one in the remote file.
 
-    let [ importPath, symbol ] = findImportableSymbolForType(ctx, type, typeNode);
+    let [ importPath, symbol, typeOnly ] = findImportableSymbolForType(ctx, type, typeNode);
+
+    // If the type was imported via a type-only import, refuse to generate an import since
+    // that might have deleterious effects at compile/runtime (for instance when bundling
+    // a frontend app or when using ESM over network)
+
+    if (typeOnly)
+        return structuredTypeLiteral(encoder, type, typeNode, symbol.name);
 
     if (!importPath)
         return ts.factory.createIdentifier(`Object`);
@@ -547,16 +562,19 @@ function referToImportedTypeWithIdentifier(ctx: RttiContext, type: ts.Type, type
     }
 }
 
-function findImportableSymbolForType(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode): [ string, ts.Symbol ] {
+function findImportableSymbolForType(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode): [ string, ts.Symbol, boolean ] {
     let symbol = type.symbol;
     let importPath: string;
+    let typeOnly = false;
 
-    [ importPath, symbol ] = getImportedPathForSymbol(ctx, symbol, typeNode);
+    [ importPath, symbol, typeOnly ] = getImportedPathForSymbol(ctx, symbol, typeNode);
 
-    if (!importPath)
+    if (!importPath) {
         [ importPath, symbol ] = inferImportPath(ctx, type, symbol);
+        typeOnly = false;
+    }
 
-    return [ importPath, symbol ];
+    return [ importPath, symbol, typeOnly ];
 }
 
 /**

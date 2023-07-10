@@ -1,4 +1,7 @@
 # v0.9.6 [vNext]
+- When outputting type references for reified types (classes/interfaces) which were imported via `import type`, an
+  import is not generated and a structured type is outputted instead, to better match the author's intention (which
+  would be to avoid creating a runtime dependency). ([Issue #101](https://github.com/typescript-rtti/typescript-rtti/issues/101))
 - Generated imports that would end in `/index.js` (or ts/d.ts) are no longer simplified to the directory name in ESM
   mode.
 - Generated imports that would begin with `@types/` are now simplified to a bare import for the module name (ie
