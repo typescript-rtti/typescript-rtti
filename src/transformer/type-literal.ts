@@ -391,14 +391,23 @@ function referToLocalTypeWithIdentifier(ctx: RttiContext, type: ts.Type) {
 function getImportedPathForSymbol(ctx: RttiContext, symbol: ts.Symbol, typeNode: ts.TypeNode): [ string, ts.Symbol ] {
     const checker = ctx.checker;
 
-    if (!typeNode || !ts.isTypeReferenceNode(typeNode))
+    if (!typeNode)
         return [ undefined, symbol ];
 
-    let typeName = typeNode.typeName;
-    while (ts.isQualifiedName(typeName))
-        typeName = typeName.left;
+    let localSymbol: ts.Symbol;
 
-    let localSymbol = checker.getSymbolAtLocation(typeName);
+    if (ts.isExpressionWithTypeArguments(typeNode)) {
+        localSymbol = checker.getSymbolAtLocation(typeNode.expression);
+    } else if (ts.isTypeReferenceNode(typeNode)) {
+        let typeName = typeNode.typeName;
+        while (ts.isQualifiedName(typeName))
+            typeName = typeName.left;
+
+        localSymbol = checker.getSymbolAtLocation(typeName);
+    } else {
+        return [ undefined, symbol ];
+    }
+
     let localDecl = localSymbol?.declarations?.[0];
 
     if (!localDecl)

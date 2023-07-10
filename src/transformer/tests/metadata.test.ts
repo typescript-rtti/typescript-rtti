@@ -2243,7 +2243,11 @@ describe('rt:i', () => {
                         prototype: {},
                         identity: Symbol('SomethingElse (interface)')
                     }
-                }
+                },
+                '@types/other': `
+                    export interface Something {}
+                    export interface SomethingElse {}
+                `
             },
             code: `
                 import { Something, SomethingElse } from 'other';

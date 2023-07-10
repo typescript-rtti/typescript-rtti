@@ -298,33 +298,6 @@ export function getDecorators(node: ts.Node): readonly ts.Decorator[] {
     return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
 }
 
-export function referenceSymbol(
-    ctx: RttiContext,
-    identifier: string,
-    hasValue?: boolean
-) {
-    let typeImport = ctx.importMap.get(identifier);
-    if (typeImport) {
-        return referenceImportedSymbol(
-            ctx,
-            typeImport.modulePath,
-            identifier, hasValue,
-            typeImport.importDeclaration
-        );
-    } else {
-        if (hasValue === false)
-            return ts.factory.createIdentifier(`IΦ${identifier}`);
-        else if (hasValue === true)
-            return ts.factory.createIdentifier(identifier);
-
-        return ts.factory.createBinaryExpression(
-            ts.factory.createIdentifier(identifier),
-            ts.factory.createToken(ts.SyntaxKind.QuestionQuestionToken),
-            ts.factory.createIdentifier(`IΦ${identifier}`)
-        );
-    }
-}
-
 export function referenceImportedSymbol(
     ctx: RttiContext,
     modulePath: string,

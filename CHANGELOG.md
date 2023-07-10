@@ -3,6 +3,8 @@
   mode.
 - Generated imports that would begin with `@types/` are now simplified to a bare import for the module name (ie
   `@types/express/foo/index.js` would become `express`).
+- The interfaces that a class is marked as implementing (ie `implements`) now use the type store / referral system
+  which should reduce duplication of generated imports
 
 # v0.9.5
 - Fix cases where references to generated imports were for the default export instead of appropriate specific exports

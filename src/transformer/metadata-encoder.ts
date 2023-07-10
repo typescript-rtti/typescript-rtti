@@ -13,7 +13,7 @@ import { legacyMetadataDecorator, metadataDecorator } from './metadata-decorator
 import { RttiContext } from './rtti-context';
 import { serialize } from './serialize';
 import { TypeEncoder } from './type-encoder';
-import { expressionForPropertyName, getModifiers, hasFlag, hasModifier, propertyNameToString, referenceSymbol } from './utils';
+import { expressionForPropertyName, getModifiers, hasFlag, hasModifier, propertyNameToString } from './utils';
 
 /**
  * Extracts type metadata from various syntactic elements and outputs
@@ -106,12 +106,7 @@ export class MetadataEncoder {
                 if (symbol) {
                     let localName = heritageType.expression.getText();
                     typeRefs.push(
-                        referenceSymbol(
-                            this.ctx, localName,
-                            hasFlag(type.flags, ts.TypeFlags.Any)
-                                ? undefined
-                                : type.isClass()
-                        )
+                        this.typeEncoder.referToType(type, heritageType)
                     );
 
                 } else {

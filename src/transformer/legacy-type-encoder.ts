@@ -2,7 +2,7 @@ import * as ts from 'typescript';
 import { RttiContext } from './rtti-context';
 import { AnonymousType } from './ts-internal-types';
 import { typeLiteral } from './type-literal';
-import { hasAnyFlag, hasFlag, isFlagType, referenceSymbol } from './utils';
+import { hasAnyFlag, hasFlag, isFlagType } from './utils';
 
 export class LegacyTypeEncoder {
     constructor(readonly ctx: RttiContext) {
