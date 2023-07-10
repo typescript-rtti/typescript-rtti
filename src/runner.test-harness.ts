@@ -289,8 +289,15 @@ async function runSimpleCJS(invocation: RunInvocation) {
 
     let exports = $require('./main.js');
 
-    if (invocation.checks)
-        invocation.checks(exports);
+    if (invocation.checks) {
+        try {
+            invocation.checks(exports);
+        } catch (e) {
+            if (invocation.trace)
+                console.error(`The check error occurred in CommonJS mode.`);
+            throw e;
+        }
+    }
 }
 
 async function runSimpleESM(invocation: RunInvocation) {
