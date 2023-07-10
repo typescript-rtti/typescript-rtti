@@ -2279,7 +2279,12 @@ describe('rt:i', () => {
                         identity: Symbol('SomethingElse (interface)')
                     },
                     Something: class { }
-                }
+                },
+                '@types/other': `
+                    export interface Something {}
+                    export interface SomethingElse {}
+                    export class Something {}
+                `
             },
             code: `
                 import { Something, SomethingElse } from 'other';
