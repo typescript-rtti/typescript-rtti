@@ -1,41 +1,31 @@
 import { expect } from "chai";
 import { describe, it } from "@jest/globals";
-import { MatchesValueOptions, reflect } from "./reflect";
+import { MatchesValueOptions, ClassType, InterfaceType, reflect } from "./reflect";
 import { F_OPTIONAL, RtMappedType, RtObjectType, T_MAPPED, T_OBJECT } from '../common';
-import { ReflectedTypeRef } from './reflect';
+import { Type } from './reflect';
 
-function expectValueToMatch(type: ReflectedTypeRef, value: any, options?: MatchesValueOptions) {
-    let errors: Error[] = [];
-    let matches = type.matchesValue(value, { ...options, errors })
-    expect(matches, `Expected value to match, but there were errors: ${JSON.stringify(errors.map(e => e.message))}`)
-        .to.be.true;
-}
+import * as format from '../common/format';
+import { builtinClass, expectValueNotToMatch, expectValueToMatch, functionType, literal, reflectInterfaceType } from './utils.test-harness';
 
-function expectValueNotToMatch(type: ReflectedTypeRef, value: any, options?: MatchesValueOptions) {
-    let errors: Error[] = [];
-    let matches = type.matchesValue(value, { ...options, errors })
-    expect(matches, `Expected value not to match, recorded errors: ${JSON.stringify(errors.map(e => e.message))}`)
-        .to.be.false;
-}
-
-describe('ReflectedClass#matchesValue()', () => {
+describe('ClassType#matchesValue()', () => {
     it('works with simple interfaces', async () => {
-        let IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
+        let type = reflectInterfaceType({
+            m: [
+                { f: format.F_PROPERTY, n: 'foo', t: builtinClass(String) },
+                { f: format.F_PROPERTY, n: 'bar', t: builtinClass(Number) },
+                { f: format.F_PROPERTY, n: 'baz', t: builtinClass(Boolean) },
+                { f: format.F_PROPERTY, n: 'ban', t: builtinClass(BigInt) }
+            ]
+        });
 
-        Reflect.defineMetadata('rt:P', ['foo', 'bar', 'baz','ban'], IΦA);
-        Reflect.defineMetadata('rt:t', () => String, IΦA.prototype, 'foo');
-        Reflect.defineMetadata('rt:t', () => Number, IΦA.prototype, 'bar');
-        Reflect.defineMetadata('rt:t', () => Boolean, IΦA.prototype, 'baz');
-        Reflect.defineMetadata('rt:t', () => BigInt, IΦA.prototype, 'ban');
-
-        expect(reflect(IΦA).matchesValue({
+        expect(type.matchesValue({
             foo: 'hello',
             bar: 123,
             baz: true,
             ban: BigInt(123)
         })).to.be.true;
 
-        expect(reflect(IΦA).matchesValue({
+        expect(type.matchesValue({
             foo: 1111,
             bar: 123,
             baz: true,
@@ -43,12 +33,14 @@ describe('ReflectedClass#matchesValue()', () => {
         })).to.be.false;
     });
     it('supports literal types', async () => {
-        const IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
+        let type = reflectInterfaceType({
+            m: [
+                { f: format.F_PROPERTY, n: 'foo', t: literal('hello') }
+            ]
+        });
 
-        Reflect.defineMetadata('rt:P', ['foo'], IΦA);
-        Reflect.defineMetadata('rt:t', () => 'hello', IΦA.prototype, 'foo');
-        expect(reflect(IΦA).matchesValue({ foo: 'hello' })).to.be.true;
-        expect(reflect(IΦA).matchesValue({ foo: 'hello world' })).to.be.false;
+        expect(type.matchesValue({ foo: 'hello' })).to.be.true;
+        expect(type.matchesValue({ foo: 'hello world' })).to.be.false;
     });
 
     const BUILTIN_TYPES = [
@@ -61,15 +53,16 @@ describe('ReflectedClass#matchesValue()', () => {
 
     for (const { name, type, trueCases, falseCases } of BUILTIN_TYPES) {
         it(`supports builtin type ${name}`, async () => {
-            const IΦA = { name: 'A', prototype: {}, identity: Symbol('A (interface)') };
-
-            Reflect.defineMetadata('rt:P', ['foo'], IΦA);
-            Reflect.defineMetadata('rt:t', () => type, IΦA.prototype, 'foo');
+            const reflectedType = reflectInterfaceType({
+                m: [
+                    { f: format.F_PROPERTY, n: 'foo', t: builtinClass(type) }
+                ]
+            })
 
             for (let trueCase of trueCases) {
                 try {
-                    expect(reflect(IΦA).matchesValue({ foo: trueCase })).to.be.true;
-                    expect(reflect(IΦA).getProperty('foo').matchesValue(trueCase)).to.be.true;
+                    expect(reflectedType.matchesValue({ foo: trueCase })).to.be.true;
+                    expect(reflectedType.getProperty('foo').matchesValue(trueCase)).to.be.true;
                 } catch (e) {
                     throw new Error(`Value ${String(trueCase)} should be allowed. Error was: ${e.message}`);
                 }
@@ -77,8 +70,8 @@ describe('ReflectedClass#matchesValue()', () => {
 
             for (let falseCase of falseCases) {
                 try {
-                    expect(reflect(IΦA).matchesValue({ foo: falseCase })).to.be.false;
-                    expect(reflect(IΦA).getProperty('foo').matchesValue(falseCase)).to.be.false;
+                    expect(reflectedType.matchesValue({ foo: falseCase })).to.be.false;
+                    expect(reflectedType.getProperty('foo').matchesValue(falseCase)).to.be.false;
                 } catch (e) {
                     throw new Error(`Value ${String(falseCase)} should not be allowed. Error was: ${e.message}`);
                 }
@@ -87,15 +80,15 @@ describe('ReflectedClass#matchesValue()', () => {
     }
 
     it('supports mapped types', async () => {
-        let ref = ReflectedTypeRef.createFromRtRef(<RtMappedType>{
+        let ref = Type.createFromRtRef(<RtMappedType>{
             TΦ: T_MAPPED,
-            p: [ Number ],
-            t: class A {},
+            p: [ builtinClass(Number) ],
+            t: builtinClass(class A {}),
             m: [
                 {
                     n: 'foo',
                     f: '',
-                    t: Number
+                    t: builtinClass(Number)
                 }
             ]
         })
@@ -106,44 +99,63 @@ describe('ReflectedClass#matchesValue()', () => {
         expect(ref.matchesValue({ })).to.be.false;
     });
     it('does not allow extra properties by default', () => {
-        class A { }
-        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
-        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
-        Reflect.defineMetadata('rt:P', ['foo', 'bar'], A);
-        let ref = ReflectedTypeRef.createFromRtRef(A);
+        let ref = reflectInterfaceType({
+            m: [
+                { f: format.F_PROPERTY, n: 'foo', t: builtinClass(Number) },
+                { f: format.F_PROPERTY, n: 'bar', t: builtinClass(String) },
+            ]
+        })
         expectValueToMatch(ref, { foo: 123, bar: 'world' });
         expectValueNotToMatch(ref, { foo: 123, bar: 'world', extra: 123 });
     });
+    it('requires methods to be satisfied', () => {
+        let ref = reflectInterfaceType({
+            m: [
+                { f: format.F_METHOD, n: 'foo', t: functionType([], builtinClass(Number)) },
+                { f: format.F_METHOD, n: 'bar', t: functionType([], builtinClass(String)) },
+            ]
+        })
+        expectValueToMatch(ref, { foo() { }, bar() { } });
+        expectValueNotToMatch(ref, {});
+    });
+    it('checks that number of parameters is correct when satisfying methods', () => {
+        let ref = reflectInterfaceType({
+            m: [
+                { f: format.F_METHOD, n: 'foo', t: functionType([], builtinClass(Number)) }
+            ]
+        })
+        expectValueToMatch(ref, { foo() { } });
+        expectValueNotToMatch(ref, { foo(arg1) { } });
+    });
     it('does not see methods as extra properties', () => {
-        class A {
-            foo() { }
-            bar() { }
-        }
-        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
-        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
-        Reflect.defineMetadata('rt:m', ['foo', 'bar'], A);
-        Reflect.defineMetadata('rt:P', [], A);
-        let ref = ReflectedTypeRef.createFromRtRef(A);
-        expectValueToMatch(ref, new A());
+        let ref = reflectInterfaceType({
+            m: [
+                { f: format.F_METHOD, n: 'foo', t: functionType([], builtinClass(Number)) },
+                { f: format.F_METHOD, n: 'bar', t: functionType([], builtinClass(String)) },
+            ]
+        })
+        expectValueToMatch(ref, { foo() { }, bar() { } });
     });
     it('does allow extra properties when opted in', () => {
-        class A { }
-        Reflect.defineMetadata('rt:t', () => Number, A.prototype, 'foo');
-        Reflect.defineMetadata('rt:t', () => String, A.prototype, 'bar');
-        Reflect.defineMetadata('rt:P', ['foo', 'bar'], A);
-        let ref = ReflectedTypeRef.createFromRtRef(A);
+        let ref = reflectInterfaceType({
+            m: [
+                { f: format.F_PROPERTY, n: 'foo', t: builtinClass(Number) },
+                { f: format.F_PROPERTY, n: 'bar', t: builtinClass(String) },
+            ]
+        })
+
         expectValueNotToMatch(ref, { foo: 123, bar: 'world', extra: 123 });
         expectValueToMatch(ref, { foo: 123, bar: 'world', extra: 123 }, { allowExtraProperties: true });
     });
 });
-describe('ReflectedObjectRef#matchesValue()', () => {
+describe('ObjectType#matchesValue()', () => {
     it('supports object literals', async () => {
-        let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
+        let ref = Type.createFromRtRef(<format.RtObjectType>{
             TΦ: T_OBJECT,
             m: [
-                { n: 'foo', t: String, f: '' },
-                { n: 'bar', t: String, f: '' },
-                { n: 'baz', t: String, f: F_OPTIONAL },
+                { n: 'foo', t: builtinClass(String), f: '' },
+                { n: 'bar', t: builtinClass(String), f: '' },
+                { n: 'baz', t: builtinClass(String), f: F_OPTIONAL },
             ]
         })
         expect(ref.matchesValue({ foo: 'hello' })).to.be.false;
@@ -152,12 +164,12 @@ describe('ReflectedObjectRef#matchesValue()', () => {
         expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 123 })).to.be.false;
 
 
-        let ref2 = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
+        let ref2 = Type.createFromRtRef(<RtObjectType>{
             TΦ: T_OBJECT,
             m: [
-                { n: 'foo', t: Number, f: '' },
-                { n: 'bar', t: String, f: '' },
-                { n: 'baz', t: String, f: F_OPTIONAL },
+                { n: 'foo', t: builtinClass(Number), f: '' },
+                { n: 'bar', t: builtinClass(String), f: '' },
+                { n: 'baz', t: builtinClass(String), f: F_OPTIONAL },
             ]
         })
         expect(ref2.matchesValue({ foo: 'hello' })).to.be.false;
@@ -167,28 +179,27 @@ describe('ReflectedObjectRef#matchesValue()', () => {
         expect(ref2.matchesValue({ foo: 123, bar: 'world', baz: 123 })).to.be.false;
     });
     it('does not allow extra properties by default', () => {
-        let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
+        let ref = Type.createFromRtRef(<RtObjectType>{
             TΦ: T_OBJECT,
             m: [
-                { n: 'foo', t: String, f: '' },
-                { n: 'bar', t: String, f: '' },
-                { n: 'baz', t: String, f: F_OPTIONAL },
+                { n: 'foo', t: builtinClass(String), f: '' },
+                { n: 'bar', t: builtinClass(String), f: '' },
+                { n: 'baz', t: builtinClass(String), f: F_OPTIONAL },
             ]
         })
         expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey' })).to.be.true;
         expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey', extra: 123 })).to.be.false;
     });
     it('does allow extra properties when opted in', () => {
-        let ref = ReflectedTypeRef.createFromRtRef(<RtObjectType>{
+        let ref = Type.createFromRtRef(<RtObjectType>{
             TΦ: T_OBJECT,
             m: [
-                { n: 'foo', t: String, f: '' },
-                { n: 'bar', t: String, f: '' },
-                { n: 'baz', t: String, f: F_OPTIONAL },
+                { n: 'foo', t: builtinClass(String), f: '' },
+                { n: 'bar', t: builtinClass(String), f: '' },
+                { n: 'baz', t: builtinClass(String), f: F_OPTIONAL },
             ]
         })
         expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey', extra: 123 })).to.be.false;
         expect(ref.matchesValue({ foo: 'hello', bar: 'world', baz: 'hey', extra: 123 }, { allowExtraProperties: true })).to.be.true;
-
     });
 });

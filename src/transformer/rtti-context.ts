@@ -1,23 +1,30 @@
 import ts from "typescript";
-import { TypeImport } from "./common/type-import";
 
 export interface InterfaceSymbol {
     interfaceDecl: ts.InterfaceDeclaration;
     symbolDecl: ts.Statement[];
 }
 
+export interface RttiSettings {
+    trace?: boolean;
+    throwOnFailure?: boolean;
+
+    /**
+     * Whether to omit the members of library types (ie String, Number).
+     * This defaults to true, because emitting detailed type information for the standard library significantly
+     * increases the compilation time and output size.
+     */
+    omitLibTypeMetadata?: boolean;
+}
+
 export interface RttiContext {
+    settings: RttiSettings;
     program: ts.Program;
     sourceFile: ts.SourceFile;
     checker: ts.TypeChecker;
-    trace: boolean;
-    throwOnFailure: boolean;
     transformationContext: ts.TransformationContext;
-    importMap: Map<string, TypeImport>;
     typeMap: Map<number, ts.Expression>;
-    freeImportReference: number;
-    currentNameScope: ts.ClassDeclaration | ts.InterfaceDeclaration | ts.ClassExpression;
-    emitStandardMetadata: boolean;
+    currentNameScope: ts.ClassDeclaration | ts.ClassExpression | ts.EnumDeclaration;
     interfaceSymbols: InterfaceSymbol[];
     pkgJsonMap: Map<string, any>;
     currentTopStatement?: ts.Statement;

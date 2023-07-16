@@ -1,14 +1,15 @@
 import ts from 'typescript';
-import { F_ABSTRACT, F_ASYNC, F_EXPORTED, F_PRIVATE, F_PROTECTED, F_PUBLIC, F_READONLY } from '../common/format';
+import * as format from '../common/format';
+import { hasModifier } from './utils';
 
 export function getVisibility(modifiers: readonly ts.Modifier[]) {
     if (modifiers) {
         if (modifiers.some(x => x.kind === ts.SyntaxKind.PublicKeyword))
-            return F_PUBLIC;
+            return format.F_PUBLIC;
         if (modifiers.some(x => x.kind === ts.SyntaxKind.PrivateKeyword))
-            return F_PRIVATE;
+            return format.F_PRIVATE;
         if (modifiers.some(x => x.kind === ts.SyntaxKind.ProtectedKeyword))
-            return F_PROTECTED;
+            return format.F_PROTECTED;
     }
 
     return '';
@@ -18,26 +19,42 @@ export function isReadOnly(modifiers: readonly ts.Modifier[]) {
     if (!modifiers)
         return '';
 
-    return modifiers.some(x => x.kind === ts.SyntaxKind.ReadonlyKeyword) ? F_READONLY : '';
+    return modifiers.some(x => x.kind === ts.SyntaxKind.ReadonlyKeyword) ? format.F_READONLY : '';
 }
 
 export function isAbstract(modifiers: readonly ts.Modifier[]) {
     if (!modifiers)
         return '';
 
-    return modifiers.some(x => x.kind === ts.SyntaxKind.AbstractKeyword) ? F_ABSTRACT : '';
+    return modifiers.some(x => x.kind === ts.SyntaxKind.AbstractKeyword) ? format.F_ABSTRACT : '';
 }
 
 export function isAsync(modifiers: readonly ts.Modifier[]) {
     if (!modifiers)
         return '';
 
-    return modifiers.some(x => x.kind === ts.SyntaxKind.AsyncKeyword) ? F_ASYNC : '';
+    return modifiers.some(x => x.kind === ts.SyntaxKind.AsyncKeyword) ? format.F_ASYNC : '';
 }
 
 export function isExported(modifiers: readonly ts.Modifier[]) {
     if (!modifiers)
         return '';
 
-    return modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword) ? F_EXPORTED : '';
+    return modifiers.some(x => x.kind === ts.SyntaxKind.ExportKeyword) ? format.F_EXPORTED : '';
+}
+
+export function methodFlags(decl: ts.MethodDeclaration) {
+    const nodeModifiers = ts.canHaveModifiers(decl) ? ts.getModifiers(decl) : [];
+    return [
+        format.F_METHOD,
+        getVisibility(nodeModifiers),
+        decl.questionToken ? format.F_OPTIONAL : '',
+        hasModifier(nodeModifiers, ts.SyntaxKind.AbstractKeyword)
+            ? format.F_ABSTRACT : '',
+        hasModifier(nodeModifiers, ts.SyntaxKind.StaticKeyword)
+            ? format.F_STATIC : '',
+        decl.questionToken ? format.F_OPTIONAL : '',
+        !decl.type ? format.F_INFERRED : '',
+        isAsync(nodeModifiers) ? format.F_ASYNC : ''
+    ].join('')
 }

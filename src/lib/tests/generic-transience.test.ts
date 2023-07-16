@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "@jest/globals";
 import { CallSite, reflect } from "../reflect";
+import { builtinClass, literal } from '../utils.test-harness';
 
 describe('Library: Generic transience', () => {
     it('reflects upon callsites', async () => {
@@ -8,23 +9,23 @@ describe('Library: Generic transience', () => {
         let callSite = reflect(<CallSite>{
             TΦ: 'c',
             t: undefined,
-            p: [123, Boolean],
+            p: [literal(123), builtinClass(Boolean)],
             r: undefined,
-            tp: [String, 321],
+            tp: [builtinClass(String), literal(321)],
         });
 
         expect(callSite.parameters.length).to.equal(2);
-        expect(callSite.parameters[0].isClass(Number)).to.be.true;
+        expect(callSite.parameters[0].isLiteral(123)).to.be.true;
         expect(callSite.parameters[0].is('literal')).to.be.true;
         expect(callSite.parameters[0].as('literal').value).to.equal(123);
-        expect(callSite.parameters[1].isClass(Boolean)).to.be.true;
+        expect(callSite.parameters[1].isBuiltinClass(Boolean)).to.be.true;
         expect(callSite.parameters[1].as('class').class).to.equal(Boolean);
         expect(callSite.parameters[1].is('literal')).to.be.false;
 
         expect(callSite.typeParameters.length).to.equal(2);
-        expect(callSite.typeParameters[0].isClass(String)).to.be.true;
+        expect(callSite.typeParameters[0].isBuiltinClass(String)).to.be.true;
         expect(callSite.typeParameters[0].is('literal')).to.be.false;
-        expect(callSite.typeParameters[1].isClass(Number)).to.be.true;
+        expect(callSite.typeParameters[1].isLiteral(321)).to.be.true;
         expect(callSite.typeParameters[1].is('literal')).to.be.true;
         expect(callSite.typeParameters[1].as('literal').value).to.equal(321);
 

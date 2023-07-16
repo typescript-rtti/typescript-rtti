@@ -1,21 +1,19 @@
 import { expect } from "chai";
 import { describe, it } from "@jest/globals";
-import { ReflectedTypeRef } from ".";
 import * as format from "../common/format";
 import { runSimple } from "../runner.test-harness";
-import { MODULE_TYPES } from "../transformer/tests/module-types.test-harness";
-import { reify, reflect, ReflectedClass } from "./reflect";
+import { reflect } from "./reflect";
 
 describe('reflect<T>()', () => {
     it('reifies and reflects', async () => {
-        const IΦSomething = {
-            name: 'Something',
-            prototype: {},
-            identity: Symbol('Something (interface)')
-        };
-
-        const iface = reflect(<never>undefined, <format.RtCallSite>{ 'TΦ': 'c', tp: [ IΦSomething ]});
-        expect(iface.as('interface').token).to.equal(IΦSomething);
+        const iface = reflect(<never>undefined, <format.RtCallSite>{ 'TΦ': 'c', tp: [
+            <format.RtInterfaceType>{
+                TΦ: format.T_INTERFACE,
+                n: 'Something',
+                m: []
+            }
+        ]});
+        expect(iface.is('interface')).to.be.true;
     });
     it(`doesn't rewrite other calls into typescript-rtti`, async () => {
         await runSimple({
@@ -60,7 +58,6 @@ describe('reflect<T>()', () => {
             }
         });
     });
-
     it(`reflects properly for a default export interface`, async () => {
         await runSimple({
             modules: {
@@ -86,8 +83,8 @@ describe('reflect<T>()', () => {
             checks: exports => {
                 let callsite = <format.RtCallSite>exports.callsite;
                 expect(callsite.TΦ).to.equal('c');
-                let token = (callsite.tp[0] as format.InterfaceToken);
-                expect(token.name).to.equal('IMovable');
+                let token = (callsite.tp[0] as format.RtInterfaceType);
+                expect(token.n).to.equal('IMovable');
             }
         });
     });

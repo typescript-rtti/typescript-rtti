@@ -14,6 +14,7 @@ export interface RunInvocation {
     target?: ts.ScriptTarget;
     compilerOptions?: Partial<ts.CompilerOptions>;
     outputTransformer?: (filename: string, code: string) => string;
+    globals?: Record<string, any>;
     modules?: Record<string, any>;
     trace?: boolean;
     checks?: (exports: any) => void;
@@ -233,8 +234,10 @@ Script.prototype.runInThisContext = function (options) {
  * @returns
  */
 export async function runSimple(invocation: RunInvocation) {
-    await runSimpleCJS({ ...invocation, moduleType: 'commonjs' });
-    await runSimpleESM({ ...invocation, moduleType: 'esm' });
+    if (invocation.moduleType !== 'esm')
+        await runSimpleCJS({ ...invocation, moduleType: 'commonjs' });
+    if (invocation.moduleType !== 'commonjs')
+        await runSimpleESM({ ...invocation, moduleType: 'esm' });
 }
 
 async function runSimpleCJS(invocation: RunInvocation) {
@@ -365,11 +368,14 @@ async function runSimpleESM(invocation: RunInvocation) {
 
     let reflectMetadataLocation = path.resolve(__dirname, "..", "node_modules", "reflect-metadata").replace(/\\/g, '/');
     let chaiLocation = path.resolve(__dirname, "..", "node_modules", "chai").replace(/\\/g, '/')
+    let globals = invocation.globals ?? {};
 
     fs.writeFileSync(path.resolve(folder, "__test.js"), `
         import "file://${reflectMetadataLocation}/Reflect.js";
         import * as exports from './main.js';
         import * as chai_1 from "file://${chaiLocation}/index.mjs";
+
+        ${Object.keys(globals).map(key => `const ${key} = ${typeof globals[key] === 'function' ? globals[key] : JSON.stringify(globals[key])};`).join(`\n`)}
 
         (${(invocation.checks ?? (() => {})).toString()})(exports)
     `);

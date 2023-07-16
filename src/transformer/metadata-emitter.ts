@@ -2,24 +2,21 @@ import { RttiVisitor } from "./rtti-visitor-base";
 import * as ts from 'typescript';
 import { RttiContext } from "./rtti-context";
 import { Visit } from "./common/visitor-base";
-import { ClassAnalyzer } from "./common/class-analyzer";
-import { ClassDetails } from "./common/class-details";
-import { InterfaceAnalyzer } from "./common/interface-analyzer";
-import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator } from "./metadata-decorator";
-import { MetadataEncoder } from "./metadata-encoder";
+import { decorateClassExpression, decorateFunctionExpression, directMetadataDecorator, hostMetadataDecorator, metadataDecorator } from "./metadata-decorator";
 import { ExternalDecorator, ExternalMetadataCollector, InlineMetadataCollector, MetadataCollector } from "./metadata-collector";
 import { expressionForPropertyName, getModifiers, getRttiDocTagFromNode, hasModifier, hasModifiers, isStatement } from "./utils";
-import { serialize } from './serialize';
 import { literalNode } from './literal-node';
-import { T_ENUM } from '../common';
 import { WORKAROUND_TYPESCRIPT_49794 } from './workarounds';
+import { TypeEncoder } from './type-encoder';
+import { forwardRef } from './forward-ref';
+import { methodFlags } from './flags';
 
 export class MetadataEmitter extends RttiVisitor {
     static emit(sourceFile: ts.SourceFile, ctx: RttiContext): ts.SourceFile {
         return <ts.SourceFile>new MetadataEmitter(ctx).visitNode(sourceFile);
     }
 
-    metadataEncoder = new MetadataEncoder(this.ctx);
+    typeEncoder = new TypeEncoder(this.ctx);
     collector: MetadataCollector = new InlineMetadataCollector();
 
     /**
@@ -79,7 +76,7 @@ export class MetadataEmitter extends RttiVisitor {
     }
 
 
-    scope<T = any>(nameScope: ts.ClassDeclaration | ts.ClassExpression | ts.InterfaceDeclaration, callback: () => T) {
+    scope<T = any>(nameScope: ts.ClassDeclaration | ts.ClassExpression | ts.EnumDeclaration, callback: () => T) {
         let originalScope = this.ctx.currentNameScope;
         this.ctx.currentNameScope = nameScope;
 
@@ -100,40 +97,22 @@ export class MetadataEmitter extends RttiVisitor {
         }
     }
 
-    @Visit([ts.SyntaxKind.PropertyDeclaration, ts.SyntaxKind.GetAccessor, ts.SyntaxKind.SetAccessor])
-    property(decl: ts.PropertyDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration) {
-        return this.collector.collect(decl, this.metadataEncoder.property(decl));
-    }
-
-    @Visit(ts.SyntaxKind.PropertySignature)
-    propertySignature(signature: ts.PropertySignature) {
-        if (ts.isInterfaceDeclaration(signature.parent))
-            signature = this.outboardCollector.collect(signature, this.metadataEncoder.property(signature));
-
-        return signature;
-    }
-
     @Visit(ts.SyntaxKind.ClassDeclaration)
     class(decl: ts.ClassDeclaration) {
-        let details = ClassAnalyzer.analyze(decl, this.context);
-        let className = decl.name.getText();
-
         if (hasModifier(ts.canHaveModifiers(decl) ? ts.getModifiers(decl) : [], ts.SyntaxKind.DeclareKeyword))
             return decl;
 
         return this.scope(decl, () => {
             let outboardMetadata = this.collectMetadata(() => {
                 try {
-                    decl = this.collector.collect(decl, this.metadataEncoder.class(<ts.ClassDeclaration>decl, details));
+                    decl = this.collector.collect(decl, [ this.typeDecorator(decl) ]);
                     decl = this.visitEachChild(decl);
                     return <ts.ClassDeclaration>decl;
                 } catch (e) {
-                    console.error(`RTTI: During outboard metadata collection for class ${className}: ${e.message}`);
+                    console.error(`RTTI: During outboard metadata collection for class ${decl.name.getText()}: ${e.message}`);
                     throw e;
                 }
             });
-
-            if (this.trace) console.log(` - ${outboardMetadata.decorators.length} outboard decorators`);
 
             return [
                 decl,
@@ -142,209 +121,27 @@ export class MetadataEmitter extends RttiVisitor {
         });
     }
 
-    @Visit(ts.SyntaxKind.ExportDeclaration)
-    export(decl: ts.ExportDeclaration) {
-        if (!decl.exportClause)
-            return this.visitEachChild(decl);
-
-        if (ts.isNamedExports(decl.exportClause)) {
-            let statements: ts.Statement[] = [];
-
-            for (let expo of decl.exportClause.elements) {
-                let ident = expo.name;
-                let localSymbol = this.checker.getSymbolAtLocation(ident);
-                let rootSymbol = this.checker.getAliasedSymbol(localSymbol);
-
-                let type = this.checker.getTypeAtLocation(rootSymbol?.declarations?.[0]);
-                let reifiedType = <boolean>type.isClass() || type.symbol?.name === 'Promise' || !!type.symbol?.valueDeclaration;
-                let sourceFile = type.symbol?.declarations?.[0]?.getSourceFile();
-                let isLocal = sourceFile === this.ctx.sourceFile;
-
-                if (!reifiedType && !isLocal) {
-                    // Exported interface
-
-                    let parents: ts.Symbol[] = [];
-                    let parent: ts.Symbol = type.symbol?.['parent'];
-
-                    while (parent) {
-                        parents.push(parent);
-                        parent = parent['parent'];
-                    }
-
-                    let importName: string;
-                    if (parents.length > 1) {
-                        importName = parents[1].name;
-                    } else {
-                        importName = type.symbol?.name;
-                    }
-
-                    let modulePath = parents[0] ? JSON.parse(parents[0].name) : undefined;
-
-                    if (localSymbol) {
-                        let localDecl = localSymbol.declarations[0];
-
-                        if (localDecl) {
-                            if (ts.isExportSpecifier(localDecl)) {
-                                localSymbol = this.checker.getImmediateAliasedSymbol(localSymbol);
-                                localDecl = localSymbol?.declarations[0];
-                            }
-
-                            if (localDecl) {
-                                if (ts.isImportSpecifier(localDecl)) {
-                                    let specifier = <ts.StringLiteral>localDecl.parent?.parent?.parent?.moduleSpecifier;
-
-                                    let detectedImportPath = specifier.text;
-                                    if (detectedImportPath)
-                                        modulePath = detectedImportPath;
-                                } else {
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-
-                    if (parents.length === 1 && type.symbol?.name === 'default') {
-                        statements.push(this.exportInterfaceToken(ident.text, `default`, modulePath));
-                    } else {
-                        statements.push(this.exportInterfaceToken(ident.text, undefined, modulePath));
-                    }
-                }
-            }
-
-            return [
-                this.visitEachChild(decl),
-                ...statements
-            ];
-        }
-    }
-
-    private exportInterfaceToken(name: string, propertyName?: string, from?: string) {
-        return ts.factory.createExportDeclaration(
-            undefined,
-            false,
-            ts.factory.createNamedExports(
-                [
-                    ts.factory.createExportSpecifier(
-                        false,
-                        propertyName ? ts.factory.createIdentifier(propertyName) : undefined,
-                        ts.factory.createIdentifier(`IΦ${name}`)
-                    )
-                ]
-            ),
-            from ? ts.factory.createStringLiteral(from) : undefined
-        );
-    }
-
     @Visit(ts.SyntaxKind.EnumDeclaration)
     enum(decl: ts.EnumDeclaration) {
-
-        if (hasModifier(getModifiers(decl), ts.SyntaxKind.ConstKeyword)) {
-            // Const enums have no runtime representation, so no need to link their runtime object
-            // to the type reference.
+        let modifiers = getModifiers(decl);
+        if (hasModifier(modifiers, ts.SyntaxKind.ConstKeyword))
             return decl;
-        }
-
-        let type = this.checker.getTypeAtLocation(decl);
-        return [
-            decl,
-            ts.factory.createExpressionStatement(
-                ts.factory.createCallExpression(
-                    ts.factory.createArrowFunction(
-                        [], [],
-                        [
-                            ts.factory.createParameterDeclaration([], undefined, 't')
-                        ],
-                        undefined,
-                        ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                        ts.factory.createBinaryExpression(
-                            ts.factory.createElementAccessExpression(
-                                ts.factory.createPropertyAccessExpression(
-                                    ts.factory.createIdentifier('__RΦ'),
-                                    't'
-                                ),
-                                type['id']
-                            ),
-                            ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-                            serialize({ TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t')) })
-                        )
-                    ),
-                    [],
-                    [
-                        ts.factory.createIdentifier(decl.name.text)
-                    ]
-                )
-            )
-        ];
-    }
-
-    @Visit(ts.SyntaxKind.InterfaceDeclaration)
-    interface(decl: ts.InterfaceDeclaration) {
-        let emitName = decl.name.text;
-        if (hasModifiers(getModifiers(decl), [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
-            emitName = 'default';
-
-        let tokenDecl = ts.factory.createVariableStatement(
-            [],
-            ts.factory.createVariableDeclarationList(
-                [ts.factory.createVariableDeclaration(
-                    ts.factory.createIdentifier(`IΦ${emitName}`),
-                    undefined,
-                    undefined,
-                    serialize({
-                        name: decl.name.text,
-                        prototype: {},
-                        identity: literalNode(ts.factory.createCallExpression(
-                            ts.factory.createIdentifier("Symbol"),
-                            undefined,
-                            [ts.factory.createStringLiteral(`${decl.name.text} (interface)`)]
-                        ))
-                    })
-                )],
-                ts.NodeFlags.None
-            )
-        );
-
-        this.ctx.interfaceSymbols.push(
-            {
-                interfaceDecl: decl,
-                symbolDecl: []
-            }
-        );
-
-        if (this.trace)
-            console.log(`Decorating interface ${decl.name.text}`);
-
-        let details: ClassDetails = {
-            ...InterfaceAnalyzer.analyze(decl, this.context),
-            staticPropertyNames: [],
-            staticMethodNames: []
-        };
-        let interfaceName = decl.name.getText();
-        let interfaceDecl = decl;
 
         return this.scope(decl, () => {
-            let result = this.collectMetadata(() => {
+            let outboardMetadata = this.collectMetadata(() => {
                 try {
-                    return this.visitEachChild(decl);
+                    decl = this.collector.collect(decl, [ this.typeDecorator(decl) ]);
+                    decl = this.visitEachChild(decl);
+                    return decl;
                 } catch (e) {
-                    console.error(`RTTI: During metadata collection for interface ${interfaceName}: ${e.message}`);
+                    console.error(`RTTI: During outboard metadata collection for class ${decl.name.getText()}: ${e.message}`);
                     throw e;
                 }
             });
 
             return [
-                result.node,
-                tokenDecl,
-                ...(
-                    hasModifier(getModifiers(decl), ts.SyntaxKind.ExportKeyword)
-                        ? [this.exportInterfaceToken(emitName)]
-                        : []
-                ),
-                ...this.metadataEncoder.class(<ts.InterfaceDeclaration>decl, details)
-                    .map(decorator => ts.factory.createExpressionStatement(ts.factory.createCallExpression(decorator.expression, undefined, [
-                        ts.factory.createIdentifier(`IΦ${emitName}`)
-                    ]))),
-                ...this.emitOutboardMetadata(interfaceDecl, result)
+                decl,
+                ...(this.emitOutboardMetadata(decl, outboardMetadata))
             ];
         });
     }
@@ -357,7 +154,6 @@ export class MetadataEmitter extends RttiVisitor {
         // Note that we check for node.body here ^^ in case of
         // "function a();" which will trigger an error later anyway.
 
-        let metadata = this.metadataEncoder.method(decl);
         let functionName = decl.name.getText();
 
         if (decl.parent && !ts.isBlock(decl.parent) && !ts.isSourceFile(decl.parent)) {
@@ -395,7 +191,7 @@ export class MetadataEmitter extends RttiVisitor {
             return ts.factory.createVariableStatement([], [
                 ts.factory.createVariableDeclaration(
                     decl.name.getText(), undefined, undefined,
-                    decorateFunctionExpression(expr, metadata)
+                    decorateFunctionExpression(expr, [ this.typeDecorator(decl) ])
                 )
             ]);
         }
@@ -409,20 +205,36 @@ export class MetadataEmitter extends RttiVisitor {
 
         return [
             decl,
-            ...(metadata.map(dec => ts.factory.createExpressionStatement(ts.factory.createCallExpression(dec.expression, undefined, [
-                ts.factory.createIdentifier(`${(decl as ts.FunctionDeclaration).name.text}`)
-            ]))))
+            ts.factory.createExpressionStatement(
+                ts.factory.createCallExpression(
+                    this.typeDecorator(decl).expression,
+                    undefined,
+                    [
+                        ts.factory.createIdentifier(`${(decl as ts.FunctionDeclaration).name.text}`)
+                    ]
+                )
+            )
         ];
+    }
+
+    typeDecorator(decl: ts.Node) {
+        return metadataDecorator(
+            'rtti:type',
+            literalNode(forwardRef(
+                this.typeEncoder.referToType(
+                    this.checker.getTypeAtLocation(decl)
+                )
+            ))
+        );
     }
 
     @Visit([ts.SyntaxKind.FunctionExpression, ts.SyntaxKind.ArrowFunction])
     functionExpr(decl: ts.FunctionExpression | ts.ArrowFunction) {
-        return decorateFunctionExpression(this.visitEachChild(decl), this.metadataEncoder.method(decl));
+        return decorateFunctionExpression(this.visitEachChild(decl), [ this.typeDecorator(decl) ]);
     }
 
     @Visit(ts.SyntaxKind.ClassExpression)
     classExpr(decl: ts.ClassExpression) {
-        let details = ClassAnalyzer.analyze(decl, this.context);
         return this.scope(decl, () => {
             let result = this.collectAllMetadata(() => {
                 try {
@@ -433,48 +245,46 @@ export class MetadataEmitter extends RttiVisitor {
                 }
             });
 
-            return decorateClassExpression(decl, this.metadataEncoder.class(decl, details), result.decorators);
+            return decorateClassExpression(decl, [
+                metadataDecorator(
+                    'rtti:type',
+                    literalNode(forwardRef(
+                        this.typeEncoder.referToType(
+                            this.checker.getTypeOfSymbolAtLocation(
+                                this.checker.getTypeAtLocation(decl).getProperty('prototype'),
+                                decl
+                            )
+                        )
+                    ))
+                )
+            ], result.decorators);
         });
     }
 
     @Visit(ts.SyntaxKind.MethodDeclaration)
-    method(decl: ts.MethodDeclaration) {
+    methodDecl(decl: ts.MethodDeclaration) {
         if (!decl.parent || !(ts.isClassDeclaration(decl.parent) || ts.isClassExpression(decl.parent)))
             return;
+
         if (this.trace)
             console.log(`Decorating class method ${decl.parent.name?.text ?? '<anonymous>'}#${decl.name.getText()}`);
 
-        let metadata = this.metadataEncoder.method(decl);
-        let isAbstract = hasModifier(getModifiers(decl), ts.SyntaxKind.AbstractKeyword);
-
-        if (isAbstract) {
-            this.outboardCollector.collect(decl, metadata);
-        } else {
+        if (!hasModifier(getModifiers(decl), ts.SyntaxKind.AbstractKeyword)) {
             // Also collect the flags and host reference on the concrete method itself for resolving
-            // ReflectedMethod from a bare method function.
+            // Method from a bare method function.
 
             this.outboardCollector.collect(decl, [
-                directMetadataDecorator('rt:f', this.metadataEncoder.methodFlags(decl)),
+                directMetadataDecorator('rt:f', methodFlags(decl)),
                 hostMetadataDecorator()
             ]);
 
-            decl = this.collector.collect(decl, metadata);
+            decl = this.collector.collect(decl, [ this.typeDecorator(decl) ]);
         }
 
         return this.visitEachChild(decl);
     }
 
-    @Visit(ts.SyntaxKind.MethodSignature)
-    methodSignature(node: ts.MethodSignature) {
-        if (!ts.isInterfaceDeclaration(node.parent))
-            return;
-        if (this.trace)
-            console.log(`Decorating interface method ${node.parent.name.text}#${node.name.getText()}`);
-
-        return this.outboardCollector.collect(node, this.metadataEncoder.method(node));
-    }
-
-    emitOutboardMetadataExpressions<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
+    emitOutboardMetadataExpressions<NodeT extends ts.ClassDeclaration | ts.EnumDeclaration>(
         node: NodeT,
         outboardMetadata: { node: NodeT, decorators: ExternalDecorator[]; }
     ): ts.Expression[] {
@@ -483,13 +293,6 @@ export class MetadataEmitter extends RttiVisitor {
 
         for (let dec of outboardMetadata.decorators) {
             let host: ts.Expression = ts.factory.createIdentifier(elementName);
-
-            if (ts.isInterfaceDeclaration(node)) {
-                let interfaceName = `IΦ${node.name.text}`;
-                if (hasModifiers(getModifiers(node), [ts.SyntaxKind.ExportKeyword, ts.SyntaxKind.DefaultKeyword]))
-                    interfaceName = `IΦdefault`;
-                host = ts.factory.createIdentifier(interfaceName);
-            }
 
             let isStatic = false;
 
@@ -523,7 +326,7 @@ export class MetadataEmitter extends RttiVisitor {
         return nodes;
     }
 
-    emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.InterfaceDeclaration>(
+    emitOutboardMetadata<NodeT extends ts.ClassDeclaration | ts.EnumDeclaration>(
         node: NodeT,
         outboardMetadata: { node: NodeT, decorators: ExternalDecorator[]; }
     ): ts.ExpressionStatement[] {

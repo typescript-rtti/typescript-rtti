@@ -1,3 +1,26 @@
+# v0.10.0 [vNext]
+In this release, all types are determined locally (including classes and interfaces), and as such RTTI no longer
+generates any imports. The metadata format is now simpler, and fewer decorators are generated during emit.
+
+Breaking Changes
+- The reflection APIs have been changed to be simpler, streamlined, and more consistent (for instance
+  `ReflectedTypeRef` -> `Type`, `ReflectedClassRef` -> `ClassType`).
+- The metadata format has changed. Reflecting on code compiled with previous versions is not possible.
+- Interfaces can no longer be "reified", so `reify<T>()` has been removed. Instead obtain a reference to the
+  interface's type using `reflect<Interface>()` or via reflecting on some other type.
+- Enum types no longer have a reference to the enum object, but instead they collect and expose the name/value
+  mappings known at compile time.
+- Class types no longer reference their constructors in most cases, which means features that depend on
+  this functionality is no longer available.
+- Reflection on array types is no longer supported when `noLib` is set.
+
+Bugs Fixed
+- Fixes a bug where properties and methods defined in interfaces which the current interface extends were not available
+  via reflection.
+- Fixes many cases where `any` was previously emitted.
+- Fixes many cases where interface/class types would be emitted with less metadata than they should.
+- Fixes many cases where an incorrect type would be outputted when the type is declared within the default library
+
 # v0.9.6
 - When outputting type references for reified types (classes/interfaces) which were imported via `import type`, an
   import is not generated and a structured type is outputted instead, to better match the author's intention (which

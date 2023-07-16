@@ -8,8 +8,8 @@ export const F_PROTECTED: '@' = '@';
 export const F_PROPERTY: 'P' = 'P';
 export const F_METHOD: 'M' = 'M';
 export const F_STATIC: 'S' = 'S';
-export const F_CLASS: 'C' = 'C';
-export const F_INTERFACE: 'I' = 'I';
+export const F_CONSTRUCTOR: '+' = '+';
+export const F_PARAMETER: 'p' = 'p';
 export const F_FUNCTION: 'F' = 'F';
 export const F_ARROW_FUNCTION: '>' = '>';
 export const F_OPTIONAL: '?' = '?';
@@ -18,6 +18,9 @@ export const F_ASYNC: 'a' = 'a';
 export const F_EXPORTED: 'e' = 'e';
 export const F_INFERRED: '.' = '.';
 export const F_OMITTED: ',' = ',';
+export const F_GETTER: 'G' = 'G';
+export const F_DEFAULT_LIB: 'D' = 'D';
+export const F_SETTER: 's' = 's';
 
 /**
  * Flag attached to parameters which indicates that the parameter
@@ -46,10 +49,12 @@ export const T_MAPPED: 'm' = 'm';
 export const T_TRUE: '1' = '1';
 export const T_FALSE: '0' = '0';
 export const T_CALLSITE: 'c' = 'c';
-export const T_STAND_IN: '5' = '5';
 export const T_OBJECT: 'O' = 'O';
 export const T_ENUM: 'e' = 'e';
 export const T_FUNCTION: 'F' = 'F';
+export const T_CLASS: 'C' = 'C';
+export const T_INTERFACE: 'I' = 'I';
+export const T_LITERAL: 'L' = 'L';
 export const T_INTRINSICS = [T_VOID, T_ANY, T_UNKNOWN, T_UNDEFINED, T_TRUE, T_FALSE, T_THIS, T_NULL];
 
 export const TI_VOID: RtIntrinsicType = { TΦ: T_VOID };
@@ -71,21 +76,16 @@ export interface InterfaceToken<T = any> {
 /**
  * Represents a type within the serialized emit RTTI format.
  */
-export type RtType = RtDeferrableStructuralType | RtDeferrableValueType | RtDeferredType;
-export type RtDeferrableStructuralType = RtIntrinsicType | RtObjectType | RtUnionType | RtIntersectionType
-    | RtTupleType | RtArrayType | RtGenericType | RtMappedType | RtEnumType | RtCallSite
-    | { TΦ: typeof T_STAND_IN } | RtFunctionType | Literal
+export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtClassType | RtInterfaceType
+    | RtIntersectionType | RtTupleType | RtArrayType | RtGenericType | RtMappedType | RtEnumType | RtCallSite
+    | RtFunctionType | RtLiteralType
 ;
-export type RtDeferrableValueType = Function | InterfaceToken ;
-export type RtDeferredType = RtDeferrableStructuralType | RtDeferredValueType;
-export interface RtDeferredStructuralType { RΦ: () => RtDeferrableStructuralType; }
-export interface RtDeferredValueType { LΦ: () => RtDeferrableValueType; }
 
 export type RtBrandedType = {
     TΦ:
     typeof T_UNION | typeof T_INTERSECTION | typeof T_ANY | typeof T_UNKNOWN | typeof T_VOID | typeof T_UNDEFINED
     | typeof T_NULL | typeof T_TUPLE | typeof T_ARRAY | typeof T_THIS | typeof T_GENERIC | typeof T_MAPPED
-    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_STAND_IN;
+    | typeof T_TRUE | typeof T_FALSE | typeof T_CALLSITE | typeof T_ENUM | typeof T_CLASS | typeof T_INTERFACE;
 };
 
 export type RtIntrinsicIndicator = typeof T_VOID | typeof T_ANY | typeof T_UNKNOWN | typeof T_UNDEFINED | typeof T_TRUE | typeof T_FALSE | typeof T_THIS | typeof T_NULL;
@@ -124,16 +124,58 @@ export interface RtUnionType {
     t: RtType[];
 }
 
+export interface RtClassType {
+    TΦ: typeof T_CLASS;
+    n?: string;
+
+    f?: string;
+
+    /**
+     * The constructor itself, if it was available during compilation.
+     * Builtins (ie String, Number) are always provided.
+     */
+    C?: Function;
+
+    /**
+     * Implements
+     */
+    i?: RtInterfaceType[];
+
+    /**
+     * Extends
+     */
+    e?: RtClassType;
+    m: RtObjectMember[];
+}
+
+export interface RtInterfaceType {
+    TΦ: typeof T_INTERFACE;
+    n?: string;
+    f?: string;
+
+    /**
+     * Extends
+     */
+    e?: RtInterfaceType[];
+    m: RtObjectMember[];
+}
+
 export interface RtObjectType {
     TΦ: typeof T_OBJECT;
     n?: string;
     m: RtObjectMember[];
 }
 
+export interface RtLiteralType {
+    TΦ: typeof T_LITERAL;
+    v: any;
+}
+
 export interface RtFunctionType {
     TΦ: typeof T_FUNCTION;
     r: RtType;
     p: RtParameter[];
+    n?: string;
     f: string;
 }
 export interface RtObjectMember {
@@ -189,11 +231,6 @@ export interface RtGenericType {
 
 export interface RtEnumType {
     TΦ: typeof T_ENUM;
-    /**
-     * This will be the runtime enum object, if it exists.
-     * It will be undefined for const enums.
-     */
-    e: any;
 
     /**
      * Name of the enum
@@ -203,7 +240,7 @@ export interface RtEnumType {
     /**
      * Values of the enum. Only provided for constant enums.
      */
-    v?: Map<string,any>;
+    v?: Record<string,any>;
 }
 
 /**
@@ -233,7 +270,7 @@ export interface RtParameter {
     /**
      * The type of this parameter.
      */
-    t?: () => any;
+    t?: RtType;
 
     /**
      * The initializer for this parameter. Calling may cause side effects.

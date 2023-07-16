@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import * as format from '../common/format';
-import { forwardRef, functionForwardRef } from './forward-ref';
+import { functionForwardRef } from './forward-ref';
 import { literalNode } from './literal-node';
 import { TypeEncoderImpl } from './type-literal';
 import { getModifiers } from './utils';
@@ -63,7 +63,7 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
 
     let meta: format.RtSerialized<format.RtParameter> = {
         n: name,
-        t: literalNode(forwardRef(typeExpr)),
+        t: literalNode(typeExpr),
         b: bindings,
         v: param.initializer ? literalNode(functionForwardRef(param.initializer)) : null
     };

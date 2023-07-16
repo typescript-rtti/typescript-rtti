@@ -1,5 +1,4 @@
 import ts from 'typescript';
-import { legacyDecorator } from './legacy-decorator';
 import { literalNode } from './literal-node';
 import { ExternalDecorator } from './metadata-collector';
 import { serialize } from './serialize';
@@ -16,78 +15,6 @@ export function metadataDecorator(key: string, object: any) {
             ]
         )
     );
-}
-
-export function hostMetadataDecorator() {
-    let factory = ts.factory;
-
-    let dec = ts.factory.createDecorator(factory.createArrowFunction(
-        undefined,
-        undefined,
-        [
-            factory.createParameterDeclaration(
-                undefined,
-                undefined,
-                factory.createIdentifier("t"),
-                undefined,
-                undefined,
-                undefined
-            ),
-            factory.createParameterDeclaration(
-                undefined,
-                undefined,
-                factory.createIdentifier("p"),
-                undefined,
-                undefined,
-                undefined
-            )
-        ],
-        undefined,
-        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-        factory.createCallExpression(
-            factory.createCallExpression(
-                factory.createPropertyAccessExpression(
-                    factory.createIdentifier("__RΦ"),
-                    factory.createIdentifier("m")
-                ),
-                undefined,
-                [
-                    factory.createStringLiteral("rt:h"),
-                    factory.createArrowFunction(
-                        undefined,
-                        undefined,
-                        [],
-                        undefined,
-                        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                        factory.createConditionalExpression(
-                            factory.createBinaryExpression(
-                                factory.createTypeOfExpression(factory.createIdentifier("t")),
-                                factory.createToken(ts.SyntaxKind.EqualsEqualsEqualsToken),
-                                factory.createStringLiteral("object")
-                            ),
-                            factory.createToken(ts.SyntaxKind.QuestionToken),
-                            factory.createPropertyAccessExpression(
-                                factory.createIdentifier("t"),
-                                factory.createIdentifier("constructor")
-                            ),
-                            factory.createToken(ts.SyntaxKind.ColonToken),
-                            factory.createIdentifier("t")
-                        )
-                    )
-                ]
-            ),
-            undefined,
-            [factory.createElementAccessExpression(
-                factory.createIdentifier("t"),
-                factory.createIdentifier("p")
-            )]
-        )
-    ));
-    return dec;
-}
-
-export function legacyMetadataDecorator(key: string, object: any) {
-    return legacyDecorator(metadataDecorator(key, object));
 }
 
 export function directMetadataDecorator(key: string, object: any) {
@@ -164,4 +91,72 @@ export function decorateClassExpression(classExpr: ts.ClassExpression, decorator
         name ? ts.factory.createStringLiteral(name) : ts.factory.createVoidZero()
     ]
     );
+}
+
+export function hostMetadataDecorator() {
+    let factory = ts.factory;
+
+    let dec = ts.factory.createDecorator(factory.createArrowFunction(
+        undefined,
+        undefined,
+        [
+            factory.createParameterDeclaration(
+                undefined,
+                undefined,
+                factory.createIdentifier("t"),
+                undefined,
+                undefined,
+                undefined
+            ),
+            factory.createParameterDeclaration(
+                undefined,
+                undefined,
+                factory.createIdentifier("p"),
+                undefined,
+                undefined,
+                undefined
+            )
+        ],
+        undefined,
+        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+        factory.createCallExpression(
+            factory.createCallExpression(
+                factory.createPropertyAccessExpression(
+                    factory.createIdentifier("__RΦ"),
+                    factory.createIdentifier("m")
+                ),
+                undefined,
+                [
+                    factory.createStringLiteral("rt:h"),
+                    factory.createArrowFunction(
+                        undefined,
+                        undefined,
+                        [],
+                        undefined,
+                        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+                        factory.createConditionalExpression(
+                            factory.createBinaryExpression(
+                                factory.createTypeOfExpression(factory.createIdentifier("t")),
+                                factory.createToken(ts.SyntaxKind.EqualsEqualsEqualsToken),
+                                factory.createStringLiteral("object")
+                            ),
+                            factory.createToken(ts.SyntaxKind.QuestionToken),
+                            factory.createPropertyAccessExpression(
+                                factory.createIdentifier("t"),
+                                factory.createIdentifier("constructor")
+                            ),
+                            factory.createToken(ts.SyntaxKind.ColonToken),
+                            factory.createIdentifier("t")
+                        )
+                    )
+                ]
+            ),
+            undefined,
+            [factory.createElementAccessExpression(
+                factory.createIdentifier("t"),
+                factory.createIdentifier("p")
+            )]
+        )
+    ));
+    return dec;
 }

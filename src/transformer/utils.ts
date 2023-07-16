@@ -1,6 +1,8 @@
 import ts from 'typescript';
 import { RttiContext } from './rtti-context';
 
+let x = new String('x');
+
 export function assert(check: () => boolean) {
     if (!check())
         throw new Error(`Assertion failed: ${check.toString().replace(/.*?=> */, '')}`);
@@ -1409,13 +1411,13 @@ export function isStatement(node: ts.Node): node is ts.Statement {
     return ts['isStatement'](node);
 }
 
-export function getTypeLocality(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode): 'local' | 'imported' | 'global' {
+export function getTypeLocality(ctx: RttiContext, type: ts.Type, typeNode: ts.TypeNode): 'local' | 'defaultLib' | 'imported' | 'global' {
     if (!type.symbol)
         return 'global';
 
     let typeSourceFile = type.symbol.declarations?.[0]?.getSourceFile();
     if (!typeSourceFile || ctx.program.isSourceFileDefaultLibrary(typeSourceFile))
-        return 'global';
+        return 'defaultLib';
 
     let isLocal = typeSourceFile === ctx.sourceFile;
 
@@ -1448,4 +1450,13 @@ export function fileExists(filename: string) {
     }
 
     throw new Error(`No filesystem access available in this environment! Should guard using hasFilesystem()! This is a bug.`);
+}
+
+/**
+ * Utility to force definition for all optional members.
+ * @param t
+ * @returns
+ */
+export function required<T>(t: Required<T>) {
+    return t;
 }

@@ -30,40 +30,24 @@
  *
  */
 
-import { rtStore } from './rt-helper';
 import * as ts from 'typescript';
-import { ImportAnalyzer } from './common/import-analyzer';
+
+import { rtStore } from './rt-helper';
 import { CompileError } from './common/compile-error';
-import { RttiContext } from './rtti-context';
+import { RttiContext, RttiSettings } from './rtti-context';
 import { ApiCallTransformer } from './api-call-transformer';
 import { MetadataEmitter } from './metadata-emitter';
 import { DeclarationsEmitter } from './declarations-emitter';
-
-export interface RttiSettings {
-    trace?: boolean;
-    throwOnFailure?: boolean;
-}
+import { required } from './utils';
 
 const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program: ts.Program) => {
-    let compilerOptions = program.getCompilerOptions();
-
-    if (typeof compilerOptions['rtti$emitStandardMetadata'] === 'undefined') {
-        let emitDecoratorMetadata = compilerOptions.emitDecoratorMetadata;
-        compilerOptions['rtti$emitStandardMetadata'] = emitDecoratorMetadata;
-        compilerOptions.emitDecoratorMetadata = false;
-    }
-
-    let emitStandardMetadata = <boolean>compilerOptions['rtti$emitStandardMetadata'];
-
     if (globalThis.RTTI_TRACE)
-        console.log(`RTTI: Entering program [emitDecoratorMetadata=${emitStandardMetadata}]`);
+        console.log(`RTTI: Entering program`);
 
     // Share a package.json cache across the whole program
     let pkgJsonMap = new Map<string, any>();
 
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context: ts.TransformationContext) => {
-        let settings = <RttiSettings>context.getCompilerOptions().rtti;
-
         if (globalThis.RTTI_TRACE)
             console.log(`RTTI: Transformer setup`);
 
@@ -76,157 +60,42 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                 program,
                 checker: program.getTypeChecker(),
                 currentNameScope: undefined,
-                freeImportReference: 0,
-                importMap: new Map(),
                 sourceFile,
-                trace: settings?.trace ?? false,
-                throwOnFailure: settings?.throwOnFailure ?? false,
+                settings: {
+                    ...required<RttiSettings>({
+                        // Defaults
+                        trace: false,
+                        throwOnFailure: false,
+                        omitLibTypeMetadata: true
+                    }),
+                    ...(context.getCompilerOptions().rtti as object)
+                },
                 transformationContext: context,
                 typeMap: new Map<number, ts.Expression>(),
                 pkgJsonMap,
-                emitStandardMetadata,
                 currentTopStatement: undefined,
                 interfaceSymbols: []
             };
 
-            ImportAnalyzer.analyze(sourceFile, ctx);
-
             if (sourceFile.isDeclarationFile || sourceFile.fileName.endsWith('.d.ts')) {
-                if (ctx.trace)
+                if (ctx.settings.trace)
                     console.log(`#### Processing declaration ${sourceFile.fileName}`);
                 return DeclarationsEmitter.emit(sourceFile, ctx);
             }
 
-            if (ctx.trace)
+            if (ctx.settings.trace)
                 console.log(`#### Processing ${sourceFile.fileName}`);
 
-            globalThis.RTTI_TRACE = ctx.trace;
-            globalThis.RTTI_THROW_ON_FAILURE = ctx.throwOnFailure;
+            globalThis.RTTI_TRACE = ctx.settings.trace;
+            globalThis.RTTI_THROW_ON_FAILURE = ctx.settings.throwOnFailure;
 
             //////////////////////////////////////////////////////////
             // Transform reflect<T>() and reify<T>()
 
             sourceFile = <ts.SourceFile>ApiCallTransformer.transform(sourceFile, ctx);
 
-            function generateInterfaceSymbols(statements: ts.Statement[]): ts.Statement[] {
-                for (let iface of ctx.interfaceSymbols) {
-                    let impoIndex = statements.indexOf(iface.interfaceDecl);
-                    if (impoIndex >= 0) {
-                        statements.splice(impoIndex, 0, ...iface.symbolDecl);
-                    } else {
-                        statements.push(...iface.symbolDecl);
-                    }
-
-                }
-
-                return statements;
-            }
-
-            function generateImports(statements: ts.Statement[]): ts.Statement[] {
-                let imports: ts.ImportDeclaration[] = [];
-                let isCommonJS = context.getCompilerOptions().module === ts.ModuleKind.CommonJS;
-
-                let statementTransforms = new Map<ts.Statement, ts.Statement>();
-                for (let statement of statements)
-                    statementTransforms.set(<ts.Statement>ts.getOriginalNode(statement), statement);
-
-                for (let impo of ctx.importMap.values()) {
-                    if (!impo.referenced)
-                        continue;
-
-                    if (ctx.trace)
-                        console.log(`RTTI: Generating owned import for '${impo.modulePath}'`);
-
-                    let ownedImpo: ts.Statement;
-
-                    if (impo.isDefault) {
-                        if (isCommonJS) {
-                            // Typescript's conversion of default imports to CommonJS causes default imports get
-                            // renamed without changing the corresponding references, so we need to output a
-                            // literal `require()` statement here
-                            ownedImpo = ts.factory.createVariableStatement(
-                                undefined,
-                                ts.factory.createVariableDeclarationList(
-                                    [ts.factory.createVariableDeclaration(
-                                        ts.factory.createIdentifier(impo.localName),
-                                        undefined,
-                                        undefined,
-                                        ts.factory.createPropertyAccessExpression(
-                                            ts.factory.createCallExpression(
-                                                ts.factory.createIdentifier("require"),
-                                                undefined,
-                                                [ts.factory.createStringLiteral(impo.modulePath)]
-                                            ),
-                                            ts.factory.createIdentifier("default")
-                                        )
-                                    )],
-                                    ts.NodeFlags.None
-                                )
-                            )
-                        } else {
-                            ownedImpo = ts.factory.createImportDeclaration(
-                                undefined,
-                                ts.factory.createImportClause(
-                                    false, ts.factory.createIdentifier(impo.localName),
-                                    undefined
-                                ),
-                                ts.factory.createStringLiteral(impo.modulePath),
-                                undefined
-                            );
-                        }
-                    } else {
-                        ownedImpo = ts.factory.createImportDeclaration(
-                            undefined,
-                            ts.factory.createImportClause(
-                                false, undefined,
-
-                                impo.isNamespace
-                                    ? ts.factory.createNamespaceImport(ts.factory.createIdentifier(impo.localName))
-                                    : ts.factory.createNamedImports(
-                                        [
-                                            ts.factory.createImportSpecifier(
-                                                false,
-                                                ts.factory.createIdentifier(impo.refName),
-                                                ts.factory.createIdentifier(impo.localName)
-                                            )
-                                        ]
-                                    )
-                            ),
-                            ts.factory.createStringLiteral(impo.modulePath)
-                        );
-                    }
-
-                    let impoIndex = -1;
-                    if (impo.importDeclaration) {
-                        let original = statementTransforms.get(impo.importDeclaration) ?? impo.importDeclaration;
-                        impoIndex = statements.indexOf(original);
-                        if (impoIndex < 0)
-                            impoIndex = statements.indexOf(impo.importDeclaration);
-                    }
-
-                    if (impoIndex >= 0) {
-                        statements.splice(impoIndex, 0, ownedImpo);
-                    } else {
-                        statements.splice(0, 0, ownedImpo);
-                    }
-                }
-
-                return statements;
-            }
-
             try {
                 sourceFile = MetadataEmitter.emit(sourceFile, ctx);
-                sourceFile = ts.factory.updateSourceFile(
-                    sourceFile,
-                    [
-                        ...generateInterfaceSymbols(generateImports(Array.from(sourceFile.statements))),
-                    ],
-                    sourceFile.isDeclarationFile,
-                    sourceFile.referencedFiles,
-                    sourceFile.typeReferenceDirectives,
-                    sourceFile.hasNoDefaultLib,
-                    sourceFile.libReferenceDirectives
-                );
             } catch (e) {
                 if (e instanceof CompileError)
                     throw e;

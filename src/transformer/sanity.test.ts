@@ -76,7 +76,6 @@ describe('Sanity', () => {
                 export class C { foo() { } }
             `,
             checks: exports => {
-                expect(typeof exports.IΦA.identity).to.equal('symbol');
                 expect(typeof exports.B).to.equal('function');
                 expect(typeof exports.C).to.equal('function');
                 expect(typeof exports.C.prototype.foo).to.equal('function');
@@ -340,6 +339,36 @@ describe('Sanity', () => {
                     static stuff = "things";
                 }
             `
+        });
+    });
+    it('doesn\'t explode on bare imports', async () => {
+        await runSimple({
+            code: `
+                import "foo";
+
+                export class A { }
+                export class B {
+                    constructor(hello : A) { }
+                }
+            `,
+            modules: {
+                foo: {}
+            }
+        });
+    });
+    it('doesn\'t explode on default imports', async () => {
+        await runSimple({
+            code: `
+                import foo from "foo";
+
+                export class A { }
+                export class B {
+                    constructor(hello : A) { }
+                }
+            `,
+            modules: {
+                foo: {}
+            }
         });
     });
 });
