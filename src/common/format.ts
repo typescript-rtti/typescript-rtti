@@ -51,6 +51,7 @@ export const T_FALSE: '0' = '0';
 export const T_CALLSITE: 'c' = 'c';
 export const T_OBJECT: 'O' = 'O';
 export const T_ENUM: 'e' = 'e';
+export const T_ENUM_LITERAL: 'E' = 'E';
 export const T_FUNCTION: 'F' = 'F';
 export const T_CLASS: 'C' = 'C';
 export const T_INTERFACE: 'I' = 'I';
@@ -77,7 +78,7 @@ export interface InterfaceToken<T = any> {
  * Represents a type within the serialized emit RTTI format.
  */
 export type RtType = RtIntrinsicType | RtObjectType | RtUnionType | RtClassType | RtInterfaceType
-    | RtIntersectionType | RtTupleType | RtArrayType | RtGenericType | RtMappedType | RtEnumType | RtCallSite
+    | RtIntersectionType | RtTupleType | RtArrayType | RtGenericType | RtMappedType | RtEnumType | RtEnumLiteralType | RtCallSite
     | RtFunctionType | RtLiteralType
 ;
 
@@ -241,6 +242,13 @@ export interface RtEnumType {
      * Values of the enum. Only provided for constant enums.
      */
     v?: Record<string,any>;
+}
+
+export interface RtEnumLiteralType {
+    TΦ: typeof T_ENUM_LITERAL;
+    n: string;
+    e: RtEnumType;
+    v: any;
 }
 
 /**

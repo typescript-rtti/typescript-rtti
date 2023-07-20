@@ -4,7 +4,7 @@ import * as format from '../common/format';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 import { MappedType } from './ts-internal-types';
-import { getModifiers, getTypeLocality, hasFlag, hasModifier, isFlagType, skipAlias } from './utils';
+import { getModifiers, getTypeLocality, hasFlag, hasModifier, isFlagType, parentSymbol, skipAlias } from './utils';
 import { RttiContext } from './rtti-context';
 import { encodeParameter } from './encode-parameter';
 import { ClassVisitor } from './common/class-visitor';
@@ -66,11 +66,32 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         case hasFlag(type.flags, ts.TypeFlags.Conditional): return globalClassType('Object'); // TODO
 
         case hasFlag(type.flags, ts.TypeFlags.EnumLiteral):
-            return serialize({
-                TΦ: format.T_ENUM,
-                n: type.symbol.name ?? type.aliasSymbol.name,
-                v: (type as ts.UnionType).types.reduce((s, t: ts.LiteralType) => (s[t.symbol.name] = t.value, s), {})
-            });
+
+            if (hasFlag(type.flags, ts.TypeFlags.Union)) {
+                // Technically when an enum itself is used as a type, it is a Union of EnumLiterals. Technically if we
+                // did not handle this we would cause a T_UNION over the set of T_ENUM_LITERALs comprising the enum.
+                // But it is more efficient to simply output a T_ENUM instead.
+                return serialize({
+                    TΦ: format.T_ENUM,
+                    n: type.symbol.name ?? type.aliasSymbol.name,
+                    v: (type as ts.UnionType).types.reduce((s, t: ts.LiteralType) => (s[t.symbol.name] = t.value, s), {})
+                });
+            } else if (type.isLiteral()) {
+                // This would be hit in, for instance: `let a: MyEnum.Foo | MyEnum.Bar`. In that case we are creating
+                // an _actual_ T_UNION (no EnumLiteral involved) comprised of a type for each enum constant
+                // (EnumLiteral without Union).
+
+                let unionType =  checker.getTypeAtLocation(parentSymbol(type.symbol).valueDeclaration);
+                return serialize({
+                    TΦ: format.T_ENUM_LITERAL,
+                    n: type.symbol.name ?? type.aliasSymbol.name,
+                    e: literalNode(encoder.referToType(unionType)),
+                    v: type.value
+                });
+            } else {
+                console.warn(`RTTI: EnumLiteral type was neither a primitive literal nor a union of literals! This is a bug, please send us a reproduction!`);
+                return intrinsicType(format.T_ANY);
+            }
 
         case hasFlag(type.flags, ts.TypeFlags.TypeVariable):
             return type['isThisType']

@@ -1153,6 +1153,40 @@ describe('rtti:type', () => {
             }
         });
     });
+    it.only('emits for an enum literal', async () => {
+        await runSimple({
+            code: `
+                export enum A {
+                    Zero = 0,
+                    One = 1,
+                    Two = 2
+                }
+                export class B {
+                    thing(): A.Two {
+                        return A.Two;
+                    }
+                }
+            `,
+            globals,
+            checks: exports => {
+                expect(member(type(exports.B), 'thing').t.r).to.deep.include({
+                    TΦ: format.T_ENUM_LITERAL,
+                    n: 'Two',
+                    v: 2,
+                    e: {
+                        TΦ: format.T_ENUM,
+                        n: 'A',
+                        v: {
+                            One: 1,
+                            Two: 2,
+                            Zero: 0
+                        }
+                    }
+                })
+
+            }
+        });
+    });
     it('emits for const enum type', async () => {
         await runSimple({
             code: `

@@ -1,7 +1,7 @@
 import { Visit, VisitorBase } from "./visitor-base";
 import * as ts from 'typescript';
 import * as format from '../../common/format';
-import { getModifiers, hasModifier, propertyNameToString } from '../utils';
+import { cloneNode, getModifiers, hasModifier, propertyNameToString } from '../utils';
 import { TypeEncoderImpl } from '../type-literal';
 import { literalNode } from '../literal-node';
 import { getVisibility, isAsync, isReadOnly, methodFlags } from '../flags';
@@ -130,7 +130,7 @@ export class ClassVisitor extends VisitorBase {
                 n: param.name.text,
                 f: flags,
                 t: <any>literalNode(this.encoder.referToType(this.checker.getTypeAtLocation(param), param.type)),
-                v: param.initializer ? <any>literalNode(functionForwardRef(param.initializer)) : undefined
+                v: param.initializer ? <any>literalNode(functionForwardRef(cloneNode(param.initializer))) : undefined
             };
         } else if (ts.isArrayBindingPattern(param.name)) {
             return {
@@ -138,7 +138,7 @@ export class ClassVisitor extends VisitorBase {
                 bt: 'a',
                 b: Array.from(param.name.elements).map(x => this.bindingElement(x)),
                 t: <any>literalNode(this.encoder.referToType(this.checker.getTypeAtLocation(param), param.type)),
-                v: param.initializer ? <any>literalNode(functionForwardRef(param.initializer)) : undefined
+                v: param.initializer ? <any>literalNode(functionForwardRef(cloneNode(param.initializer))) : undefined
             }
         } else if (ts.isObjectBindingPattern(param.name)) {
             return {
@@ -146,7 +146,7 @@ export class ClassVisitor extends VisitorBase {
                 bt: 'o',
                 b: Array.from(param.name.elements).map(x => this.bindingElement(x)),
                 t: <any>literalNode(this.encoder.referToType(this.checker.getTypeAtLocation(param), param.type)),
-                v: param.initializer ? <any>literalNode(functionForwardRef(param.initializer)) : undefined
+                v: param.initializer ? <any>literalNode(functionForwardRef(cloneNode(param.initializer))) : undefined
             }
         }
     }
@@ -159,13 +159,13 @@ export class ClassVisitor extends VisitorBase {
                 return {
                     bt: 'o',
                     b: bindingElement.name.elements.map(x => this.bindingElement(x)),
-                    v: bindingElement.initializer ? <any>literalNode(functionForwardRef(bindingElement.initializer)) : undefined
+                    v: bindingElement.initializer ? <any>literalNode(functionForwardRef(cloneNode(bindingElement.initializer))) : undefined
                 }
             } else if (ts.isArrayBindingPattern(bindingElement.name)) {
                 return {
                     bt: 'a',
                     b: bindingElement.name.elements.map(x => this.bindingElement(x)),
-                    v: bindingElement.initializer ? <any>literalNode(functionForwardRef(bindingElement.initializer)) : undefined
+                    v: bindingElement.initializer ? <any>literalNode(functionForwardRef(cloneNode(bindingElement.initializer))) : undefined
                 }
             }
             return { bt: 'a', }

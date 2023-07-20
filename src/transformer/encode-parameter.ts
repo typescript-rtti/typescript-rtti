@@ -3,7 +3,7 @@ import * as format from '../common/format';
 import { functionForwardRef } from './forward-ref';
 import { literalNode } from './literal-node';
 import { TypeEncoderImpl } from './type-literal';
-import { getModifiers } from './utils';
+import { cloneNode, getModifiers } from './utils';
 
 export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDeclaration | ts.BindingElement | ts.OmittedExpression): format.RtSerialized<format.RtParameter> {
 
@@ -65,7 +65,7 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
         n: name,
         t: literalNode(typeExpr),
         b: bindings,
-        v: param.initializer ? literalNode(functionForwardRef(param.initializer)) : null
+        v: param.initializer ? literalNode(functionForwardRef(cloneNode(param.initializer))) : null
     };
 
     if (f.length > 0)

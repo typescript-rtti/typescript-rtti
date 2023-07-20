@@ -193,6 +193,33 @@ describe('ClassType', () => {
         expect(ref.as('enum').nameSet.has('Three')).to.be.false;
         expect(ref.as('enum').name).to.equal('MyEnum');
     });
+    it.only('reflects enum literal refs', () => {
+        let ref = Type.createFromRtRef({
+            TΦ: format.T_ENUM_LITERAL,
+            n: 'Two',
+            v: 2,
+            e: {
+                TΦ: format.T_ENUM,
+                n: 'MyEnum',
+                v: {
+                    Zero: 0,
+                    One: 1,
+                    Two: 2
+                }
+            }
+        });
+
+        expect(ref.kind).to.equal('enum-literal');
+        expect(ref.as('enum-literal').name).to.equal('Two');
+        expect(ref.as('enum-literal').value).to.equal(2);
+
+        expect(ref.as('enum-literal').enum.kind).to.equal('enum');
+        expect(ref.as('enum-literal').enum.nameSet.has('Zero')).to.be.true;
+        expect(ref.as('enum-literal').enum.nameSet.has('One')).to.be.true;
+        expect(ref.as('enum-literal').enum.nameSet.has('Two')).to.be.true;
+        expect(ref.as('enum-literal').enum.nameSet.has('Three')).to.be.false;
+        expect(ref.as('enum-literal').enum.name).to.equal('MyEnum');
+    });
     it('reflects implemented interfaces', () => {
         let klass = reflectClassType({
             i: [

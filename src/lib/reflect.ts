@@ -19,8 +19,8 @@ function Flag(value: string) {
 
 export type TypeKind = 'union' | 'intersection' | 'any'
     | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'mapped' | 'literal'
-    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum' | 'function'
-    | 'class' | 'interface';
+    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum' | 'enum-literal'
+    | 'function' | 'class' | 'interface';
 
 export const TYPE_REF_KIND_EXPANSION: Record<string, TypeKind> = {
     [format.T_UNKNOWN]: 'unknown',
@@ -35,6 +35,7 @@ export const TYPE_REF_KIND_EXPANSION: Record<string, TypeKind> = {
     [format.T_UNDEFINED]: 'undefined',
     [format.T_MAPPED]: 'mapped',
     [format.T_ENUM]: 'enum',
+    [format.T_ENUM_LITERAL]: 'enum-literal',
     [format.T_FALSE]: 'false',
     [format.T_TRUE]: 'true',
     [format.T_OBJECT]: 'object',
@@ -220,6 +221,7 @@ export class Type<T extends format.RtType = format.RtType> {
     /** Check if this type reference is an intersection type */ is(kind: 'intersection'): this is IntersectionType;
     /** Check if this type reference is a union type         */ is(kind: 'union'): this is UnionType;
     /** Check if this type reference is an enum type         */ is(kind: 'enum'): this is EnumType;
+    /** Check if this type reference is an enum literal type */ is(kind: 'enum-literal'): this is EnumLiteralType;
     /** Check if this type reference is a tuple type         */ is(kind: 'tuple'): this is TupleType;
     /** Check if this type reference is a void type          */ is(kind: 'void'): this is VoidType;
     /** Check if this type reference is an any type          */ is(kind: 'any'): this is AnyType;
@@ -265,9 +267,16 @@ export class Type<T extends format.RtType = format.RtType> {
     as<T = any>(kind: 'generic'): GenericType;
     /**
      * Assert that this type reference is an enum type and cast it to EnumType.
-     * If the reference is not the correct type an error is thrown.
+     * If the reference is not the correct type an error is thrown. Given `enum Foo { Bar = 1 }`,
+     * an enum type would be `Foo` (as opposed to `Foo.Bar`, which is an enum literal type)
      */
     as<T = any>(kind: 'enum'): EnumType;
+    /**
+     * Assert that this type reference is an enum literal type and cast it to EnumLiteralType.
+     * If the reference is not the correct type an error is thrown. Given `enum Foo { Bar = 1 }`,
+     * an enum literal type would be `Foo.Bar` (as opposed to `Foo`, which is an enum type)
+     */
+    as<T = any>(kind: 'enum-literal'): EnumLiteralType;
     /**
      * Assert that this type reference is an array type and cast it to ArrayType.
      * If the reference is not the correct type an error is thrown.
@@ -1156,6 +1165,26 @@ export class GenericType extends Type<format.RtGenericType> {
         options ??= {};
         options.errors ??= [];
         return this.baseType.matchesValue(value, options);
+    }
+}
+
+@Type.Kind('enum-literal')
+export class EnumLiteralType extends Type<format.RtEnumLiteralType> {
+    get kind() { return 'enum-literal' as const; }
+    toString() { return `${this.enum.name}.${this.name} [${this.value}]`; }
+
+    private _enum: EnumType;
+
+    get name() {
+        return this.ref.n;
+    }
+
+    get enum() {
+        return this._enum ??= EnumType.createFromRtRef(this.ref.e);
+    }
+
+    get value() {
+        return this.ref.v;
     }
 }
 

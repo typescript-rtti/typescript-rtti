@@ -137,7 +137,7 @@ export function serializeEntityNameAsExpression(node: ts.EntityName, currentLexi
             // Create a clone of the name with a new parent, and treat it as if it were
             // a source tree node for the purposes of the checker.
 
-            const name = setParent(ts.setTextRange(<typeof node>(ts.factory as any)['cloneNode'](node), node), node.parent);
+            const name = setParent(ts.setTextRange(cloneNode(node), node), node.parent);
             (name as any)['original'] = undefined;
             setParent(name, ts.getParseTreeNode(currentLexicalScope)); // ensure the parent is set to a parse tree node.
             return name;
@@ -147,6 +147,9 @@ export function serializeEntityNameAsExpression(node: ts.EntityName, currentLexi
     }
 }
 
+export function cloneNode<T extends ts.Node>(node: T): T {
+    return (ts.factory as any).cloneNode(node);
+}
 /**
  * Serializes an qualified name as an expression for decorator type metadata.
  *
@@ -1459,4 +1462,8 @@ export function fileExists(filename: string) {
  */
 export function required<T>(t: Required<T>) {
     return t;
+}
+
+export function parentSymbol(symbol: ts.Symbol): ts.Symbol {
+    return (symbol as any)?.parent;
 }
