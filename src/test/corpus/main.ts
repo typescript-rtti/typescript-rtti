@@ -83,7 +83,6 @@ const PACKAGES: Record<string, Package> = {
     },
     "typeorm/typeorm": {
         enabled: true,
-        only: true,
         url: 'https://github.com/typeorm/typeorm.git',
         ref: '0.3.11',
         commands: ['tsc']

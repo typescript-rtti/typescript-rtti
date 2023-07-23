@@ -148,7 +148,7 @@ describe('ClassType#matchesValue()', () => {
     });
 });
 describe('ObjectType#matchesValue()', () => {
-    it.only('supports object literals', async () => {
+    it('supports object literals', async () => {
         let ref = Type.createFromRtRef(<format.RtObjectType>{
             TΦ: T_OBJECT,
             m: [

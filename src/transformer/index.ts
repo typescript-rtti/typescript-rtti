@@ -31,6 +31,7 @@
  */
 
 import * as ts from 'typescript';
+import * as format from '../common/format';
 
 import { rtStore } from './rt-helper';
 import { CompileError } from './common/compile-error';
@@ -39,20 +40,60 @@ import { ApiCallTransformer } from './api-call-transformer';
 import { MetadataEmitter } from './metadata-emitter';
 import { DeclarationsEmitter } from './declarations-emitter';
 import { required } from './utils';
+import { findRelativePathToFile } from './find-relative-path';
+
+const TRANSFORMER = Symbol('RTTI Transformer');
 
 const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile> = (program: ts.Program) => {
+    if (program[TRANSFORMER])
+        return program[TRANSFORMER];
+
     if (globalThis.RTTI_TRACE)
         console.log(`RTTI: Entering program`);
 
     // Share a package.json cache across the whole program
     let pkgJsonMap = new Map<string, any>();
+    const settings: RttiSettings = {
+        ...required<RttiSettings>({
+            // Defaults
+            trace: false,
+            throwOnFailure: false,
+            omitLibTypeMetadata: true
+        }),
+        ...(program.getCompilerOptions().rtti as object)
+    };
+
+    let outDir = program.getCompilerOptions().outDir ?? '.';
+    let id: number;
+    let typeStoreFile: string;
+    do {
+        id = (1_000_000 + Math.random() * 10_000_000) | 0;
+        typeStoreFile = `${outDir}/__tsrtti.${id}.g.js`;
+    } while (program.fileExists(typeStoreFile));
+
+    let sourceFiles = program.getSourceFiles().filter(x => !program.isSourceFileDefaultLibrary(x)
+        && !program.isSourceFileFromExternalLibrary(x));
+
+    let sourceFileCount = sourceFiles.length;
+    let sourceFilesVisited = 0;
+    const typeMap = new Map<number, ts.Expression>();
+    const printer = ts.createPrinter();
+    const emptySourceFile = ts.createSourceFile('empty.ts', '', ts.ScriptTarget.ES2022);
+
+    if (settings.trace) {
+        console.log(`RTTI: Creating transformer for ${sourceFileCount} source files`);
+        console.log(`RTTI: Build ID: ${id}`);
+        console.log(`RTTI: Type Store: ${typeStoreFile}`);
+        console.log(`RTTI: Initial types: ${program.getTypeCount()}`);
+    }
+
+    let typeStoreTypesWritten = -1;
 
     const rttiTransformer: ts.TransformerFactory<ts.SourceFile> = (context: ts.TransformationContext) => {
         if (globalThis.RTTI_TRACE)
             console.log(`RTTI: Transformer setup`);
 
         return sourceFile => {
-
             if (globalThis.RTTI_TRACE)
                 console.log(`RTTI: Transforming '${sourceFile.fileName}'`);
 
@@ -61,17 +102,9 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                 checker: program.getTypeChecker(),
                 currentNameScope: undefined,
                 sourceFile,
-                settings: {
-                    ...required<RttiSettings>({
-                        // Defaults
-                        trace: false,
-                        throwOnFailure: false,
-                        omitLibTypeMetadata: true
-                    }),
-                    ...(context.getCompilerOptions().rtti as object)
-                },
+                settings,
                 transformationContext: context,
-                typeMap: new Map<number, ts.Expression>(),
+                typeMap,
                 pkgJsonMap,
                 currentTopStatement: undefined,
                 interfaceSymbols: []
@@ -107,9 +140,43 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                     throw e;
             }
 
+            let storeImport: ts.Statement;
+            const outFile = `${outDir}/${findRelativePathToFile(program.getCommonSourceDirectory(), sourceFile.fileName).substring(2)}`;
+            const storeImportPath = findRelativePathToFile(outFile, typeStoreFile);
+
+            if (program.getCompilerOptions().module >= ts.ModuleKind.ES2015 && program.getCompilerOptions().module <= ts.ModuleKind.ESNext) {
+                storeImport = ts.factory.createImportDeclaration(
+                    undefined,
+                    ts.factory.createImportClause(
+                        false,
+                        ts.factory.createIdentifier("__RΦ"),
+                        undefined
+                    ),
+                    ts.factory.createStringLiteral(storeImportPath),
+                    undefined
+                );
+            } else {
+                storeImport = ts.factory.createVariableStatement(
+                    undefined,
+                    ts.factory.createVariableDeclarationList(
+                        [ts.factory.createVariableDeclaration(
+                            ts.factory.createIdentifier("__RΦ"),
+                            undefined,
+                            undefined,
+                            ts.factory.createCallExpression(
+                                ts.factory.createIdentifier("require"),
+                                undefined,
+                                [ts.factory.createStringLiteral(storeImportPath)]
+                            )
+                        )],
+                        ts.NodeFlags.Const
+                    )
+                )
+            }
+
             sourceFile = ts.factory.updateSourceFile(
                 sourceFile,
-                [rtStore(ctx.typeMap), ...sourceFile.statements],
+                [ storeImport, ...sourceFile.statements ],
                 sourceFile.isDeclarationFile,
                 sourceFile.referencedFiles,
                 sourceFile.typeReferenceDirectives,
@@ -117,12 +184,64 @@ const transformer: (program: ts.Program) => ts.TransformerFactory<ts.SourceFile>
                 sourceFile.libReferenceDirectives
             );
 
-            if (globalThis.RTTI_TRACE)
+            if (settings.trace) {
+                console.log(`========================================================`);
                 console.log(`RTTI: Finished transforming '${sourceFile.fileName}'`);
+                console.log(`RTTI: Visited ${sourceFilesVisited} / ${sourceFileCount} source files [${sourceFile.fileName}]`);
+                console.log(`RTTI: Total Types: ${program.getTypeCount()}`);
+                console.log(`RTTI: Types in this file: ${ctx.typeMap.size}`);
+            }
+
+            sourceFilesVisited += 1;
+
+            // Update the type store, if needed
+            if (typeMap.size > typeStoreTypesWritten) {
+                const store = ts.factory.createVariableStatement(
+                    undefined,
+                    ts.factory.createVariableDeclarationList(
+                        [ts.factory.createVariableDeclaration(
+                            ts.factory.createIdentifier("__RΦ"),
+                            undefined,
+                            undefined,
+                            rtStore(typeMap)
+                        )],
+                        ts.NodeFlags.Const
+                    )
+                );
+                let storeExport: ts.Statement;
+
+                if (program.getCompilerOptions().module >= ts.ModuleKind.ES2015 && program.getCompilerOptions().module <= ts.ModuleKind.ESNext) {
+                    storeExport = ts.factory.createExportAssignment(
+                        undefined, undefined,
+                        ts.factory.createIdentifier('__RΦ')
+                    );
+                } else {
+                    storeExport = ts.factory.createExpressionStatement(
+                        ts.factory.createBinaryExpression(
+                            ts.factory.createPropertyAccessExpression(
+                            ts.factory.createIdentifier("module"),
+                            ts.factory.createIdentifier("exports")
+                            ),
+                            ts.factory.createToken(ts.SyntaxKind.EqualsToken),
+                            ts.factory.createIdentifier('__RΦ')
+                        )
+                    );
+                }
+
+                const storeSourceFile = ts.factory.createSourceFile([
+                    store,
+                    storeExport
+                ], undefined, 0);
+
+                program.writeFile(typeStoreFile, printer.printNode(ts.EmitHint.Unspecified, storeSourceFile, storeSourceFile), false);
+                typeStoreTypesWritten = typeMap.size;
+            }
+
             return sourceFile;
         };
     };
 
+    program[TRANSFORMER] = rttiTransformer;
     return rttiTransformer;
 };
 
