@@ -247,7 +247,6 @@ export function propertyPrepend(expr: ts.Expression, propAccess: ts.PropertyAcce
             propAccess.name
         );
     } else {
-        console.dir(propAccess);
         throw new Error(`Unsupported expression type '${ts.SyntaxKind[propAccess.kind]}'`);
     }
 }
@@ -1466,4 +1465,8 @@ export function required<T>(t: Required<T>) {
 
 export function parentSymbol(symbol: ts.Symbol): ts.Symbol {
     return (symbol as any)?.parent;
+}
+
+export function getTypeOfSymbol(checker: ts.TypeChecker, symbol: ts.Symbol) {
+    return (checker as any).getTypeOfSymbol(symbol);
 }

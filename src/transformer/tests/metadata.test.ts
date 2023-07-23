@@ -310,6 +310,244 @@ describe('rtti:type', () => {
             }
         });
     });
+    it('identifies structured types with a single call signature as function types', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    (foo: string): void;
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                expect(member(type(exports.A), 'x').t).to.deep.include(<format.RtFunctionType>{
+                    TΦ: format.T_FUNCTION,
+                    p: [
+                        {
+                            n: 'foo',
+                            t: builtinClass(String)
+                        }
+                    ],
+                    r: voidType()
+                });
+            }
+        });
+    });
+    it('identifies structured types with multiple signatures', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    (): void;
+                    (foo: string): void;
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                expect(member(type(exports.A), 'x').t).to.deep.include(<Partial<format.RtObjectType>>{
+                    TΦ: format.T_OBJECT,
+                    m: []
+                });
+
+                expect(member(type(exports.A), 'x').t.c).to.have.deep.members([
+                    <format.RtSignature>{
+                        p: [],
+                        r: voidType()
+                    },
+                    <format.RtSignature>{
+                        p: [
+                            {
+                                n: 'foo',
+                                t: builtinClass(String)
+                            }
+                        ],
+                        r: voidType()
+                    }
+                ])
+            }
+        });
+    });
+    it('identifies structured types with optional members', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    foo: boolean;
+                    bar?: boolean;
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                expect(member(type(exports.A), 'x').t.TΦ).to.equal(format.T_OBJECT);
+                expect(member(type(exports.A), 'x').t.m).to.have.deep.members([
+                    <format.RtObjectMember>{ n: 'foo', f: format.F_PROPERTY, t: builtinClass(Boolean) },
+                    <format.RtObjectMember>{ n: 'bar', f: `${format.F_PROPERTY}${format.F_OPTIONAL}`, t: builtinClass(Boolean) }
+                ])
+            }
+        });
+    });
+    it('identifies structured types with readonly members', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    foo: boolean;
+                    readonly bar: boolean;
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                expect(member(type(exports.A), 'x').t.TΦ).to.equal(format.T_OBJECT);
+                expect(member(type(exports.A), 'x').t.m).to.have.deep.members([
+                    <format.RtObjectMember>{ n: 'foo', f: format.F_PROPERTY, t: builtinClass(Boolean) },
+                    <format.RtObjectMember>{ n: 'bar', f: `${format.F_PROPERTY}${format.F_READONLY}`, t: builtinClass(Boolean) }
+                ])
+            }
+        });
+    });
+    it('marks properties defined via accessor', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    foo: boolean;
+                    get bar(): boolean;
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                const foo = member(type(exports.A), 'x').t.m.find(x => x.n === 'foo');
+                const bar = member(type(exports.A), 'x').t.m.find(x => x.n === 'bar');
+
+                expect(foo.f).not.to.include(format.F_ACCESSOR);
+                expect(bar.f).to.include(format.F_ACCESSOR);
+            }
+        });
+    });
+    it('marks accessors that have setters', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    get foo(): boolean;
+                    get bar(): boolean;
+                    set bar(value: boolean);
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                const foo = member(type(exports.A), 'x').t.m.find(x => x.n === 'foo');
+                const bar = member(type(exports.A), 'x').t.m.find(x => x.n === 'bar');
+
+                expect(foo.f).not.to.include(format.F_SET_ACCESSOR);
+                expect(bar.f).to.include(format.F_SET_ACCESSOR);
+            }
+        });
+    });
+    it('marks accessors that have getters', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    set foo(value: boolean);
+                    get bar(): boolean;
+                    set bar(value: boolean);
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                const foo = member(type(exports.A), 'x').t.m.find(x => x.n === 'foo');
+                const bar = member(type(exports.A), 'x').t.m.find(x => x.n === 'bar');
+
+                expect(foo.f).not.to.include(format.F_GET_ACCESSOR);
+                expect(bar.f).to.include(format.F_GET_ACCESSOR);
+            }
+        });
+    });
+    it('synthesizes readonly for accessor without setter', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    get foo(): boolean;
+                    set foo(value: boolean4);
+                    get bar(): boolean;
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                const foo = member(type(exports.A), 'x').t.m.find(x => x.n === 'foo');
+                const bar = member(type(exports.A), 'x').t.m.find(x => x.n === 'bar');
+
+                expect(foo.f.includes(format.F_READONLY)).to.be.false;
+                expect(bar.f.includes(format.F_READONLY)).to.be.true;
+            }
+        });
+    });
+    it('identifies structured types with multiple properties and signatures', async () => {
+        await runSimple({
+            code: `
+                type StructuredType = {
+                    (): void;
+                    (foo: string): void;
+
+                    bar: number;
+                    baz: string;
+                }
+
+                export class A {
+                    x: StructuredType;
+                }
+            `,
+            globals,
+            checks: exports => {
+                expect(member(type(exports.A), 'x').t.TΦ).to.equal(format.T_OBJECT);
+                expect(member(type(exports.A), 'x').t.m).to.have.deep.members([
+                    <format.RtObjectMember>{ n: 'bar', f: format.F_PROPERTY, t: builtinClass(Number) },
+                    <format.RtObjectMember>{ n: 'baz', f: format.F_PROPERTY, t: builtinClass(String) }
+                ])
+                expect(member(type(exports.A), 'x').t.c).to.have.deep.members([
+                    <format.RtSignature>{
+                        p: [],
+                        r: voidType()
+                    },
+                    <format.RtSignature>{
+                        p: [
+                            {
+                                n: 'foo',
+                                t: builtinClass(String)
+                            }
+                        ],
+                        r: voidType()
+                    }
+                ])
+            }
+        });
+    });
     it('identifies arrow functions', async () => {
         await runSimple({
             code: `
@@ -984,9 +1222,10 @@ describe('rtti:type', () => {
                 expect(type(exports.foo).p[1].n).not.to.exist;
                 expect(type(exports.foo).p[1].t).to.eql({
                     TΦ: "O",
+                    c: [],
                     m: [
-                        { n: "bar", f: "", t: builtinClass(String) },
-                        { n: "baz", f: "", t: builtinClass(Number) }
+                        { n: "bar", f: format.F_PROPERTY, t: builtinClass(String) },
+                        { n: "baz", f: format.F_PROPERTY, t: builtinClass(Number) }
                     ],
                     n: undefined
                 });
@@ -1153,7 +1392,7 @@ describe('rtti:type', () => {
             }
         });
     });
-    it.only('emits for an enum literal', async () => {
+    it('emits for an enum literal', async () => {
         await runSimple({
             code: `
                 export enum A {
@@ -1329,10 +1568,10 @@ describe('rtti:type', () => {
                 expect(member(type(exports.C), 'foo').t.p.length).to.equal(2);
                 expect(member(type(exports.C), 'foo').t.p[0].n).to.equal('foo');
                 expect(member(type(exports.C), 'foo').t.p[0].t).to.deep.include(builtinClass(String));
-                expect(member(type(exports.C), 'foo').t.p[0].v).to.equal(null);
+                expect(member(type(exports.C), 'foo').t.p[0].v).to.equal(undefined);
                 expect(member(type(exports.C), 'foo').t.p[1].n).to.equal('bar');
                 expect(member(type(exports.C), 'foo').t.p[1].t).to.deep.include(builtinClass(Number));
-                expect(member(type(exports.C), 'foo').t.p[1].v).to.equal(null);
+                expect(member(type(exports.C), 'foo').t.p[1].v).to.equal(undefined);
             }
         });
     });
@@ -1351,10 +1590,10 @@ describe('rtti:type', () => {
                 expect(member(type(exports.C), 'foo').t.p.length).to.equal(2);
                 expect(member(type(exports.C), 'foo').t.p[0].n).to.equal('foo');
                 expect(member(type(exports.C), 'foo').t.p[0].t).to.eql(builtinClass(String));
-                expect(member(type(exports.C), 'foo').t.p[0].v).to.equal(null);
+                expect(member(type(exports.C), 'foo').t.p[0].v).to.equal(undefined);
                 expect(member(type(exports.C), 'foo').t.p[1].n).to.equal('bar');
                 expect(member(type(exports.C), 'foo').t.p[1].t).to.eql(builtinClass(Number));
-                expect(member(type(exports.C), 'foo').t.p[1].v).to.equal(null);
+                expect(member(type(exports.C), 'foo').t.p[1].v).to.equal(undefined);
                 expect(member(type(exports.C), 'foo').t.f).to.equal('');
             }
         });
@@ -1826,7 +2065,43 @@ describe('rtti:type', () => {
                     TΦ: format.T_MAPPED,
                     p: [ type(exports.A) ],
                     m: [
-                        { n: 'foo', t: builtinClass(Number), f: `${format.F_OPTIONAL}` }
+                        { n: 'foo', t: builtinClass(Number), f: `${format.F_PROPERTY}${format.F_OPTIONAL}` }
+                    ],
+                    t: builtinClass(Object)
+                });
+            }
+        });
+    });
+    it('emits for mapped types and realizes the resulting type with methods', async () => {
+        await runSimple({
+            code: `
+                export class A {
+                    foo(): number;
+                }
+                type Px<T> = {
+                    [P in keyof T]?: T[P];
+                };
+                export class C {
+                    method<T>(): Px<A> { return null; }
+                }
+            `,
+            globals,
+            checks: exports => {
+                expect(member(type(exports.C), 'method').t.r).to.eql(<format.RtMappedType>{
+                    TΦ: format.T_MAPPED,
+                    p: [ type(exports.A) ],
+                    m: [
+                        {
+                            n: 'foo',
+                            t: <format.RtFunctionType>{
+                                TΦ: format.T_FUNCTION,
+                                r: builtinClass(Number),
+                                f: '',
+                                n: 'foo',
+                                p: []
+                            },
+                            f: `${format.F_PROPERTY}${format.F_OPTIONAL}`
+                        }
                     ],
                     t: builtinClass(Object)
                 });

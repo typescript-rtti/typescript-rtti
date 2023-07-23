@@ -18,9 +18,12 @@ export const F_ASYNC: 'a' = 'a';
 export const F_EXPORTED: 'e' = 'e';
 export const F_INFERRED: '.' = '.';
 export const F_OMITTED: ',' = ',';
-export const F_GETTER: 'G' = 'G';
+export const F_GET_ACCESSOR: 'G' = 'G';
 export const F_DEFAULT_LIB: 'D' = 'D';
-export const F_SETTER: 's' = 's';
+export const F_SET_ACCESSOR: 's' = 's';
+export const F_ACCESSOR: '/' = '/';
+
+export type RtMemberBrand = typeof F_PROPERTY | typeof F_METHOD | typeof F_CONSTRUCTOR;
 
 /**
  * Flag attached to parameters which indicates that the parameter
@@ -66,13 +69,7 @@ export const TI_TRUE: RtIntrinsicType = { TΦ: T_TRUE };
 export const TI_FALSE: RtIntrinsicType = { TΦ: T_FALSE };
 export const TI_THIS: RtIntrinsicType = { TΦ: T_THIS };
 export const TI_NULL: RtIntrinsicType = { TΦ: T_NULL };
-
 export type Literal = number | string | bigint;
-export interface InterfaceToken<T = any> {
-    name: string;
-    prototype: any;
-    identity: symbol;
-}
 
 /**
  * Represents a type within the serialized emit RTTI format.
@@ -165,6 +162,7 @@ export interface RtObjectType {
     TΦ: typeof T_OBJECT;
     n?: string;
     m: RtObjectMember[];
+    c: RtSignature[];
 }
 
 export interface RtLiteralType {
@@ -172,12 +170,15 @@ export interface RtLiteralType {
     v: any;
 }
 
-export interface RtFunctionType {
-    TΦ: typeof T_FUNCTION;
-    r: RtType;
+export interface RtSignature {
     p: RtParameter[];
+    r: RtType;
+    f?: string;
+}
+
+export interface RtFunctionType extends RtSignature {
+    TΦ: typeof T_FUNCTION;
     n?: string;
-    f: string;
 }
 export interface RtObjectMember {
     n: string;

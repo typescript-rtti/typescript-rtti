@@ -6,7 +6,7 @@ import { reflect } from "./reflect";
 
 describe('reflect<T>()', () => {
     it('reifies and reflects', async () => {
-        const iface = reflect(<never>undefined, <format.RtCallSite>{ 'TΦ': 'c', tp: [
+        const iface = reflect(<format.RtCallSite>{ 'TΦ': 'c', tp: [
             <format.RtInterfaceType>{
                 TΦ: format.T_INTERFACE,
                 n: 'Something',

@@ -4,7 +4,7 @@ import * as format from '../common/format';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 import { MappedType } from './ts-internal-types';
-import { getModifiers, getTypeLocality, hasFlag, hasModifier, isFlagType, parentSymbol, skipAlias } from './utils';
+import { getModifiers, getTypeLocality, getTypeOfSymbol, hasFlag, hasModifier, isFlagType, parentSymbol, skipAlias } from './utils';
 import { RttiContext } from './rtti-context';
 import { encodeParameter } from './encode-parameter';
 import { ClassVisitor } from './common/class-visitor';
@@ -249,9 +249,8 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         }
 
         let isDeclaredFunctionType = typeNode && ts.isFunctionTypeNode(typeNode);
-        if (isDeclaredFunctionType || (type.symbol?.flags & ts.SymbolFlags.Function) !== 0 || type.getCallSignatures()?.length > 0) {
+        if (isDeclaredFunctionType || (type.symbol?.flags & ts.SymbolFlags.Function) !== 0 || type.getCallSignatures()?.length === 1) {
             let signatures = type.getCallSignatures();
-
             if (signatures.length > 1) {
                 console.warn(
                     `RTTI: ${containingSourceFile.fileName}: ${ctx.locationHint ?? 'unknown location'}: `
@@ -471,10 +470,21 @@ function getInterfaceMembers(encoder: TypeEncoderImpl, interfaceType: ts.Interfa
 }
 
 export function structuredTypeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode: ts.TypeNode, name?: string) {
-    return serialize({
+    return serialize<format.RtObjectType>({
         TΦ: format.T_OBJECT,
         n: name,
-        m: serializeObjectMembers(type, typeNode, encoder)
+        m: serializeObjectMembers(type, typeNode, encoder),
+        c: type.getCallSignatures().map(sig => literalNode(serializeCallSignature(sig, encoder)))
+    });
+}
+
+export function serializeCallSignature(sig: ts.Signature, encoder: TypeEncoderImpl) {
+    return serialize<format.RtSignature>({
+        p: sig.getParameters().map(symbol => ({
+            n: symbol.name,
+            t: literalNode(encoder.referToType(getTypeOfSymbol(encoder.ctx.checker, symbol)))
+        })),
+        r: literalNode(encoder.referToType(sig.getReturnType()))
     });
 }
 
@@ -490,9 +500,30 @@ function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: T
             typeNode ?? encoder.ctx.currentTopStatement
         );
 
+        let flags: string[] = [ format.F_PROPERTY ];
+
+        if (hasFlag(prop.flags, ts.SymbolFlags.Optional))
+            flags.push(format.F_OPTIONAL);
+        if (hasFlag(prop.flags, ts.SymbolFlags.Accessor))
+            flags.push(format.F_ACCESSOR);
+        if (hasFlag(prop.flags, ts.SymbolFlags.GetAccessor))
+            flags.push(format.F_GET_ACCESSOR);
+        if (hasFlag(prop.flags, ts.SymbolFlags.SetAccessor))
+            flags.push(format.F_SET_ACCESSOR);
+
+        let decl = prop.valueDeclaration;
+        if (decl) {
+            const modifiers = getModifiers(decl);
+            if (hasModifier(modifiers, ts.SyntaxKind.ReadonlyKeyword))
+                flags.push(format.F_READONLY);
+        }
+
+        if (!flags.includes(format.F_READONLY) && hasFlag(prop.flags, ts.SymbolFlags.Accessor) && !hasFlag(prop.flags, ts.SymbolFlags.SetAccessor))
+            flags.push(format.F_READONLY);
+
         members.push({
             n: prop.name,
-            f: `${hasFlag(prop.flags, ts.SymbolFlags.Optional) ? format.F_OPTIONAL : ''}`,
+            f: flags.join(''),
             t: <any>literalNode(encoder.referToType(memberType))
         })
     }

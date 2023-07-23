@@ -1,6 +1,6 @@
 import * as format from '../common/format';
-import { MatchesValueOptions, ClassType, FunctionType, InterfaceType, Type } from './reflect';
 import { expect } from 'chai';
+import { ClassType, FunctionType, InterfaceType, MatchesValueOptions, ObjectType, Type } from './types';
 
 export function type(obj) {
     return Reflect.getMetadata('rtti:type', obj)?.();
@@ -98,6 +98,10 @@ export function expectValueNotToMatch(type: Type, value: any, options?: MatchesV
 
 export function reflectClassType(type: Omit<format.RtClassType, 'TΦ'>) {
     return <ClassType>Type.createFromRtRef({ TΦ: format.T_CLASS, ...type });
+}
+
+export function reflectObjectType(type: Omit<format.RtObjectType, 'TΦ'>) {
+    return <ObjectType>Type.createFromRtRef({ TΦ: format.T_OBJECT, ...type });
 }
 
 export function reflectInterfaceType(type: Omit<format.RtInterfaceType, 'TΦ'>) {

@@ -1,9 +1,9 @@
 import { describe, it } from "@jest/globals";
 import { expect } from "chai";
-import { ClassType, FunctionType, Type } from "./reflect";
+import { ClassType, FunctionType, Type, Method, LiteralType } from "./types";
 import * as format from '../common/format';
-import { reflect, Method } from "./reflect";
-import { builtinClass, functionType, genericType, literal, reflectClassType, reflectFunctionType, reflectInterfaceType, voidType } from './utils.test-harness';
+import { reflect } from "./reflect";
+import { builtinClass, functionType, genericType, literal, reflectClassType, reflectFunctionType, reflectInterfaceType, reflectObjectType, voidType } from './utils.test-harness';
 
 /**
  * @rtti:skip
@@ -73,6 +73,100 @@ describe('InterfaceType', () => {
     });
 });
 
+
+/**
+ * @rtti:skip
+ */
+describe('ObjectType', () => {
+    describe('members', () => {
+        it('properly exposes members', () => {
+            let type = reflectObjectType({
+                m: [
+                    {
+                        n: 'bar',
+                        t: builtinClass(String),
+                        f: ''
+                    },
+                    {
+                        n: 'baz',
+                        t: builtinClass(Number),
+                        f: ''
+                    },
+                ],
+                c: []
+            });
+
+            expect(type.members.length).to.equal(2);
+            expect(type.getMember('bar').type.isBuiltinClass(String)).to.be.true;
+            expect(type.getMember('baz').type.isBuiltinClass(Number)).to.be.true;
+        });
+        it('supports optionality', () => {
+            let type = reflectObjectType({
+                m: [
+                    {
+                        n: 'bar',
+                        t: builtinClass(String),
+                        f: ''
+                    },
+                    {
+                        n: 'baz',
+                        t: builtinClass(Number),
+                        f: format.F_OPTIONAL
+                    },
+                ],
+                c: []
+            });
+
+            expect(type.members.length).to.equal(2);
+            expect(type.getMember('bar').isOptional).to.be.false;
+            expect(type.getMember('baz').isOptional).to.be.true;
+        });
+        it('supports readonly', () => {
+            let type = reflectObjectType({
+                m: [
+                    {
+                        n: 'bar',
+                        t: builtinClass(String),
+                        f: ''
+                    },
+                    {
+                        n: 'baz',
+                        t: builtinClass(Number),
+                        f: format.F_READONLY
+                    },
+                ],
+                c: []
+            });
+
+            expect(type.members.length).to.equal(2);
+            expect(type.getMember('bar').isReadOnly).to.be.false;
+            expect(type.getMember('baz').isReadOnly).to.be.true;
+        });
+    })
+    describe('callSignatures', () => {
+        it('exposes call signatures', () => {
+            let type = reflectObjectType({
+                m: [
+                    {
+                        n: 'bar',
+                        t: builtinClass(String),
+                        f: ''
+                    },
+                    {
+                        n: 'baz',
+                        t: builtinClass(Number),
+                        f: ''
+                    },
+                ],
+                c: []
+            });
+
+            expect(type.members.length).to.equal(2);
+            expect(type.getMember('bar').type.isBuiltinClass(String)).to.be.true;
+            expect(type.getMember('baz').type.isBuiltinClass(Number)).to.be.true;
+        });
+    })
+});
 /**
  * @rtti:skip
  */
@@ -142,8 +236,27 @@ describe('ClassType', () => {
         expect(b.type.isBuiltinClass(String)).to.be.true;
         expect(b.name).to.equal('b');
     });
-    it('can reflect on a primitive value', () => {
-        expect(reflect(123) instanceof ClassType).to.be.true;
+    it('can reflect on a literal number', () => {
+        expect(reflect(123).isLiteral(123)).to.be.true;
+    });
+    it('can reflect on a literal string', () => {
+        expect(reflect('hello').isLiteral('hello')).to.be.true;
+    });
+    it('can reflect on true', () => {
+        expect(reflect(true).isTrue()).to.be.true;
+    });
+    it('can reflect on false', () => {
+        expect(reflect(false).isFalse()).to.be.true;
+    });
+    it('can reflect on null', () => {
+        expect(reflect(<any>null).isNull()).to.be.true;
+    });
+    it('can reflect on undefined', () => {
+        let value = undefined;
+        expect(reflect(value).isUndefined(), `Expected type 'undefined' not '${reflect(value).kind}'`).to.be.true;
+    });
+    it('can reflect on bigint literal', () => {
+        expect(reflect(BigInt(123)).isLiteral(BigInt(123))).to.be.true;
     });
     it('can reflect abstract', () => {
         expect(reflectClassType({ f: '',                m: [] }).isAbstract).to.be.false;
@@ -193,7 +306,7 @@ describe('ClassType', () => {
         expect(ref.as('enum').nameSet.has('Three')).to.be.false;
         expect(ref.as('enum').name).to.equal('MyEnum');
     });
-    it.only('reflects enum literal refs', () => {
+    it('reflects enum literal refs', () => {
         let ref = Type.createFromRtRef({
             TΦ: format.T_ENUM_LITERAL,
             n: 'Two',
@@ -590,8 +703,8 @@ describe('Property', () => {
             ]
         });
 
-        expect(klass.getProperty('foo').isReadonly).to.be.false;
-        expect(klass.getProperty('bar').isReadonly).to.be.true;
+        expect(klass.getProperty('foo').isReadOnly).to.be.false;
+        expect(klass.getProperty('bar').isReadOnly).to.be.true;
     });
     it('reflects type', () => {
         let klass = reflectClassType({
@@ -933,8 +1046,13 @@ describe('Compatibility', () => {
             foo = 123;
             bar = 'hello';
         }
+
         Reflect.defineMetadata('design:type', Number, B.prototype, 'foo');
         Reflect.defineMetadata('design:type', String, B.prototype, 'bar');
+
+        expect(reflect(B).class).to.equal(B);
+        expect(reflect(B).name).to.equal('B');
+
         expect(reflect(B).getProperty('foo').type.isBuiltinClass(Number)).to.be.true;
         expect(reflect(B).getProperty('bar').type.isBuiltinClass(String)).to.be.true;
     });

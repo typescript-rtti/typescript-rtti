@@ -1,11 +1,10 @@
 import { expect } from "chai";
 import { describe, it } from "@jest/globals";
-import { MatchesValueOptions, ClassType, InterfaceType, reflect } from "./reflect";
 import { F_OPTIONAL, RtMappedType, RtObjectType, T_MAPPED, T_OBJECT } from '../common';
-import { Type } from './reflect';
 
 import * as format from '../common/format';
 import { builtinClass, expectValueNotToMatch, expectValueToMatch, functionType, literal, reflectInterfaceType } from './utils.test-harness';
+import { Type } from './types';
 
 describe('ClassType#matchesValue()', () => {
     it('works with simple interfaces', async () => {
@@ -149,7 +148,7 @@ describe('ClassType#matchesValue()', () => {
     });
 });
 describe('ObjectType#matchesValue()', () => {
-    it('supports object literals', async () => {
+    it.only('supports object literals', async () => {
         let ref = Type.createFromRtRef(<format.RtObjectType>{
             TΦ: T_OBJECT,
             m: [

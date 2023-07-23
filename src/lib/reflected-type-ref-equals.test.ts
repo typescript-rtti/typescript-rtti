@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { describe, it } from '@jest/globals';
 import * as format from '../common/format';
-import { Type } from './reflect';
+import { Type } from './types';
 
 describe('Type#equals()', () => {
     it('matches by reference', () => {

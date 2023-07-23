@@ -1,12 +1,14 @@
 import { expect } from "chai";
 import { describe, it } from "@jest/globals";
-import { CallSite, reflect } from "../reflect";
 import { builtinClass, literal } from '../utils.test-harness';
+import { reflect } from '../reflect';
+import { CallSite } from '../callsite';
+import { ReflectedCallSite } from '../types';
 
 describe('Library: Generic transience', () => {
     it('reflects upon callsites', async () => {
 
-        let callSite = reflect(<CallSite>{
+        let callSite = ReflectedCallSite.from({
             TΦ: 'c',
             t: undefined,
             p: [literal(123), builtinClass(Boolean)],

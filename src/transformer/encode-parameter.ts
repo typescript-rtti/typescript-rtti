@@ -64,8 +64,8 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
     let meta: format.RtSerialized<format.RtParameter> = {
         n: name,
         t: literalNode(typeExpr),
-        b: bindings,
-        v: param.initializer ? literalNode(functionForwardRef(cloneNode(param.initializer))) : null
+        ...bindings ? { b: bindings } : {},
+        ...param.initializer ? { v: literalNode(functionForwardRef(cloneNode(param.initializer))) } : {}
     };
 
     if (f.length > 0)

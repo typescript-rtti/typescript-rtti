@@ -38,7 +38,7 @@ export class InterfaceVisitor extends VisitorBase {
             this.members.push({
                 f: [
                     format.F_PROPERTY,
-                    format.F_GETTER,
+                    format.F_GET_ACCESSOR,
                     getVisibility(nodeModifiers),
                     isReadOnly(nodeModifiers),
                     decl.questionToken ? format.F_OPTIONAL : ''
@@ -47,7 +47,7 @@ export class InterfaceVisitor extends VisitorBase {
                 t: <any>literalNode(this.encoder.referToType(this.checker.getTypeAtLocation(decl)))
             });
         } else {
-            existingProperty.f += format.F_GETTER;
+            existingProperty.f += format.F_GET_ACCESSOR;
         }
     }
 
@@ -59,7 +59,7 @@ export class InterfaceVisitor extends VisitorBase {
             this.members.push({
                 f: [
                     format.F_PROPERTY,
-                    format.F_SETTER,
+                    format.F_SET_ACCESSOR,
                     getVisibility(nodeModifiers),
                     isReadOnly(nodeModifiers),
                     decl.questionToken ? format.F_OPTIONAL : ''
@@ -68,7 +68,7 @@ export class InterfaceVisitor extends VisitorBase {
                 t: <any>literalNode(this.encoder.referToType(this.checker.getTypeAtLocation(decl)))
             });
         } else {
-            existingProperty.f += format.F_SETTER;
+            existingProperty.f += format.F_SET_ACCESSOR;
         }
     }
 

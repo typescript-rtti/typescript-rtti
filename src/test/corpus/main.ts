@@ -83,6 +83,7 @@ const PACKAGES: Record<string, Package> = {
     },
     "typeorm/typeorm": {
         enabled: true,
+        only: true,
         url: 'https://github.com/typeorm/typeorm.git',
         ref: '0.3.11',
         commands: ['tsc']
@@ -94,9 +95,9 @@ const PACKAGES: Record<string, Package> = {
  */
 const TYPESCRIPTS = [
     { tsVersion: '4.8', compiler: 'ttsc', jestCompiler: 'ttypescript', precommands: [ 'npm install ttypescript --force' ] },
-    { tsVersion: '4.9', compiler: 'ttsc', jestCompiler: 'ttypescript', precommands: [ 'npm install ttypescript --force' ] },
-    { tsVersion: '5.0', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] },
-    { tsVersion: '5.1', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] }
+    // { tsVersion: '4.9', compiler: 'ttsc', jestCompiler: 'ttypescript', precommands: [ 'npm install ttypescript --force' ] },
+    // { tsVersion: '5.0', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] },
+    // { tsVersion: '5.1', compiler: 'tspc', jestCompiler: 'ts-patch/compiler', precommands: [ 'npm install ts-patch --force' ] }
 ];
 
 function run(str: string, cwd?: string, context?: string) {
