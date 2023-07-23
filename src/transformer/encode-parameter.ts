@@ -65,7 +65,7 @@ export function encodeParameter(encoder: TypeEncoderImpl, param: ts.ParameterDec
         n: name,
         t: literalNode(typeExpr),
         ...bindings ? { b: bindings } : {},
-        ...param.initializer ? { v: literalNode(functionForwardRef(cloneNode(param.initializer))) } : {}
+        ...param.initializer ? { v: literalNode(functionForwardRef(ts.getSynthesizedDeepClone(param.initializer))) } : {}
     };
 
     if (f.length > 0)

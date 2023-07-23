@@ -374,7 +374,7 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
                     n: skipAlias(type.symbol, checker).name,
                     m: omitMetadata ? [] : members,
                     i: omitMetadata ? [] : implementsTypes.map(i => literalNode(i)),
-                    e: omitMetadata ? undefined : extendType
+                    e: omitMetadata || !extendType ? undefined : literalNode(extendType)
                 });
             } else {
                 const interfaceType = <ts.InterfaceType>type;

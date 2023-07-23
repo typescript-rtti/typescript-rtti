@@ -854,7 +854,6 @@ describe('rtti:type', () => {
             }
         });
     });
-
     it('supports simple ctor param default value', async () => {
         await runSimple({
             code: `
@@ -1204,15 +1203,25 @@ describe('rtti:type', () => {
             }
         });
     });
-    it.skip('supports simple param default value', async () => {
-        // TODO: central libraries can't do this without some special emit when the type is defined, due to scoping
-        // TypeError: A is not defined
-
+    it('supports simple param default value', async () => {
         await runSimple({
             trace: true,
             code: `
                 export class A { }
                 export function foo(hello = 123) { }
+            `,
+            globals,
+            checks: exports => {
+                expect(type(exports.foo).p[0].v()).to.equal(123);
+            }
+        });
+    });
+    it('supports simple calculated param default value', async () => {
+        await runSimple({
+            trace: true,
+            code: `
+                export class A { }
+                export function foo(hello = 123 * 1) { }
             `,
             globals,
             checks: exports => {

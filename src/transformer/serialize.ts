@@ -21,8 +21,14 @@ export function serialize<T>(object: T | RtSerialized<T>): ts.Expression {
         return object.node;
 
     let props: ts.ObjectLiteralElementLike[] = [];
-    for (let key of Object.keys(object))
-        props.push(ts.factory.createPropertyAssignment(key, serialize(object[key])));
+    for (let key of Object.keys(object)) {
+        try {
+            props.push(ts.factory.createPropertyAssignment(key, serialize(object[key])));
+        } catch (e) {
+            console.error(`RTTI: serialize(): Failed to process object key '${key}'`);
+            throw e;
+        }
+    }
 
     return ts.factory.createObjectLiteralExpression(props, false);
 }
