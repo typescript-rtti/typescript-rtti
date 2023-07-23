@@ -18,6 +18,8 @@ export class TypeEncoder {
         return this.referToType(this.checker.getTypeFromTypeNode(typeNode), typeNode);
     }
 
+    typeCache = new Map<number, ts.Expression>();
+
     referToType(type: ts.Type, typeNode?: ts.TypeNode): ts.Expression {
         if (!type['id'])
             throw new Error(`Type does not have an ID!`);
@@ -25,16 +27,22 @@ export class TypeEncoder {
         if (!this.typeMap.has(type['id'])) {
             // Allocate the typeMap slot first so we don't recurse if we encounter it again
             this.typeMap.set(type['id'], null);
-            this.typeMap.set(type['id'],
-                ts.factory.createArrowFunction(
+
+            let typeExpression = this.typeCache.get(type['id']);
+            if (!typeExpression) {
+                typeExpression = ts.factory.createArrowFunction(
                     undefined,
                     undefined,
                     [],
                     undefined,
                     ts.factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-                    typeLiteral(this, type, typeNode))
-            )
-                ;
+                    typeLiteral(this, type, typeNode)
+                );
+
+                this.typeCache.set(type['id'], typeExpression);
+            }
+
+            this.typeMap.set(type['id'], typeExpression);
         }
 
         return ts.factory.createCallExpression(
