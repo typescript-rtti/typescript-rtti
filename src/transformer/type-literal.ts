@@ -78,6 +78,8 @@ export function typeLiteral(encoder: TypeEncoderImpl, type: ts.Type, typeNode?: 
         return serialize({ TΦ: T_UNKNOWN });
     } else if (hasFlag(type.flags, ts.TypeFlags.Any)) {
         return serialize({ TΦ: T_ANY });
+    } else if (isFlagType<ts.BigIntLiteralType>(type, ts.TypeFlags.BigIntLiteral)) {
+        return serialize(BigInt(`${type.value.negative ? '-' : ''}${type.value.base10Value}`));
     } else if (isFlagType<ts.LiteralType>(type, ts.TypeFlags.Literal)) {
         if (type['intrinsicName'] === 'true')
             return serialize({ TΦ: T_TRUE });

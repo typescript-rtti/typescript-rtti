@@ -1776,6 +1776,26 @@ describe('rt:t', () => {
             }
         });
     });
+    it('emits for bigint literal expression', async () => {
+        await runSimple({
+            code: `
+                export class A { }
+                export class B { }
+                export class C {
+                    method(hello : A, world : B) : 3n {
+                        return 3n;
+                    }
+                }
+            `,
+            compilerOptions: {
+                target: ts.ScriptTarget.ES2020
+            },
+            checks: exports => {
+                let type = Reflect.getMetadata('rt:t', exports.C.prototype, 'method');
+                expect(type()).to.equal(BigInt(3));
+            }
+        });
+    });
     it('emits for unary literal expression', async () => {
         await runSimple({
             code: `

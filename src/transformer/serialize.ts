@@ -13,6 +13,9 @@ export function serialize<T>(object: T | RtSerialized<T>): ts.Expression {
         return ts.factory.createStringLiteral(object);
     if (typeof object === 'number')
         return ts.factory.createNumericLiteral(object);
+    if (typeof object === 'bigint')
+        return ts.factory.createCallExpression(ts.factory.createIdentifier('BigInt'), [],
+            [ ts.factory.createStringLiteral(`${object.toString()}`) ]);
     if (typeof object === 'boolean')
         return object ? ts.factory.createTrue() : ts.factory.createFalse();
     if (typeof object === 'function')
