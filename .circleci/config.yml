@@ -19,7 +19,7 @@ commands:
       - run:
           name: Initial NPM version
           command: npm --version
-      - run: sudo npm install npm@latest -g
+      - run: sudo npm install npm@9 -g
       - run:
           name: Upgraded NPM version
           command: npm --version
