@@ -1,5 +1,7 @@
 # v0.9.7
 - Adds missing support for BigInt literal types ([#106](https://github.com/typescript-rtti/typescript-rtti/issues/106))
+- Adds missing overloads for `is()`
+  ([#105](https://github.com/typescript-rtti/typescript-rtti/issues/105))
 
 # v0.9.6
 - When outputting type references for reified types (classes/interfaces) which were imported via `import type`, an

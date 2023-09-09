@@ -36,9 +36,9 @@ function Flag(value: string) {
     };
 }
 
-export type ReflectedTypeRefKind = 'union' | 'intersection' | 'any'
-    | 'unknown' | 'tuple' | 'array' | 'class' | 'any' | 'unknown' | 'generic' | 'mapped' | 'literal'
-    | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false' | 'object' | 'enum' | 'function';
+export type ReflectedTypeRefKind = 'union' | 'intersection' | 'tuple' | 'array' | 'class' | 'any' | 'unknown'
+    | 'generic' | 'mapped' | 'literal' | 'void' | 'interface' | 'null' | 'undefined' | 'true' | 'false'
+    | 'object' | 'enum' | 'function';
 
 export const TYPE_REF_KIND_EXPANSION: Record<string, ReflectedTypeRefKind> = {
     [format.T_UNKNOWN]: 'unknown',
@@ -227,19 +227,26 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
         return this.kind === 'literal' && (value === NotProvided || <unknown>this.ref === value);
     }
 
+    /** Check if this type reference is an interface type      */ is(kind: 'interface'): this is ReflectedInterfaceRef;
+    /** Check if this type reference is a class type           */ is(kind: 'class'): this is ReflectedClassRef<any>;
+    /** Check if this type reference is a generic type         */ is(kind: 'generic'): this is ReflectedGenericRef;
+    /** Check if this type reference is an array type          */ is(kind: 'array'): this is ReflectedArrayRef;
+    /** Check if this type reference is an intersection type   */ is(kind: 'intersection'): this is ReflectedIntersectionRef;
+    /** Check if this type reference is a union type           */ is(kind: 'union'): this is ReflectedUnionRef;
+    /** Check if this type reference is an enum type           */ is(kind: 'enum'): this is ReflectedEnumRef;
+    /** Check if this type reference is a tuple type           */ is(kind: 'tuple'): this is ReflectedTupleRef;
+    /** Check if this type reference is the void type          */ is(kind: 'void'): this is ReflectedVoidRef;
+    /** Check if this type reference is the any type           */ is(kind: 'any'): this is ReflectedAnyRef;
+    /** Check if this type reference is the null type          */ is(kind: 'null'): this is ReflectedNullRef;
+    /** Check if this type reference is the undefined type     */ is(kind: 'undefined'): this is ReflectedUndefinedRef;
+    /** Check if this type reference is the undefined type     */ is(kind: 'function'): this is ReflectedFunctionRef;
+    /** Check if this type reference is the true literal       */ is(kind: 'true'): this is ReflectedTrueRef;
+    /** Check if this type reference is the false literal      */ is(kind: 'false'): this is ReflectedFalseRef;
+    /** Check if this type reference is an unknown type        */ is(kind: 'unknown'): this is ReflectedUnknownRef;
+    /** Check if this type reference is a mapped type          */ is(kind: 'mapped'): this is ReflectedMappedRef;
+    /** Check if this type reference is a literal type         */ is(kind: 'literal'): this is ReflectedLiteralRef<any>;
+    /** Check if this type reference is an object literal type */ is(kind: 'object'): this is ReflectedObjectRef;
 
-    /** Check if this type reference is an interface type    */ is(kind: 'interface'): this is ReflectedInterfaceRef;
-    /** Check if this type reference is a class type         */ is(kind: 'class'): this is ReflectedClassRef<any>;
-    /** Check if this type reference is a generic type       */ is(kind: 'generic'): this is ReflectedGenericRef;
-    /** Check if this type reference is an array type        */ is(kind: 'array'): this is ReflectedArrayRef;
-    /** Check if this type reference is an intersection type */ is(kind: 'intersection'): this is ReflectedIntersectionRef;
-    /** Check if this type reference is a union type         */ is(kind: 'union'): this is ReflectedUnionRef;
-    /** Check if this type reference is an enum type         */ is(kind: 'enum'): this is ReflectedEnumRef;
-    /** Check if this type reference is a tuple type         */ is(kind: 'tuple'): this is ReflectedTupleRef;
-    /** Check if this type reference is a void type          */ is(kind: 'void'): this is ReflectedVoidRef;
-    /** Check if this type reference is an any type          */ is(kind: 'any'): this is ReflectedAnyRef;
-    /** Check if this type reference is an unknown type      */ is(kind: 'unknown'): this is ReflectedUnknownRef;
-    /** Check if this type reference is a literal type       */ is(kind: 'literal'): this is ReflectedLiteralRef<any>;
     /**
      * Check if this type reference is an instance of the given ReflectedTypeRef subclass.
      * @param type The subclass of ReflectedTypeRef to check
@@ -317,6 +324,11 @@ export class ReflectedTypeRef<T extends RtType = RtType> {
      * If the reference is not the correct type an error is thrown.
      */
     as(kind: 'literal'): ReflectedLiteralRef;
+    /**
+     * Assert that this type reference is a void type and cast it to ReflectedVoidRef.
+     * If the reference is not the correct type an error is thrown.
+     */
+    as(kind: 'object'): ReflectedObjectRef;
     /**
      * Assert that this type reference is the given ReflectedTypeRef subclass.
      * If the reference is not the correct type an error is thrown.
