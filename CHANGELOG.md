@@ -4,6 +4,8 @@
   ([#105](https://github.com/typescript-rtti/typescript-rtti/issues/105))
 - Fixes an issue where enum names were not emitted when performing stand-in outboarding for declared enumarations
   ([#104](https://github.com/typescript-rtti/typescript-rtti/issues/104))
+- Adds support for `readonly` to `ReflectedObjectMember`
+  ([#103](https://github.com/typescript-rtti/typescript-rtti/issues/103))
 
 # v0.9.6
 - When outputting type references for reified types (classes/interfaces) which were imported via `import type`, an

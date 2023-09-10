@@ -8,6 +8,7 @@ import {
 } from '../../common/format';
 import { runSimple } from '../../runner.test-harness';
 import { WORKAROUND_TYPESCRIPT_49794 } from '../workarounds';
+import * as format from '../../common/format';
 
 describe('rt:h', () => {
     it('is emitted directly on a method', async () => {
@@ -1085,7 +1086,7 @@ describe('rt:t', () => {
             }
         });
     });
-    it.only('emits the name of an enum', async () => {
+    it('emits the name of an enum', async () => {
         await runSimple({
             code: `
                 export class Test {
@@ -1970,6 +1971,28 @@ describe('rt:t', () => {
                 expect(type.TΦ).to.equal('|');
                 expect(type.t.length).to.equal(2);
                 expect(type.t).to.include.all.members([Number, String]);
+            }
+        });
+    });
+    it('emits readonly for readonly object literal property', async () => {
+        await runSimple({
+            code: `
+                type A = { readonly foo: string, bar: number };
+                export class C {
+                    method(hello : string, world : number): A { return { foo: 'hello', bar: 123 }; }
+                }
+            `,
+            checks: exports => {
+                let typeResolver = Reflect.getMetadata('rt:t', exports.C.prototype, 'method'); let type = typeResolver();
+                expect(type.TΦ).to.equal('O');
+                expect(type.m.length).to.equal(2);
+                let fooT = type.m.find(x => x.n === 'foo');
+                let barT = type.m.find(x => x.n === 'bar');
+
+                expect(fooT).to.exist;
+                expect(barT).to.exist;
+                expect(fooT.f.includes(format.F_READONLY)).to.be.false;
+                expect(barT.f.includes(format.F_READONLY)).to.be.false;
             }
         });
     });

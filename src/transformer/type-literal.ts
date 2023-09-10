@@ -1,12 +1,12 @@
 import * as ts from 'typescript';
-import { F_OPTIONAL, RtFunctionType, RtObjectMember, RtParameter, RtSerialized, RtType, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
+import { F_OPTIONAL, F_READONLY, RtFunctionType, RtObjectMember, RtParameter, RtSerialized, RtType, T_ANY, T_ARRAY, T_ENUM, T_FALSE, T_FUNCTION, T_GENERIC, T_INTERSECTION, T_MAPPED, T_NULL,
     T_OBJECT, T_STAND_IN, T_THIS, T_TRUE, T_TUPLE, T_UNDEFINED, T_UNION, T_UNKNOWN, T_VOID } from '../common';
 import { findRelativePathToFile } from './find-relative-path';
 import { getPreferredExportForImport } from './get-exports-for-symbol';
 import { literalNode } from './literal-node';
 import { serialize } from './serialize';
 import { MappedType } from './ts-internal-types';
-import { fileExists, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isInterfaceType, isNodeJS, optionalExportRef, propertyPrepend,
+import { fileExists, getModifiers, getTypeLocality, hasFilesystemAccess, hasFlag, isFlagType, isInterfaceType, isNodeJS, optionalExportRef, propertyPrepend,
     serializeEntityNameAsExpression, typeHasValue } from './utils';
 import type * as nodePathT from 'path';
 import type * as nodeFsT from 'fs';
@@ -305,9 +305,15 @@ function serializeObjectMembers(type: ts.Type, typeNode: ts.TypeNode, encoder: T
             typeNode ?? encoder.ctx.currentTopStatement
         );
 
+        let readonly = false;
+
+        if (prop.valueDeclaration && ts.isPropertySignature(prop.valueDeclaration)) {
+            readonly = getModifiers(prop.valueDeclaration).some(x => x.kind === ts.SyntaxKind.ReadonlyKeyword)
+        }
+
         members.push({
             n: prop.name,
-            f: `${hasFlag(prop.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}`,
+            f: `${hasFlag(prop.flags, ts.SymbolFlags.Optional) ? F_OPTIONAL : ''}${readonly ? F_READONLY : ''}`,
             t: <any>literalNode(encoder.referToType(memberType))
         })
     }
