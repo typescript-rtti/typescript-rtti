@@ -1991,8 +1991,8 @@ describe('rt:t', () => {
 
                 expect(fooT).to.exist;
                 expect(barT).to.exist;
-                expect(fooT.f.includes(format.F_READONLY)).to.be.false;
-                expect(barT.f.includes(format.F_READONLY)).to.be.false;
+                expect(fooT.f.includes('R')).to.be.true;
+                expect(barT.f.includes('R')).to.be.false;
             }
         });
     });
