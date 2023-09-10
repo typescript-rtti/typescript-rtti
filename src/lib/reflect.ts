@@ -479,6 +479,7 @@ export class ReflectedObjectMember {
     }
 
     get isOptional() { return this.flags.isOptional; }
+    get isReadonly() { return this.flags.isReadonly; }
 
     equals(member: this) {
         return this.name === member.name && this.type.equals(member.type);
