@@ -1085,6 +1085,27 @@ describe('rt:t', () => {
             }
         });
     });
+    it.only('emits the name of an enum', async () => {
+        await runSimple({
+            code: `
+                export class Test {
+                    prop1: Enum
+                }
+
+                export enum Enum {
+                    a = 'a',
+                    b = 'b',
+                    c = 'c',
+                }
+            `,
+            checks: exports => {
+                let typeResolver = Reflect.getMetadata('rt:t', exports.Test.prototype, 'prop1');
+                let type = typeResolver();
+                expect(type.TΦ).to.equal('e');
+                expect(type.n).to.equal('Enum');
+            }
+        });
+    });
     it('emits for const enum type', async () => {
         await runSimple({
             code: `

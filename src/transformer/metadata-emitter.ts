@@ -265,7 +265,7 @@ export class MetadataEmitter extends RttiVisitor {
                                 type['id']
                             ),
                             ts.factory.createToken(ts.SyntaxKind.EqualsToken),
-                            serialize({ TΦ: T_ENUM, e: literalNode(ts.factory.createIdentifier('t')) })
+                            serialize({ TΦ: T_ENUM, n: decl.name.text, e: literalNode(ts.factory.createIdentifier('t')) })
                         )
                     ),
                     [],

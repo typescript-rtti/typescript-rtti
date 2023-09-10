@@ -2,6 +2,8 @@
 - Adds missing support for BigInt literal types ([#106](https://github.com/typescript-rtti/typescript-rtti/issues/106))
 - Adds missing overloads for `is()`
   ([#105](https://github.com/typescript-rtti/typescript-rtti/issues/105))
+- Fixes an issue where enum names were not emitted when performing stand-in outboarding for declared enumarations
+  ([#104](https://github.com/typescript-rtti/typescript-rtti/issues/104))
 
 # v0.9.6
 - When outputting type references for reified types (classes/interfaces) which were imported via `import type`, an
