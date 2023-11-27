@@ -1,0 +1,19 @@
+{
+    "name": "trypescript-rtti-transformed-tests",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "tspc --build",
+        "clean": "tspc --build --clean",
+        "test": "npm run build && jest --runInBand"
+    },
+    "dependencies": {
+        "typescript-rtti": "^0.9.6"
+    },
+    "devDependencies": {
+        "ts-jest": "^29.0.3",
+        "chai": "^4.3.0",
+        "ts-patch": "^3.0.2",
+        "typescript": "5.1.x"
+    }
+}
