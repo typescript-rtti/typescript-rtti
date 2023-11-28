@@ -1,14 +1,15 @@
 import 'reflect-metadata'
 import { expect } from "chai";
-import { describe, it,test } from "@jest/globals";
+import { describe, it,test, beforeEach } from "@jest/globals";
 import {reflect} from "typescript-rtti";
 
-describe("general", () => {
-   test("Type info is available", () => {
-       class A {}
+beforeEach( () => {
+   // Check that type info is available
+   class A {}
+   if(!isTypeInfoAvailable(A)) {
+       throw new Error("Type info is not available. Please make sure this this test.ts file is transformed, before run.")
+   }
 
-       expect(isTypeInfoAvailable(A)).to.be.true
-   })
 });
 
 describe("matches value", () => {
