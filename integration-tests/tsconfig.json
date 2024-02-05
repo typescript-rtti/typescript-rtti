@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ESNext",
+        "sourceMap": true,
+        "declarationMap": false,
+        "declaration": false,
+        "plugins": [
+            {
+                "transform": "typescript-rtti/dist/transformer"
+            }
+        ]
+    }
+}
