@@ -36,7 +36,7 @@
     "test": "jest --runInBand",
     "test:corpus": "npm run build && node ./dist.esm/test/corpus/main",
     "test:corpus:trace": "npm run -- test:corpus -- --trace",
-    "test:transformedTests": "npm --prefix transformedTests run test",
+    "test:integration-tests": "npm --prefix integration-tests run test",
     "prepublishOnly": "npm run build && npm test && npm run test:corpus",
     "docs": "typedoc ."
   },
