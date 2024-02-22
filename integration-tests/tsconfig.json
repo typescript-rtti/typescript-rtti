@@ -1,5 +1,7 @@
 {
+    "include": ["src", "typia-repo/test/src/structures/**/*"],
     "compilerOptions": {
+        "outDir": "dist",
         "module": "commonjs",
         "target": "ESNext",
         "sourceMap": true,

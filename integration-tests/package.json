@@ -5,7 +5,7 @@
     "scripts": {
         "build": "ttsc --build",
         "clean": "ttsc --build --clean",
-        "test": "npm run build && jest --runInBand"
+        "test": "npm run build && jest --testPathIgnorePatterns \".*\\.ts$\" --runInBand"
     },
     "dependencies": {
         "typescript-rtti": ".."
