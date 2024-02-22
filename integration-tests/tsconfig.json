@@ -5,6 +5,7 @@
         "sourceMap": true,
         "declarationMap": false,
         "declaration": false,
+        "strictNullChecks": true,
         "plugins": [
             {
                 "transform": "typescript-rtti/dist/transformer"
