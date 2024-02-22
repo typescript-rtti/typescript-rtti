@@ -28,3 +28,5 @@ corpus.*/
 .corpus/
 
 .nycrc
+
+integration-tests/
