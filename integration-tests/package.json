@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
+        "prepare:typia-repo": "TODO: init submodule && npm install --prefix typia-repo/test --save-exact typescript@4.9.x --save-exact typia@^5.4.11  --no-save",
         "build": "ttsc --build",
         "clean": "ttsc --build --clean",
         "test": "npm run build && jest --testPathIgnorePatterns \".*\\.ts$\" --runInBand"

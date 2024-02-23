@@ -8,6 +8,7 @@
         "declarationMap": false,
         "declaration": false,
         "strictNullChecks": true,
+        "allowSyntheticDefaultImports": true,
         "plugins": [
             {
                 "transform": "typescript-rtti/dist/transformer"
