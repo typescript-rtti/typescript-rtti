@@ -1,6 +1,7 @@
 /node_modules/
 /dist/
 /**/*.js
+!applyNamespaceBugPatches.js
 /**/*.map
 /**/*.d.ts
 /tsconfig.tsbuildinfo

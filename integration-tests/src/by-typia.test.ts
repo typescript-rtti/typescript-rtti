@@ -27,6 +27,14 @@ describe("Test structures by typia", () => {
             const module = await import(`${path}/${structureModuleFile}`);
             const testStructure = module[name] as TestStructure<any>;
             let generate: (() => any) = testStructure.generate!
+
+            // Bug workaround:
+            //@ts-ignore
+            generate = testStructure.workaround_redefined_generate
+            if(generate === undefined) {
+                throw new Error("workaround_redefined_generate not found. Make sure the files were patched with applyNamespaceBugPatches.js (run the script prepare:namespace_bug_workaround)");
+            }
+
             const typeToTest = reflect(generate).returnType;
             let validValue = generate();
             expect(typeToTest.matchesValue(validValue)).to.be.true

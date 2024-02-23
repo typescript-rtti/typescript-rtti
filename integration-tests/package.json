@@ -1,13 +1,14 @@
 {
     "name": "trypescript-rtti-transformed-tests",
     "version": "1.0.0",
-    "type": "module",
+    "type": "commonjs",
     "scripts": {
         "prepare:build-typescript-rtti": "npm install --prefix .. && npm run --prefix .. build",
         "prepare:npm-install": "npm install",
         "prepare:typia-repo": "TODO: init submodule && npm install --prefix typia-repo/test --save-exact typescript@4.9.x --save-exact typia@^5.4.11  --no-save",
+        "prepare:namespace_bug_workaround": "node applyNamespaceBugPatches.js",
         "build": "ttsc --build",
-        "clean": "ttsc --build --clean",
+        "clean": "ttsc --build --clean && node applyNamespaceBugPatches.js --clean",
         "test": "npm run build && jest --testPathIgnorePatterns \".*\\.ts$\" --runInBand"
     },
     "dependencies": {
