@@ -1,14 +1,14 @@
 import 'reflect-metadata'
 import { expect } from "chai";
-import { describe, it,test, beforeAll} from "@jest/globals";
+import {describe, it, test, beforeAll, beforeEach} from "@jest/globals";
 import {reflect, ReflectedClass} from "typescript-rtti";
-import {load} from "../typia-repo/test/build/template";
 import {TestStructure} from "../typia-repo/test/build/internal/TestStructure";
+import fs from "node:fs";
 
 /**
  * Cause describe can only run sync code, these must be loaded async beforehand
  */
-let loadedTestStructures: TestStructure<any>[]
+let loadedTestStructures: TestStructure<any>[] | undefined = undefined;
 beforeAll( async () => {
     // Check that type info is available
     class A {}
@@ -16,13 +16,31 @@ beforeAll( async () => {
         throw new Error("Type info is not available. Please make sure this this test.ts file is transformed, before run.")
     }
 
-    loadedTestStructures = await load();
+    /**
+     * from ../typia-repo/test/build/template.ts
+     */
+    async function loadTestStructures(): Promise<TestStructure<any>[]> {
+        const path: string = `../typia-repo/test/src/structures`;
+        const output: TestStructure<any>[] = [];
+
+        for (const file of await fs.promises.readdir(path)) {
+            const location: string = `${path}/${file}`;
+            const modulo: Record<string, TestStructure<any>> = await import(location);
+            output.push({
+                ...Object.values(modulo)[0],
+                name: file.substring(0, file.length - 3),
+            });
+        }
+        return output;
+    }
+
+    loadedTestStructures = await loadTestStructures();
 });
 
 
 
 describe("Test structures by typia", () => {
-    loadedTestStructures.forEach(testStructure => {
+    loadedTestStructures!.forEach(testStructure => {
         test(testStructure.name, async () => {});
     })
 });
