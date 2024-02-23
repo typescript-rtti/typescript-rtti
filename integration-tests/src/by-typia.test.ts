@@ -1,48 +1,47 @@
 import 'reflect-metadata'
 import { expect } from "chai";
-import {describe, it, test, beforeAll, beforeEach} from "@jest/globals";
+import {describe, it, test, beforeAll} from "@jest/globals";
 import {reflect, ReflectedClass} from "typescript-rtti";
 import {TestStructure} from "../typia-repo/test/build/internal/TestStructure";
-import fs from "node:fs";
+import * as fs from "node:fs";
+import {fail} from "assert";
 
-/**
- * Cause describe can only run sync code, these must be loaded async beforehand
- */
-let loadedTestStructures: TestStructure<any>[] | undefined = undefined;
 beforeAll( async () => {
     // Check that type info is available
     class A {}
     if(!isTypeInfoAvailable(A)) {
         throw new Error("Type info is not available. Please make sure this this test.ts file is transformed, before run.")
     }
-
-    /**
-     * from ../typia-repo/test/build/template.ts
-     */
-    async function loadTestStructures(): Promise<TestStructure<any>[]> {
-        const path: string = `../typia-repo/test/src/structures`;
-        const output: TestStructure<any>[] = [];
-
-        for (const file of await fs.promises.readdir(path)) {
-            const location: string = `${path}/${file}`;
-            const modulo: Record<string, TestStructure<any>> = await import(location);
-            output.push({
-                ...Object.values(modulo)[0],
-                name: file.substring(0, file.length - 3),
-            });
-        }
-        return output;
-    }
-
-    loadedTestStructures = await loadTestStructures();
 });
 
 
 
 describe("Test structures by typia", () => {
-    loadedTestStructures!.forEach(testStructure => {
-        test(testStructure.name, async () => {});
-    })
+    const path: string = `${__dirname}/../typia-repo/test/src/structures`;
+    for (const structureModuleFile of fs.readdirSync(path)) { // iterate all structure files
+        if(!structureModuleFile.endsWith(".js")) {
+            continue;
+        }
+        const name = structureModuleFile.substring(0, structureModuleFile.length - 3);
+        test(name, async () => {
+            const module = await import(`${path}/${structureModuleFile}`);
+            const testStructure = module[name] as TestStructure<any>;
+            let generate: (() => any) = testStructure.generate!
+            const typeToTest = reflect(generate).returnType;
+            let validValue = generate();
+            expect(typeToTest.matchesValue(validValue)).to.be.true
+
+            for(const spoil of testStructure.SPOILERS || []) {
+                const value = generate();
+                const diag_path = spoil(value); // Spoil it
+                if(typeToTest.matchesValue(value)) {
+                    fail(`The (spoiled) value ${JSON.stringify(value)} was not detected as invalid for type '${typeToTest.toString()}'. Hint: Spoiled by the following function:\n ${spoil.toString()}` )
+                }
+            }
+
+            const i = 0;
+        });
+    }
 });
 
 
