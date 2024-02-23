@@ -14,3 +14,5 @@ So we "borrow" these [source code files](typia-repo/test/src/structures) by refe
 Run the `prepare:typia-repo` script to check out the submodule and install the npm dependencies.
 
 [src/by-typia.test.ts](src/by-typia.test.ts) is our the entry point which iterates though all these structure files.
+
+Note: Git status will show you that we leave a bit of mess inside the typia-repo, cause we can't for now set up the `.gitignore` there properly. Therefore, use the `clean` script to clean things up again.
