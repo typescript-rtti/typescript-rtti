@@ -1,3 +1,6 @@
+//*****
+// Bug workaround for: https://github.com/typescript-rtti/typescript-rtti/issues/118
+
 
 const fs = require("node:fs");
 

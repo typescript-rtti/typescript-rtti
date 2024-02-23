@@ -28,7 +28,7 @@ describe("Test structures by typia", () => {
             const testStructure = module[name] as TestStructure<any>;
             let generate: (() => any) = testStructure.generate!
 
-            // Bug workaround:
+            // Bug workaround for https://github.com/typescript-rtti/typescript-rtti/issues/118
             //@ts-ignore
             generate = testStructure.workaround_redefined_generate
             if(generate === undefined) {
