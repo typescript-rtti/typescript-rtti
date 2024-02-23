@@ -37,13 +37,15 @@ describe("Test structures by typia", () => {
 
             const typeToTest = reflect(generate).returnType;
             let validValue = generate();
-            expect(typeToTest.matchesValue(validValue)).to.be.true
+            if(!typeToTest.matchesValue(validValue)) {
+                fail(`MatchesValue(...) returned false for a valid value for type: \n${typeToTest.toString()} \nSee file file://${path}/${structureModuleFile.replace(".js", ".ts")} \nThe (expected to be-) valid value is: \n${JSON.stringify(validValue,undefined, 4)}`)
+            }
 
             for(const spoil of testStructure.SPOILERS || []) {
                 const value = generate();
                 const diag_path = spoil(value); // Spoil it
                 if(typeToTest.matchesValue(value)) {
-                    fail(`The (spoiled) value ${JSON.stringify(value)} was not detected as invalid for type '${typeToTest.toString()}'. Hint: Spoiled by the following function:\n ${spoil.toString()}` )
+                    fail(`A spoiled value not detected as invalid by matchesValue(...) for type: \n${typeToTest.toString()} \nHint: Spoiled by the following function:\n ${spoil.toString()} \nSee file file://${path}/${structureModuleFile.replace(".js", ".ts")} \nThe spoiled value is: \n${JSON.stringify(value,undefined, 4)}`)
                 }
             }
 
