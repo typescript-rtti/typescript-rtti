@@ -10,8 +10,11 @@
         "allowSyntheticDefaultImports": true,
         "plugins": [
             {
+                "transform": "typia/lib/transform"
+            },
+            {
                 "transform": "typescript-rtti/dist/transformer"
-            }
+            },
         ]
     }
 }

@@ -11,7 +11,7 @@ expect( reflect(A).getMethod('foo').returnType.isUnion() ).to.be.true
 ## Tests from typia
 In addition to the above:
 The typia project has already made big efforts to create test structures for all imaginable kinds of typescript types (props to them !!!).
-So we "borrow" these [source code files](typia-repo/test/src/structures) by referencing the typia-repo as a git submodule and ttsc build over them (with our transformer).  
+So we "borrow" these [source code files](typia-repo/test/src/structures) by referencing the typia-repo as a git submodule and ttsc build over them (fist with the **typia transformer**, cause some teststructures make use of `typia.createRandom<TheType>` , then with **our transformer**).  
 Run the `prepare:typia-repo` script to check out the submodule and install its npm dependencies.
 
 [src/by-typia.test.ts](src/by-typia.test.ts) is our the entry point which iterates though all these structure files.
