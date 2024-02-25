@@ -1,0 +1,27 @@
+{
+    "name": "trypescript-rtti-transformed-tests",
+    "version": "1.0.0",
+    "type": "commonjs",
+    "scripts": {
+        "prepare:build-typescript-rtti": "npm install --prefix .. && npm run --prefix .. build",
+        "prepare:npm-install": "npm install",
+        "prepare:typia-repo:init": "git submodule init && git submodule update",
+        "prepare:typia-repo:npm-install": "npm install --prefix typia-repo/test --save-exact typescript@4.9.x --save-exact typia@^5.4.11  --no-save",
+        "prepare:namespace_bug_workaround": "node applyNamespaceBugPatches.js",
+        "prepare:all": "npm run prepare:build-typescript-rtti && npm run prepare:npm-install && npm run prepare:typia-repo:init && npm run prepare:typia-repo:npm-install && npm run prepare:namespace_bug_workaround",
+        "build": "ttsc --build",
+        "clean": "ttsc --build --clean && node applyNamespaceBugPatches.js --clean && rm -rf typia-repo/test/build/internal/*.js && rm -rf typia-repo/test/build/internal/*.map && rm -rf typia-repo/test/src/helpers/*.js && rm -rf typia-repo/test/src/helpers/*.map",
+        "test": "npm run build && jest --testPathIgnorePatterns \".*\\.ts$\" --runInBand"
+    },
+    "dependencies": {
+        "typescript-rtti": "..",
+        "@brillout/json-serializer": "=0.5.3"
+    },
+    "devDependencies": {
+        "ts-jest": "^29.0.3",
+        "chai": "^4.3.0",
+        "ttypescript": "^1.5.15",
+        "typescript": "4.9.x",
+        "typia": "^5.4.12"
+    }
+}

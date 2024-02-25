@@ -1,0 +1,4 @@
+# Don't mess with this file, as GIT stores the state and configuration in several other places (redundantly)! Use the `git submodules` and `git mv` commands instead.
+[submodule "integration-tests/typia-repo"]
+	path = integration-tests/typia-repo
+	url = https://github.com/samchon/typia.git

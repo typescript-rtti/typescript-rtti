@@ -1,0 +1,20 @@
+{
+    "include": ["src", "typia-repo/test/src/structures/**/*"],
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "ESNext",
+        "sourceMap": true,
+        "declarationMap": false,
+        "declaration": false,
+        "strictNullChecks": true,
+        "allowSyntheticDefaultImports": true,
+        "plugins": [
+            {
+                "transform": "typia/lib/transform"
+            },
+            {
+                "transform": "typescript-rtti/dist/transformer"
+            },
+        ]
+    }
+}
