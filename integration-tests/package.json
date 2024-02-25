@@ -8,7 +8,7 @@
         "prepare:typia-repo": "TODO: init submodule && npm install --prefix typia-repo/test --save-exact typescript@4.9.x --save-exact typia@^5.4.11  --no-save",
         "prepare:namespace_bug_workaround": "node applyNamespaceBugPatches.js",
         "build": "ttsc --build",
-        "clean": "ttsc --build --clean && node applyNamespaceBugPatches.js --clean",
+        "clean": "ttsc --build --clean && node applyNamespaceBugPatches.js --clean && rm -rf typia-repo/test/build/internal/*.js && rm -rf typia-repo/test/build/internal/*.map && rm -rf typia-repo/test/src/helpers/*.js && rm -rf typia-repo/test/src/helpers/*.map",
         "test": "npm run build && jest --testPathIgnorePatterns \".*\\.ts$\" --runInBand"
     },
     "dependencies": {
