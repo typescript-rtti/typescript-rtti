@@ -12,7 +12,8 @@
         "test": "npm run build && jest --testPathIgnorePatterns \".*\\.ts$\" --runInBand"
     },
     "dependencies": {
-        "typescript-rtti": ".."
+        "typescript-rtti": "..",
+        "@brillout/json-serializer": "=0.5.3"
     },
     "devDependencies": {
         "ts-jest": "^29.0.3",

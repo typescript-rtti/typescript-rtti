@@ -5,6 +5,7 @@ import {reflect, ReflectedClass} from "typescript-rtti";
 import {TestStructure} from "../typia-repo/test/build/internal/TestStructure";
 import * as fs from "node:fs";
 import {fail} from "assert";
+import {stringify as jsonStringify} from "@brillout/json-serializer/stringify"
 
 beforeAll( async () => {
     // Check that type info is available
@@ -38,14 +39,14 @@ describe("Test structures by typia", () => {
             const typeToTest = reflect(generate).returnType;
             let validValue = generate();
             if(!typeToTest.matchesValue(validValue)) {
-                fail(`MatchesValue(...) returned false for a valid value for type: \n${typeToTest.toString()} \nSee file file://${path}/${structureModuleFile.replace(".js", ".ts")} \nThe (expected to be-) valid value is: \n${JSON.stringify(validValue,undefined, 4)}`)
+                fail(`MatchesValue(...) returned false for a valid value for type: \n${typeToTest.toString()} \nSee file file://${path}/${structureModuleFile.replace(".js", ".ts")} \nThe (expected to be-) valid value is: \n${jsonStringify(validValue, {space: 4})}`)
             }
 
             for(const spoil of testStructure.SPOILERS || []) {
                 const value = generate();
                 const diag_path = spoil(value); // Spoil it
                 if(typeToTest.matchesValue(value)) {
-                    fail(`A spoiled value not detected as invalid by matchesValue(...) for type: \n${typeToTest.toString()} \nHint: Spoiled by the following function:\n ${spoil.toString()} \nSee file file://${path}/${structureModuleFile.replace(".js", ".ts")} \nThe spoiled value is: \n${JSON.stringify(value,undefined, 4)}`)
+                    fail(`A spoiled value not detected as invalid by matchesValue(...) for type: \n${typeToTest.toString()} \nHint: Spoiled by the following function:\n ${spoil.toString()} \nSee file file://${path}/${structureModuleFile.replace(".js", ".ts")} \nThe spoiled value is: \n${jsonStringify(value,{space: 4})}`)
                 }
             }
 
