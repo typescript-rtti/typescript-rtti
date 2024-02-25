@@ -21,4 +21,4 @@ Note: After a build, `git status` will show you that we left a bit of mess insid
 
 ## Usage (run the tests):
 _On a fresh git clone of typescript-rtti,_ 
-run the `prepare:...` scripts, then run the `test` script.
+run all the `prepare:...` scripts (or `prepare:all`), then run the `test` script.
