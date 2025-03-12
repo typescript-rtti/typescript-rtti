@@ -6,7 +6,12 @@
 [NPM](https://npmjs.com/package/typescript-rtti) |
 [Github](https://github.com/typescript-rtti/typescript-rtti)
 
-> **Status:**
+> **Project Status:**
+> This project has been in hibernation for some time, and with the [announcement](https://devblogs.microsoft.com/typescript/typescript-native-port/) of Typescript Go, the future of this effort is uncertain. If you wish to use Type metadata at runtime, there are other options with better community support and more active maintenance. This effort may be revisited/rewritten once a usable transformer API is available within Typescript Go.
+>
+> It's not all bad news, as one of the major problems with this effort is the slow performance of generating the type metadata for large applications. The speed of the Typescript compiler is extremely relevant to what is possible for typescript-rtti. Here's hoping to a brighter future for runtime type information in Typescript, however it happens! ❤️
+
+> **Code Status:**
 > This software is _release candidate_ quality
 > - Transformer: Expect **all** codebases to build and operate the same as when the transformer is not present. **Please** file a bug if you cannot build your codebase with the transformer enabled. All types are supported and emitted (except for mapped types).
 > - Reflection API: Stable, expect only rare breaking changes on the way to major-stable semver.
